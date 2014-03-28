@@ -20,10 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWVirtualFolder
-#define _Pantomime_H_CWVirtualFolder
 
-#include <Pantomime/CWFolder.h>
+#import "CWFolder.h"
 
 #import <Foundation/NSArray.h>
 
@@ -61,4 +59,3 @@
 
 @end 
 
-#endif // _Pantomime_H_CWVirtualFolder

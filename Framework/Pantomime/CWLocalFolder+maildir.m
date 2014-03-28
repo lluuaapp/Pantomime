@@ -20,17 +20,14 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWLocalFolder+maildir.h>
+#import "CWLocalFolder+maildir.h"
 
-#include <Pantomime/CWFlags.h>
-#include <Pantomime/CWLocalCacheManager.h>
-#include <Pantomime/CWLocalFolder+mbox.h>
-#include <Pantomime/CWLocalMessage.h>
-#include <Pantomime/CWLocalStore.h>
-#include <Pantomime/NSString+Extensions.h>
-
-#include <Foundation/NSFileManager.h>
-#include <Foundation/NSNotification.h>
+#import "CWFlags.h"
+#import "CWLocalCacheManager.h"
+#import "CWLocalFolder+mbox.h"
+#import "CWLocalMessage.h"
+#import "CWLocalStore.h"
+#import "NSString+CWExtensions.h"
 
 //
 // The maildir format is well documented here:
@@ -45,9 +42,9 @@
   NSMutableArray *aMutableArray;
   CWLocalMessage *aMessage;
   CWFlags *theFlags;
-  int count, i, msn;
+  NSInteger count, i, msn;
   
-  aMutableArray = AUTORELEASE([[NSMutableArray alloc] init]);
+  aMutableArray = [[NSMutableArray alloc] init];
   count = [allMessages count];
 
   // We assume that our write operation was successful and we initialize our msn to 1
@@ -61,15 +58,14 @@
       
       if ([theFlags contain: PantomimeDeleted])
 	{
-	  [[NSFileManager defaultManager] removeFileAtPath: [NSString stringWithFormat: @"%@/cur/%@", [self path], [aMessage mailFilename]]
-					  handler: nil];
+	  [[NSFileManager defaultManager] removeItemAtPath:[NSString stringWithFormat:@"%@/cur/%@", [self path], [aMessage mailFilename]] error:NULL];
 	  [aMutableArray addObject: aMessage];
 	}
       else
 	{
 	  // rewrite the message to account for changes in the flags
 	  NSString *uniquePattern, *newFileName;
-	  int indexOfPatternSeparator;
+	  NSInteger indexOfPatternSeparator;
   
 	  // We update our message's ivars (folder and size don't change)
 	  [aMessage setMessageNumber: msn];
@@ -92,9 +88,9 @@
 	  newFileName = [NSString stringWithFormat: @"%@:%@", uniquePattern, [theFlags maildirString]];
 
 	  // We rename the message file
-	  if ([[NSFileManager defaultManager] movePath: [NSString stringWithFormat: @"%@/cur/%@", [self path], [aMessage mailFilename]]
-					      toPath: [NSString stringWithFormat: @"%@/cur/%@", [self path], newFileName]
-					      handler: nil])
+	  if ([[NSFileManager defaultManager] moveItemAtPath:[NSString stringWithFormat: @"%@/cur/%@", [self path], [aMessage mailFilename]]
+												  toPath:[NSString stringWithFormat: @"%@/cur/%@", [self path], newFileName]
+												   error:NULL])
 	    {
 	      [aMessage setMailFilename: newFileName];
 	    }
@@ -105,7 +101,7 @@
   if (_cacheManager) [_cacheManager expunge];
   [allMessages removeObjectsInArray: aMutableArray];
   
-#warning also return when invoking the delegate
+// #warning also return when invoking the delegate
   POST_NOTIFICATION(PantomimeFolderExpungeCompleted, self, nil);
   PERFORM_SELECTOR_2([[self store] delegate], @selector(folderExpungeCompleted:), PantomimeFolderExpungeCompleted, self, @"Folder");
 }
@@ -120,7 +116,7 @@
   NSFileManager *aFileManager;
   NSMutableArray *allFiles;
   FILE *aStream;
-  int i, count;
+  NSInteger i, count;
   BOOL b;
 
   if (!theDirectory)
@@ -141,7 +137,7 @@
 
   // Read the directory
   aPath = [NSString stringWithFormat: @"%@/%@", _path, theDirectory];
-  allFiles = [[NSMutableArray alloc] initWithArray: [aFileManager directoryContentsAtPath: aPath]];
+  allFiles = [[NSMutableArray alloc] initWithArray: [aFileManager contentsOfDirectoryAtPath:aPath error:NULL]];
 
   // We remove Apple Mac OS X .DS_Store file
   [allFiles removeObject: @".DS_Store"];
@@ -177,14 +173,14 @@
 	  // move it to the "cur" directory
 	  if (b)
 	    {
-	      [aFileManager movePath: thisMailFile  toPath: aNewPath  handler: nil];
+	      [aFileManager moveItemAtPath:thisMailFile
+								toPath:aNewPath
+								 error:NULL];
 	    }	  
 	}
 
       [_cacheManager synchronize];
     }
-
-  RELEASE(allFiles);
 }
 
 @end

@@ -20,16 +20,12 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWIMAPMessage.h>
+#import "CWIMAPMessage.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWFlags.h>
-#include <Pantomime/CWIMAPFolder.h>
-#include <Pantomime/CWIMAPStore.h>
-
-#include <Foundation/NSDebug.h>
-#include <Foundation/NSException.h>
-#include <Foundation/NSValue.h>
+#import "CWConstants.h"
+#import "CWFlags.h"
+#import "CWIMAPFolder.h"
+#import "CWIMAPStore.h"
 
 //
 //
@@ -52,7 +48,7 @@
 {
   // Must also encode Message's superclass
   [super encodeWithCoder: theCoder];
-  [theCoder encodeObject: [NSNumber numberWithUnsignedInt: _UID]];
+  [theCoder encodeObject: [NSNumber numberWithUnsignedInteger:_UID]];
 }
 
 
@@ -63,7 +59,7 @@
 {
   // Must also decode Message's superclass
   self = [super initWithCoder: theCoder];
-  _UID = [[theCoder decodeObject] unsignedIntValue];
+  _UID = [[theCoder decodeObject] unsignedIntegerValue];
   return self;
 }
 
@@ -71,12 +67,12 @@
 //
 //
 //
-- (unsigned int) UID
+- (NSUInteger) UID
 {
   return _UID;
 }
 
-- (void) setUID: (unsigned int) theUID
+- (void) setUID: (NSUInteger) theUID
 {
   _UID = theUID;
 }
@@ -88,46 +84,45 @@
 //
 - (void) setInitialized: (BOOL) theBOOL
 {
-  [super setInitialized: theBOOL];
-  
-  if (!theBOOL)
+    [super setInitialized: theBOOL];
+    
+    if (!theBOOL)
     {
-      DESTROY(_content);
-      return;
+        _content = nil;
+        return;
     }
-  else if (![(CWIMAPFolder *)[self folder] selected])
+    else if (![(CWIMAPFolder *)[self folder] selected])
     {
-      [super setInitialized: NO];
-      [NSException raise: PantomimeProtocolException
-		   format: @"Unable to fetch message content from unselected mailbox."];
-      return;
+        [super setInitialized: NO];
+        [NSException raise:PantomimeProtocolException format:@"Unable to fetch message content from unselected mailbox."];
+        return;
     }
-
-  if (!_content)
+    
+    if (!_content)
     {
-      id aStore;
-
-      aStore = [(CWIMAPFolder *)[self folder] store];
-
-      if (!_headers_were_prefetched)
-	{
-	  [aStore sendCommand: IMAP_UID_FETCH_HEADER_FIELDS_NOT  info: nil  arguments: @"UID FETCH %u:%u BODY.PEEK[HEADER.FIELDS.NOT (From To Cc Subject Date Message-ID References In-Reply-To)]", _UID, _UID];
-	}
-
-      // If we are no longer connected to the IMAP server, we don't send the 2nd command.
-      // This will prevent us from calling the delegate method twice (the one that handles
-      // the disconnection from the IMAP server).
-      if ([aStore isConnected])
-	{
-	  [aStore sendCommand: IMAP_UID_FETCH_BODY_TEXT  info: nil  arguments: @"UID FETCH %u:%u BODY[TEXT]", _UID, _UID];
-	}
-
-      // Since we are loading asynchronously our message, it's not yet initialized. It'll be set as an initialized one
-      // in CWIMAPStore once the body is fully loaded.
-      [super setInitialized: NO];
+        id aStore;
+        
+        aStore = [(CWIMAPFolder *)[self folder] store];
+        
+        if (!_headers_were_prefetched)
+        {
+            [aStore sendCommand: IMAP_UID_FETCH_HEADER_FIELDS_NOT  info: nil  arguments: @"UID FETCH %u:%u BODY.PEEK[HEADER.FIELDS.NOT (From To Cc Subject Date Message-ID References In-Reply-To)]", _UID, _UID];
+        }
+        
+        // If we are no longer connected to the IMAP server, we don't send the 2nd command.
+        // This will prevent us from calling the delegate method twice (the one that handles
+        // the disconnection from the IMAP server).
+        if ([aStore isConnected])
+        {
+            [aStore sendCommand: IMAP_UID_FETCH_BODY_TEXT  info: nil  arguments: @"UID FETCH %u:%u BODY[TEXT]", _UID, _UID];
+        }
+        
+        // Since we are loading asynchronously our message, it's not yet initialized. It'll be set as an initialized one
+        // in CWIMAPStore once the body is fully loaded.
+        [super setInitialized: NO];
     }
-  
-  _headers_were_prefetched = YES;
+    
+    _headers_were_prefetched = YES;
 }
 
 
@@ -138,8 +133,7 @@
 {
   if (![(CWIMAPFolder *)[self folder] selected])
     {
-      [NSException raise: PantomimeProtocolException
-		   format: @"Unable to fetch message data from unselected mailbox."];
+      [NSException raise:PantomimeProtocolException format:@"Unable to fetch message data from unselected mailbox."];
       return _rawSource;
     }
 

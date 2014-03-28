@@ -20,16 +20,13 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWFolder.h>
+#import "CWFolder.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWContainer.h>
-#include <Pantomime/CWFlags.h>
-#include <Pantomime/CWMessage.h>
-#include <Pantomime/NSString+Extensions.h>
-
-#include <Foundation/NSAutoreleasePool.h>
-#include <Foundation/NSMapTable.h>
+#import "CWConstants.h"
+#import "CWContainer.h"
+#import "CWFlags.h"
+#import "CWMessage.h"
+#import "NSString+CWExtensions.h"
 
 //
 //
@@ -66,22 +63,11 @@
 //
 - (void) dealloc
 {
-  //NSLog(@"Folder: -dealloc");
-  RELEASE(_properties);
-  RELEASE(_name);
-  TEST_RELEASE(_allContainers);
-
   //
   // To be safe, we set the value of the _folder ivar of all CWMessage
   // instances to nil value in case something is retaining them.
   //
   [allMessages makeObjectsPerformSelector: @selector(setFolder:) withObject: nil];
-  RELEASE(allMessages);
-
-  TEST_RELEASE(_allVisibleMessages);
-  TEST_RELEASE(_cacheManager);
-
-  [super dealloc];
 }
 
 
@@ -90,7 +76,7 @@
 //
 - (id) copyWithZone: (NSZone *) zone
 {
-  return RETAIN(self);
+  return self;
 }
 
 
@@ -138,7 +124,6 @@
 	  aContainer->message = theMessage;
 	  [theMessage setProperty: aContainer  forKey: @"Container"];
 	  [_allContainers addObject: aContainer];
-	  RELEASE(aContainer);
 	}
     }
 }
@@ -170,7 +155,7 @@
 { 
   if (_allVisibleMessages == nil)
     {
-      int i, count;
+      NSInteger i, count;
 
       count = [allMessages count];
       _allVisibleMessages = [[NSMutableArray alloc] initWithCapacity: count];
@@ -240,29 +225,28 @@
 //
 - (void) setMessages: (NSArray *) theMessages
 {
-  if (theMessages)
+    if (theMessages)
     {
-      RELEASE(allMessages);
-      allMessages = [[NSMutableArray alloc] initWithArray: theMessages];
-
-      if (_allContainers)
-	{
-	  [self thread];
-	}
+        allMessages = [[NSMutableArray alloc] initWithArray: theMessages];
+        
+        if (_allContainers)
+        {
+            [self thread];
+        }
     }
-  else
+    else
     {
-      DESTROY(allMessages);
+        allMessages = nil;
     }
-
-  DESTROY(_allVisibleMessages);
+    
+    _allVisibleMessages = nil;
 }
 
 
 //
 //
 //
-- (CWMessage *) messageAtIndex: (int) theIndex
+- (CWMessage *) messageAtIndex: (NSInteger) theIndex
 {
   if (theIndex < 0 || theIndex >= [self count])
     {
@@ -276,7 +260,7 @@
 //
 //
 //
-- (int) count
+- (NSInteger) count
 {
   return [[self allMessages] count];
 }
@@ -363,7 +347,7 @@
   if (theBOOL != _show_deleted)
     {
       _show_deleted = theBOOL;
-      DESTROY(_allVisibleMessages);
+      _allVisibleMessages = nil;
     }
 }
 
@@ -385,7 +369,7 @@
   if (theBOOL != _show_read)
     {
       _show_read = theBOOL;
-      DESTROY(_allVisibleMessages);
+        _allVisibleMessages = nil;
     }
 }
 
@@ -393,9 +377,9 @@
 //
 //
 //
-- (int) numberOfDeletedMessages
+- (NSInteger) numberOfDeletedMessages
 {
-  int c, i, count;
+  NSInteger c, i, count;
   
   c = [allMessages count];
   count = 0;
@@ -415,9 +399,9 @@
 //
 //
 //
-- (int) numberOfUnreadMessages
+- (NSInteger) numberOfUnreadMessages
 {
-  int i, c, count;
+  NSInteger i, c, count;
   
   c = [allMessages count];
   count = 0;
@@ -440,7 +424,7 @@
 - (long) size;
 {
   long size;
-  int c, i;
+  NSInteger c, i;
 
   c = [allMessages count];
   size = 0;
@@ -460,7 +444,7 @@
 //
 - (void) updateCache
 {
-  DESTROY(_allVisibleMessages);
+    _allVisibleMessages = nil;
 }
 
 
@@ -469,397 +453,369 @@
 //
 - (void) thread
 {
-  NSMapTable *id_table, *subject_table;
-  NSAutoreleasePool *pool;
-  int i, count;
+    NSMutableDictionary *idTable;
+    NSMutableDictionary *subjectTable;
+    NSInteger i, count;
 
   // We clean up ...
-  TEST_RELEASE(_allContainers);
+  _allContainers = nil;
 
   // We create our local autorelease pool
-  pool = [[NSAutoreleasePool alloc] init];
-
-  // Build id_table and our containers mutable array
-  id_table = NSCreateMapTable(NSObjectMapKeyCallBacks, NSObjectMapValueCallBacks, 16);
-  _allContainers = [[NSMutableArray alloc] init];
-
-  //
-  // 1. A., B. and C.
-  //
-  count = [allMessages count];
-  for (i = 0; i < count; i++)
+    @autoreleasepool
     {
-      CWContainer *aContainer;
-      CWMessage *aMessage;
-      
-      NSString *aReference;
-      int j;
+        // Build id_table and our containers mutable array
+        idTable = [[NSMutableDictionary alloc] init];
+        _allContainers = [[NSMutableArray alloc] init];
+        
+        //
+        // 1. A., B. and C.
+        //
+        count = [allMessages count];
+        for (i = 0; i < count; i++)
+        {
+            CWContainer *aContainer;
+            CWMessage *aMessage;
+            
+            NSString *aReference;
+            NSInteger j;
+            
+            // So that gcc shutup
+            aMessage = nil;
+            aReference = nil;
+            
+            aMessage = [allMessages objectAtIndex: i];
+            
+            // We skip messages that don't have a valid Message-ID
+            if (![aMessage messageID])
+            {
+                aContainer = [[CWContainer alloc] init];
+                aContainer->message = aMessage;
+                [aMessage setProperty: aContainer  forKey: @"Container"];
+                [_allContainers addObject: aContainer];
+                continue;
+            }
+            
+            //
+            // A.
+            //
+            aContainer = [idTable valueForKey:[aMessage messageID]];
+            
+            if (aContainer)
+            {
+                //aContainer->message = aMessage;
+                
+                if (aContainer->message != aMessage)
+                {
+                    aContainer = [[CWContainer alloc] init];
+                    aContainer->message = aMessage;
+                    [aMessage setProperty: aContainer  forKey: @"Container"];
+                    [idTable setValue:aContainer forKey:[aMessage messageID]];
+                    aContainer = nil;
+                }
+            }
+            else
+            {
+                aContainer = [[CWContainer alloc] init];
+                aContainer->message = aMessage;
+                [aMessage setProperty: aContainer  forKey: @"Container"];
+                [idTable setValue:aContainer forKey:[aMessage messageID]];
+                aContainer = nil;
+            }
+            
+            //
+            // B. For each element in the message's References field:
+            //
+            for (j = 0; j < [[aMessage allReferences] count]; j++)
+            {
+                // We get a Message-ID
+                aReference = [[aMessage allReferences] objectAtIndex: j];
+                
+                // Find a container object for the given Message-ID
+                aContainer = [idTable valueForKey:aReference];
 
-      // So that gcc shutup
-      aMessage = nil;
-      aReference = nil;
-
-      aMessage = [allMessages objectAtIndex: i];
-      
-      // We skip messages that don't have a valid Message-ID
-      if (![aMessage messageID])
-      	{
-	  aContainer = [[CWContainer alloc] init];
-	  aContainer->message = aMessage;
-	  [aMessage setProperty: aContainer  forKey: @"Container"];
-	  [_allContainers addObject: aContainer];
-	  RELEASE(aContainer);
-      	  continue;
-      	}
-      
-      //
-      // A.
-      //
-      aContainer = NSMapGet(id_table, [aMessage messageID]);
-      
-      if (aContainer)
-	{
-	  //aContainer->message = aMessage;
-	  
-	  if (aContainer->message != aMessage)
-	    {
-	      aContainer = [[CWContainer alloc] init];
-	      aContainer->message = aMessage;
-	      [aMessage setProperty: aContainer  forKey: @"Container"];
-	      NSMapInsert(id_table, [aMessage messageID], aContainer);
-	      DESTROY(aContainer);
-	    }
-	}
-      else
-	{
-	  aContainer = [[CWContainer alloc] init];
-	  aContainer->message = aMessage;
-	  [aMessage setProperty: aContainer  forKey: @"Container"];
-	  NSMapInsert(id_table, [aMessage messageID], aContainer);
-	  DESTROY(aContainer);
-	}
-      
-      //
-      // B. For each element in the message's References field:
-      //
-      for (j = 0; j < [[aMessage allReferences] count]; j++)
-	{
-	  // We get a Message-ID
-	  aReference = [[aMessage allReferences] objectAtIndex: j];
-
-	  // Find a container object for the given Message-ID
-	  aContainer = NSMapGet(id_table, aReference);
-	  
-	  if (aContainer)
-	    {
-	      // We found it. We use that.
-	    }
-	  // Otherwise, make (and index) one (new Container) with a null Message
-	  else 
-	    {
-	      aContainer = [[CWContainer alloc] init];
-	      NSMapInsert(id_table, aReference, aContainer);
-	      RELEASE(aContainer);
-	    }
-	  
-	  // NOTE:
-	  // aContainer is valid here. It points to the message (could be a nil message)
-	  // that has a Message-ID equals to the current aReference value.
-	  
-	  // If we are currently using the last References's entry of our list,
-	  // we simply break the loop since we are gonna set it in C.
-	  //if ( j == ([[aMessage allReferences] count] - 1) )
-	  //  {
-	  //    break;
-	  // }
-
-	  // Link the References field's Containers together in the order implied by the References header.
-	  // The last references
-	  if (j == ([[aMessage allReferences] count] - 1) &&
-	      aContainer->parent == nil)
-	    {
-	      // We grab the container of our current message
-	      [((CWContainer *)NSMapGet(id_table, [aMessage messageID])) setParent: aContainer];
-	    }
-	  
-	  // We set the child
-	  //if ( aContainer->message != aMessage &&
-	  //     aContainer->child == nil )
-	  //  {
-	  //    [aContainer setChild: NSMapGet(id_table, [aMessage messageID])];
-	  //  }	      
-
-	} // for (j = 0; ...
-      
-      // NOTE: The loop is over here. It was an ascending loop so
-      //       aReference points to the LAST reference in our References list
-
-      //
-      // C. Set the parent of this message to be the last element in References. 
-      //
-      // NOTE: Again, aReference points to the last Message-ID in the References list
-      
-      // We get the container for the CURRENT message
-      aContainer = (CWContainer *)NSMapGet(id_table, [aMessage messageID]);
-      
-      // If we have no References and no In-Reply-To fields, we simply set a
-      // the parent to nil since it can be the message that started the thread.
-      if ([[aMessage allReferences] count] == 0 &&
-	  [aMessage headerValueForName: @"In-Reply-To"] == nil)
-	{
-	  [aContainer setParent: nil];
-	}
-      // If we have no References but an In-Reply-To field, that becomes our parent.
-      else if ([[aMessage allReferences] count] == 0 &&
-	       [aMessage headerValueForName: @"In-Reply-To"])
-	{
-	  [aContainer setParent: (CWContainer *)NSMapGet(id_table, [aMessage headerValueForName: @"In-Reply-To"])];
-	  // FIXME, should we really do that? or should we do it in B?
-	  [(CWContainer *)NSMapGet(id_table, [aMessage headerValueForName: @"In-Reply-To"]) setChild: aContainer];
-	}
-      else
-	{
-	  [aContainer setParent: (CWContainer *)NSMapGet(id_table, aReference)];
-	  [(CWContainer *)NSMapGet(id_table, aReference) setChild: aContainer];
-	}
-      
-    } // for (i = 0; ...
-
-  //
-  // 2. Find the root set.
-  //
-  [_allContainers addObjectsFromArray: NSAllMapTableValues(id_table)];
-
-  //while (NO)
-  for (i = ([_allContainers count] - 1); i >= 0; i--)
-    {
-      CWContainer *aContainer;
-      
-      aContainer = [_allContainers objectAtIndex: i];
-      
-      if (aContainer->parent != nil)
-	{
-	  [_allContainers removeObjectAtIndex: i];
-	}
+                if (aContainer)
+                {
+                    // We found it. We use that.
+                }
+                // Otherwise, make (and index) one (new Container) with a null Message
+                else 
+                {
+                    aContainer = [[CWContainer alloc] init];
+                    [idTable setValue:aContainer forKey:aReference];
+                }
+                
+                // NOTE:
+                // aContainer is valid here. It points to the message (could be a nil message)
+                // that has a Message-ID equals to the current aReference value.
+                
+                // If we are currently using the last References's entry of our list,
+                // we simply break the loop since we are gonna set it in C.
+                //if ( j == ([[aMessage allReferences] count] - 1) )
+                //  {
+                //    break;
+                // }
+                
+                // Link the References field's Containers together in the order implied by the References header.
+                // The last references
+                if ((j == ([[aMessage allReferences] count] - 1)) &&
+                    (nil != aContainer) &&
+                    aContainer->parent == nil)
+                {
+                    // We grab the container of our current message
+                    [(CWContainer *)[idTable valueForKey:[aMessage messageID]] setParent:aContainer];
+                }
+                
+                // We set the child
+                //if ( aContainer->message != aMessage &&
+                //     aContainer->child == nil )
+                //  {
+                //    [aContainer setChild: NSMapGet(id_table, [aMessage messageID])];
+                //  }	      
+                
+            } // for (j = 0; ...
+            
+            // NOTE: The loop is over here. It was an ascending loop so
+            //       aReference points to the LAST reference in our References list
+            
+            //
+            // C. Set the parent of this message to be the last element in References. 
+            //
+            // NOTE: Again, aReference points to the last Message-ID in the References list
+            
+            // We get the container for the CURRENT message
+            aContainer = (CWContainer *)[idTable valueForKey:[aMessage messageID]];
+            
+            // If we have no References and no In-Reply-To fields, we simply set a
+            // the parent to nil since it can be the message that started the thread.
+            if ([[aMessage allReferences] count] == 0 &&
+                [aMessage headerValueForName: @"In-Reply-To"] == nil)
+            {
+                [aContainer setParent: nil];
+            }
+            // If we have no References but an In-Reply-To field, that becomes our parent.
+            else if ([[aMessage allReferences] count] == 0 &&
+                     [aMessage headerValueForName: @"In-Reply-To"])
+            {
+                [aContainer setParent: (CWContainer *)[idTable valueForKey:[aMessage headerValueForName: @"In-Reply-To"]]];
+                // FIXME, should we really do that? or should we do it in B?
+                [(CWContainer *)[idTable valueForKey:[aMessage headerValueForName: @"In-Reply-To"]] setChild: aContainer];
+            }
+            else
+            {
+                [aContainer setParent: (CWContainer *)[idTable valueForKey:aReference]];
+                [(CWContainer *)[idTable valueForKey:aReference] setChild: aContainer];
+            }
+            
+        } // for (i = 0; ...
+        
+        //
+        // 2. Find the root set.
+        //
+        [_allContainers addObjectsFromArray:[idTable allValues]];
+        
+        //while (NO)
+        for (i = ([_allContainers count] - 1); i >= 0; i--)
+        {
+            CWContainer *aContainer;
+            
+            aContainer = [_allContainers objectAtIndex: i];
+            
+            if (aContainer->parent != nil)
+            {
+                [_allContainers removeObjectAtIndex: i];
+            }
+        }
+        
+        //
+        // 3. Discard id_table.
+        //
+        
+        
+        //
+        // 4. Prune empty containers.
+        //
+        //while (NO)
+        for (i = ([_allContainers count] - 1); i >= 0; i--)
+        {
+            CWContainer *aContainer;
+            
+            aContainer = [_allContainers objectAtIndex: i];
+            
+            // Recursively walk all containers under the root set.
+            while (aContainer)
+            {
+                // A. If it is an empty container with no children, nuke it
+                if (aContainer->message == nil &&
+                    aContainer->child == nil)
+                {
+                    // We nuke it
+                    // FIXME: Won't work for non-root containers.
+                    [_allContainers removeObject: aContainer];
+                }
+                
+                // B. If the Container has no Message, but does have children, remove this container but 
+                //    promote its children to this level (that is, splice them in to the current child list.)
+                //    Do not promote the children if doing so would promote them to the root set 
+                //    -- unless there is only one child, in which case, do. 
+                // FIXME: We promote to the root no matter what :)
+                if (aContainer->message == nil && aContainer->child)
+                {
+                    CWContainer *c = aContainer;
+                    [c->child setParent: nil];
+                    [_allContainers removeObject: c];
+                    [_allContainers addObject: c->child]; // We promote the the root for now
+                    
+                    // We go to our child and we continue to loop
+                    //aContainer = aContainer->child;
+                    aContainer = [aContainer childAtIndex: ([aContainer count]-1)];
+                    continue;
+                }
+                
+                //aContainer = aContainer->child;
+                aContainer = [aContainer childAtIndex: ([aContainer count]-1)];
+            }
+            
+        }
+        
+        //
+        // 5. Group root set by subject.
+        //
+        // A. Construct a new hash table, subject_table, which associates subject 
+        //    strings with Container objects.
+        subjectTable = [[NSMutableDictionary alloc] init];
+        
+        //
+        // B. For each Container in the root set:
+        //
+        
+        //while (NO)
+        for (i = 0; i < [_allContainers count]; i++)
+        {
+            CWContainer *aContainer;
+            CWMessage *aMessage;
+            NSString *aString;
+            
+            aContainer = [_allContainers objectAtIndex: i];
+            aMessage = aContainer->message;
+            aString = [aMessage subject];
+            
+            if (aString)
+            {
+                aString = [aMessage baseSubject];
+                
+                // If the subject is now "", give up on this Container.
+                if ([aString length] == 0)
+                {
+                    //aContainer = aContainer->child;
+                    continue;
+                }
+                
+                // We set the new subject
+                //[aMessage setSubject: aString];
+                
+                // Add this Container to the subject_table if:
+                // o There is no container in the table with this subject, or
+                // o This one is an empty container and the old one is not: 
+                //   the empty one is more interesting as a root, so put it in the table instead.
+                // o The container in the table has a ``Re:'' version of this subject, 
+                //   and this container has a non-``Re:'' version of this subject. 
+                //   The non-re version is the more interesting of the two.
+                if (![subjectTable valueForKey:aString])
+                {
+                    [subjectTable setValue:aContainer forKey:aString];
+                }
+                else
+                {
+                    NSString *aSubject;
+                    
+                    // We obtain the subject of the message of our container.
+                    aSubject = [((CWContainer *)[subjectTable valueForKey:aString])->message subject];
+                    
+                    if ([aSubject hasREPrefix] && ![[aMessage subject] hasREPrefix])
+                    {
+                        // We replace the container
+                        [subjectTable removeObjectForKey:aString];
+                        [subjectTable setValue:aContainer forKey:[aMessage subject]];
+                    }
+                }
+                
+            } // if ( aString )
+        }
+        
+        //
+        // C. Now the subject_table is populated with one entry for each subject which occurs in 
+        //    the root set. Now iterate over the root set, and gather together the difference.
+        //
+        //while (NO)
+        for (i = ([_allContainers count]-1); i >= 0; i--)
+        {
+            CWContainer *aContainer, *containerFromTable;
+            NSString *aSubject, *aString;
+            
+            aContainer = [_allContainers objectAtIndex: i];
+            
+            // Find the subject of this Container (as above.)
+            aSubject = [aContainer->message subject];
+            aString = [aContainer->message baseSubject];
+            
+            // Look up the Container of that subject in the table.
+            // If it is null, or if it is this container, continue.
+            containerFromTable = [subjectTable valueForKey:aString];
+            if (!containerFromTable || containerFromTable == aContainer) 
+            {
+                continue; 
+            }
+            
+            // If that container is a non-empty, and that message's subject does 
+            // not begin with ``Re:'', but this message's subject does, then make this be a child of the other.
+            if (![[containerFromTable->message subject] hasREPrefix] &&
+                [aSubject hasREPrefix])
+            {
+                [aContainer setParent: containerFromTable];
+                [containerFromTable setChild: aContainer]; 
+                [_allContainers removeObject: aContainer];
+            }
+            // If that container is a non-empty, and that message's subject begins with ``Re:'', 
+            // but this  message's subject does not, then make that be a child of this one -- 
+            // they were misordered. (This happens somewhat implicitly, since if there are two
+            // messages, one with Re: and one without, the one without will be in the hash table,
+            // regardless of the order in which they were seen.)
+            else if ([[containerFromTable->message subject] hasREPrefix] &&
+                     ![aSubject hasREPrefix])
+            {
+                [containerFromTable setParent: aContainer];
+                [aContainer setChild: containerFromTable]; 
+                [_allContainers removeObject: containerFromTable];
+            }
+            // Otherwise, make a new empty container and make both msgs be a child of it. 
+            // This catches the both-are-replies and neither-are-replies cases, and makes them 
+            // be siblings instead of asserting a hierarchical relationship which might not be true.
+        }
+        
+        
+        //
+        // 6.  Now you're done threading!
+        //
+        //     Specifically, you no longer need the ``parent'' slot of the Container object, 
+        //     so if you wanted to flush the data out into a smaller, longer-lived structure, you 
+        //     could reclaim some storage as a result. 
+        //
+        // GNUMail.app DOES USE the parent slot so we keep it.
+        
+        //
+        // 7.  Now, sort the siblings.
+        //     
+        //     At this point, the parent-child relationships are set. However, the sibling ordering 
+        //     has not been adjusted, so now is the time to walk the tree one last time and order the siblings 
+        //     by date, sender, subject, or whatever. This step could also be merged in to the end of step 4, 
+        //     above, but it's probably clearer to make it be a final pass. If you were careful, you could 
+        //     also sort the messages first and take care in the above algorithm to not perturb the ordering,
+        //      but that doesn't really save anything. 
+        //
+        // By default we at least sort everything by number.
+        //[_allContainers sortUsingSelector: @selector(compareAccordingToNumber:)];
+        
     }
-
-  //
-  // 3. Discard id_table.
-  //
-  NSFreeMapTable(id_table);
-
-  
-  //
-  // 4. Prune empty containers.
-  //
-  //while (NO)
-  for (i = ([_allContainers count] - 1); i >= 0; i--)
-    {
-      CWContainer *aContainer;
-
-      aContainer = [_allContainers objectAtIndex: i];
-      
-      // Recursively walk all containers under the root set.
-      while (aContainer)
-	{
-	  // A. If it is an empty container with no children, nuke it
-	  if (aContainer->message == nil &&
-	      aContainer->child == nil)
-	    {
-	      // We nuke it
-	      // FIXME: Won't work for non-root containers.
-	      [_allContainers removeObject: aContainer];
-	    }
-	  
-	  // B. If the Container has no Message, but does have children, remove this container but 
-	  //    promote its children to this level (that is, splice them in to the current child list.)
-	  //    Do not promote the children if doing so would promote them to the root set 
-	  //    -- unless there is only one child, in which case, do. 
-	  // FIXME: We promote to the root no matter what :)
-	  if (aContainer->message == nil && aContainer->child)
-	    {
-	      CWContainer *c;
-	      
-	      c = aContainer;
-	      RETAIN(c);
-	      [c->child setParent: nil];
-	      [_allContainers removeObject: c];
-	      [_allContainers addObject: c->child]; // We promote the the root for now
-	     
-	      // We go to our child and we continue to loop
-	      //aContainer = aContainer->child;
-	      aContainer = [aContainer childAtIndex: ([aContainer count]-1)];
-	      RELEASE(c);
-	      continue;
-	    }
-	  
-	  //aContainer = aContainer->child;
-	  aContainer = [aContainer childAtIndex: ([aContainer count]-1)];
-	}
-
-    }
-  
-  //
-  // 5. Group root set by subject.
-  //
-  // A. Construct a new hash table, subject_table, which associates subject 
-  //    strings with Container objects.
-  subject_table = NSCreateMapTable(NSObjectMapKeyCallBacks, NSObjectMapValueCallBacks, 16);
-
-  //
-  // B. For each Container in the root set:
-  //
-    
-  //while (NO)
-  for (i = 0; i < [_allContainers count]; i++)
-    {
-      CWContainer *aContainer;
-      CWMessage *aMessage;
-      NSString *aString;
-
-      aContainer = [_allContainers objectAtIndex: i];
-      aMessage = aContainer->message;
-      aString = [aMessage subject];
-      
-      if (aString)
-	{
-	  aString = [aMessage baseSubject];
-
-	  // If the subject is now "", give up on this Container.
-	  if ([aString length] == 0)
-	    {
-	      //aContainer = aContainer->child;
-	      continue;
-	    }
-	  
-	  // We set the new subject
-	  //[aMessage setSubject: aString];
-	  
-	  // Add this Container to the subject_table if:
-	  // o There is no container in the table with this subject, or
-	  // o This one is an empty container and the old one is not: 
-	  //   the empty one is more interesting as a root, so put it in the table instead.
-	  // o The container in the table has a ``Re:'' version of this subject, 
-	  //   and this container has a non-``Re:'' version of this subject. 
-	  //   The non-re version is the more interesting of the two.
-	  if (!NSMapGet(subject_table, aString))
-	    {
-	      NSMapInsert(subject_table, aString, aContainer);
-	    }
-	  else
-	    {
-	      NSString *aSubject;
-	      
-	      // We obtain the subject of the message of our container.
-	      aSubject = [((CWContainer *)NSMapGet(subject_table, aString))->message subject];
-
-	      if ([aSubject hasREPrefix] && ![[aMessage subject] hasREPrefix])
-		{
-		  // We replace the container
-		  NSMapRemove(subject_table, aString);
-		  NSMapInsert(subject_table, [aMessage subject], aContainer);
-		}
-	    }
-	  
-	} // if ( aString )
-    }
-  
-  //
-  // C. Now the subject_table is populated with one entry for each subject which occurs in 
-  //    the root set. Now iterate over the root set, and gather together the difference.
-  //
-  //while (NO)
-  for (i = ([_allContainers count]-1); i >= 0; i--)
-    {
-      CWContainer *aContainer, *containerFromTable;
-      NSString *aSubject, *aString;
-
-      aContainer = [_allContainers objectAtIndex: i];
-      
-      // Find the subject of this Container (as above.)
-      aSubject = [aContainer->message subject];
-      aString = [aContainer->message baseSubject];
-      
-      // Look up the Container of that subject in the table.
-      // If it is null, or if it is this container, continue.
-      containerFromTable = NSMapGet(subject_table, aString);
-      if (!containerFromTable || containerFromTable == aContainer) 
-	{
-	  continue; 
-	}
-      
-      // If that container is a non-empty, and that message's subject does 
-      // not begin with ``Re:'', but this message's subject does, then make this be a child of the other.
-      if (![[containerFromTable->message subject] hasREPrefix] &&
-	  [aSubject hasREPrefix])
-	{
-	  [aContainer setParent: containerFromTable];
-	  [containerFromTable setChild: aContainer]; 
-	  [_allContainers removeObject: aContainer];
-	}
-      // If that container is a non-empty, and that message's subject begins with ``Re:'', 
-      // but this  message's subject does not, then make that be a child of this one -- 
-      // they were misordered. (This happens somewhat implicitly, since if there are two
-      // messages, one with Re: and one without, the one without will be in the hash table,
-      // regardless of the order in which they were seen.)
-      else if ([[containerFromTable->message subject] hasREPrefix] &&
-	       ![aSubject hasREPrefix])
-	{
-	  [containerFromTable setParent: aContainer];
-	  [aContainer setChild: containerFromTable]; 
-	  [_allContainers removeObject: containerFromTable];
-	}
-      // Otherwise, make a new empty container and make both msgs be a child of it. 
-      // This catches the both-are-replies and neither-are-replies cases, and makes them 
-      // be siblings instead of asserting a hierarchical relationship which might not be true.
-      else
-	{
-#if 0
-	  // FIXME - not so sure about that step.
-	  CWContainer *aNewContainer;
-	  
-	  aNewContainer = [[CWContainer alloc] init];
-	  
-	  [aContainer setParent: aNewContainer];
-	  [containerFromTable setParent: aNewContainer];
-	  
-	  [aNewContainer setChild: aContainer]; 
-	  [aNewContainer setChild: containerFromTable];
-	  [_allContainers addObject: aNewContainer];
-	  RELEASE(aNewContainer);
-	  
-	  // We remove ..
-	  [_allContainers removeObject: aContainer];
-	  [_allContainers removeObject: containerFromTable];
-#endif
-	}
-    }
-  
-  NSFreeMapTable(subject_table);
-
-  //
-  // 6.  Now you're done threading!
-  //
-  //     Specifically, you no longer need the ``parent'' slot of the Container object, 
-  //     so if you wanted to flush the data out into a smaller, longer-lived structure, you 
-  //     could reclaim some storage as a result. 
-  //
-  // GNUMail.app DOES USE the parent slot so we keep it.
-
-  //
-  // 7.  Now, sort the siblings.
-  //     
-  //     At this point, the parent-child relationships are set. However, the sibling ordering 
-  //     has not been adjusted, so now is the time to walk the tree one last time and order the siblings 
-  //     by date, sender, subject, or whatever. This step could also be merged in to the end of step 4, 
-  //     above, but it's probably clearer to make it be a final pass. If you were careful, you could 
-  //     also sort the messages first and take care in the above algorithm to not perturb the ordering,
-  //      but that doesn't really save anything. 
-  //
-  // By default we at least sort everything by number.
-  //[_allContainers sortUsingSelector: @selector(compareAccordingToNumber:)];
-
-  RELEASE(pool);
 }
 
 
@@ -868,16 +824,16 @@
 //
 - (void) unthread
 {
-  int count;
-
-  count = [allMessages count];
-  
-  while (count--)
+    NSInteger count;
+    
+    count = [allMessages count];
+    
+    while (count--)
     {
-      [[allMessages objectAtIndex: count] setProperty: nil  forKey: @"Container"];
+        [(CWMessage*)[allMessages objectAtIndex: count] setProperty: nil  forKey: @"Container"];
     }
-
-  DESTROY(_allContainers);
+    
+    _allContainers = nil;
 }
 
 //
@@ -929,7 +885,7 @@
 - (void) setFlags: (CWFlags *) theFlags
          messages: (NSArray *) theMessages
 {
-  int c, i;
+  NSInteger c, i;
 
   c = [theMessages count];
   for (i = 0; i < c; i++)

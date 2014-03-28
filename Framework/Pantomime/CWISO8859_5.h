@@ -20,13 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWISO8859_5
-#define _Pantomime_H_CWISO8859_5
-
-#include <Pantomime/CWCharset.h>
+#import "CWCharset.h"
 
 @interface CWISO8859_5 : CWCharset
 
 @end
-
-#endif // _Pantomime_H_CWISO8859_5

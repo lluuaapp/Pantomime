@@ -20,12 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWIMAPMessage
-#define _Pantomime_H_CWIMAPMessage
-
-#import <Foundation/NSCoder.h>
-
-#include <Pantomime/CWMessage.h>
+#import "CWMessage.h"
 
 /*!
   @class CWIMAPMessage
@@ -37,7 +32,7 @@
 {
   @private
     BOOL _headers_were_prefetched;
-    unsigned int _UID;
+    NSUInteger _UID;
 }
 
 /*!
@@ -48,7 +43,7 @@
 	      attribute of a message.
   @result The UID, 0 if the receiver has no UID.
 */
-- (unsigned int) UID;
+- (NSUInteger) UID;
 
 /*!
   @method setUID:
@@ -56,7 +51,7 @@
               Normally, you shouldn't invoke this method directly.
   @param theUID The UID of the message.
 */
-- (void) setUID: (unsigned int) theUID;
+- (void) setUID: (NSUInteger) theUID;
 
 /*!
   @method rawSource
@@ -78,5 +73,3 @@
 - (void) setFlags: (CWFlags *) theFlags;
 
 @end
-
-#endif // _Pantomime_H_CWIMAPMessage

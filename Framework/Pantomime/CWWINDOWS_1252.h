@@ -20,13 +20,10 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWWINDOW_1252
-#define _Pantomime_H_CWWINDOW_1252
 
-#include <Pantomime/CWCharset.h>
+#import "CWCharset.h"
 
 @interface CWWINDOWS_1252 : CWCharset
 
 @end
 
-#endif // _Pantomime_H_CWWINDOW_1252

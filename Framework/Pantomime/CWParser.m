@@ -19,21 +19,16 @@
 **  License along with this library; if not, write to the Free Software
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
-#include <Pantomime/CWParser.h>
+#import "CWParser.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWFlags.h>
-#include <Pantomime/CWInternetAddress.h>
-#include <Pantomime/CWMessage.h>
-#include <Pantomime/CWMIMEUtility.h>
-#include <Pantomime/NSData+Extensions.h>
-#include <Pantomime/NSString+Extensions.h>
+#import "CWConstants.h"
+#import "CWFlags.h"
+#import "CWInternetAddress.h"
+#import "CWMessage.h"
+#import "CWMIMEUtility.h"
+#import "NSData+CWExtensions.h"
+#import "NSString+CWExtensions.h"
 
-#include <string.h>  // For NULL on OS X
-//#include <Pantomime/elm_defs.h>
-
-#include <Foundation/NSBundle.h>
-#include <Foundation/NSTimeZone.h>
 
 //
 //
@@ -42,7 +37,7 @@ static char *month_name[12] = {"jan", "feb", "mar", "apr", "may", "jun", "jul", 
 
 static struct timezone {
   char *name;          /* time zone name */
-  int offset;         /* offset, in minutes, EAST of GMT */
+  NSInteger offset;         /* offset, in minutes, EAST of GMT */
 } timezone_info[] = {
   
   /* the following are from RFC-822 */
@@ -87,10 +82,10 @@ static struct timezone {
 //
 //
 //
-int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned char *word)
+NSInteger next_word(unsigned char *buf, NSUInteger start, NSUInteger len, unsigned char *word)
 {
   unsigned char *p;
-  int i;
+  NSInteger i;
 
   for (p = buf+start, i = start; (isspace(*p) || *p == ','); ++p, ++i);
   
@@ -165,7 +160,20 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 
 	  if (filenameRange.length > 0)
 	    {
-	      [thePart setFilename: [CWParser _parameterValueUsingLine: aData  range: filenameRange  decode: YES  charset: [thePart defaultCharset]]];
+			id value = [CWParser _parameterValueUsingLine: aData  range: filenameRange  decode: YES  charset: [thePart defaultCharset]];
+			if ([value isKindOfClass:[NSString class]])
+			{
+				[thePart setFilename:value];
+			}
+			else if ([value isKindOfClass:[NSData class]])
+			{
+				NSString *fileName = [[NSString alloc] initWithData:value encoding:NSUTF8StringEncoding];
+				[thePart setFilename:fileName];
+			}
+			else
+			{
+				NSAssert1(0, @"Could not get apropriate data from _parameterValueUsingLine (either NSData or NSString): %@", NSStringFromClass([value class]));
+			}
 	    }
 	}
       else
@@ -256,7 +264,7 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 {
   NSRange aRange;
   NSData *aData;
-  int x;
+  NSInteger x;
 
   if ([theLine length] <= 14)
     {
@@ -355,7 +363,7 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
     {
       NSData *aData;
 
-      int month, day, year, hours, mins, secs, tz, i, j, len, tot, s;
+      NSInteger month, day, year, hours, mins, secs, tz, i = 0, j, len = 0, tot, s;
       unsigned char *bytes, *word;
 
       aData = [theLine subdataFromIndex: 6];
@@ -365,7 +373,6 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 
       bytes = (unsigned char*)[aData bytes];
       tot = [aData length];
-      i = len = 0;
 
       // date-time       =       [ day-of-week "," ] date FWS time [CFWS]
       // day-of-week     =       ([FWS] day-name) / obs-day-of-week
@@ -416,7 +423,7 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 	}
 
       
-      day = month = year = -1;
+      month = -1;
       
       // We got a RFC 822 date. The syntax is:
       // day month year hh:mm:ss zone
@@ -452,7 +459,12 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
       
       // We parse the time using the hh:mm:ss format.
       i += len+1; len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
-      sscanf((const char*)word, "%d:%d:%d", &hours, &mins, &secs);
+
+#if __LP64__
+		sscanf((const char*)word, "%ld:%ld:%ld", &hours, &mins, &secs);
+#else
+		sscanf((const char*)word, "%d:%d:%d", &hours, &mins, &secs);
+#endif
       //printf("len = %d |%s| %d:%d:%d\n", len, word, hours, mins, secs);
       
       // We parse the timezone.
@@ -522,7 +534,7 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
   CWInternetAddress *anInternetAddress;
   NSData *aData;
 
-  int i, len, s_len, x, y;
+  NSInteger i, len = 0, s_len, x, y;
   unsigned char *bytes;
   BOOL b;
 
@@ -588,7 +600,6 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
  
 	  [anInternetAddress setType: theType];
 	  [theMessage addRecipient: anInternetAddress];
-	  RELEASE(anInternetAddress);
 	  x = y+1;
 	}
       
@@ -625,7 +636,6 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
   anInternetAddress = [[CWInternetAddress alloc] initWithString: [CWMIMEUtility decodeHeader: aData charset: [theMessage defaultCharset]]];
 
   [theMessage setFrom: anInternetAddress];
-  RELEASE(anInternetAddress);
 
   return aData;
 }
@@ -639,7 +649,7 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 		      quick: (BOOL) theBOOL
 {
   NSData *aData;
-  int index;
+  NSInteger index;
 
   if (!theBOOL && !([theLine length] > 13))
     {
@@ -717,7 +727,7 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 	  NSArray *allReferences;
 	  NSData *aReference;
 	  NSString *aString;
-	  int i, count;
+	  NSInteger i, count;
 
 	  allReferences = [aData componentsSeparatedByCString: " "];
 	  
@@ -737,7 +747,6 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 	    }
 	  
 	  [theMessage setReferences: aMutableArray];
-	  RELEASE(aMutableArray);
 	  
 	  return aData;
 	}
@@ -762,7 +771,6 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 										    charset: [theMessage defaultCharset]]];
 
       [theMessage setReplyTo: anInternetAddress];
-      RELEASE(anInternetAddress);
     }
 }
 
@@ -782,7 +790,6 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 										    charset: [theMessage defaultCharset]]];
       
       [theMessage setResentFrom: anInternetAddress];
-      RELEASE(anInternetAddress);
     }
 }
 
@@ -912,12 +919,11 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
   NSMutableData *aMutableData;
   NSRange r1, r2;
   
-  int value_start, value_end, parameters_count,len;
+  NSInteger value_start, value_end, parameters_count = 0,len;
   BOOL is_rfc2231, has_charset;
 
   is_rfc2231 = has_charset = NO;
   len = [theLine length];
-  parameters_count = 0;
   
   //
   // Look for the first occurrence of '=' before the end of the line within
@@ -937,7 +943,7 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
       //
       // "format" is part of the _name_ parameter. It has nothing to do with format=flowed.
       //
-#warning FIXME - consider format= when passing the parameter range
+// #warning FIXME - consider format= when passing the parameter range
 #if 0
       if (r1.location > value_end)
 	{
@@ -979,7 +985,7 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
   // Build a NSRange out of it.
   r1 = NSMakeRange(value_start, value_end-value_start+1);
   
-  aMutableData = AUTORELEASE([[NSMutableData alloc] initWithData: [[[theLine subdataWithRange: r1] dataByTrimmingWhiteSpaces] dataFromQuotedData]]);
+  aMutableData = [[NSMutableData alloc] initWithData: [[[theLine subdataWithRange: r1] dataByTrimmingWhiteSpaces] dataFromQuotedData]];
 
   //
   // VERY IMPORTANT:
@@ -989,80 +995,80 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
   // with data substitution while we loop for parameter values unfolding.
   //
   if ([theLine characterAtIndex: NSMaxRange(theRange)] == '*')
-    { 
+  { 
       is_rfc2231 = YES;
       
       // We consider parameter value continuations (Section 3. of the RFC)
       // in order the set the appropriate end boundary.
       if ([theLine characterAtIndex: NSMaxRange(theRange)+1] == '0')
-	{
-	  int end;
-	  
-	  // We check if we have a charset, in case of a multiline value.
-	  if ([theLine characterAtIndex: NSMaxRange(theRange)+2] == '*')
-	    {
-	      has_charset = YES;
-	    }
-	  
-	  r1.location = theRange.location;
-	  r1.length = theRange.length;
-	  parameters_count = 1;
-	  
-	  while (YES)
-	    {
-	      end = NSMaxRange(r1);
-	      r1 = [theLine rangeOfCString: [[NSString stringWithFormat: @"%s*%i", 
-						       [[theLine subdataWithRange: theRange] cString],
-						       parameters_count] UTF8String]
-			    options: 0
-			    range: NSMakeRange(NSMaxRange(r1), len-NSMaxRange(r1))];
-	      parameters_count++;
-
-	      if (r1.location != NSNotFound)
-		{
-		  value_start = NSMaxRange(r1)+2;
+	  {
+		  // NSInteger end;
 		  
-		  if ([theLine characterAtIndex: value_start+1] == '*') value_start++;
-
-		  r2 = [theLine rangeOfCString: ";"  options: 0  range: NSMakeRange(NSMaxRange(r1), len-NSMaxRange(r1))];
+		  // We check if we have a charset, in case of a multiline value.
+		  if ([theLine characterAtIndex: NSMaxRange(theRange)+2] == '*')
+		  {
+			  has_charset = YES;
+		  }
 		  
-		  if (r2.length > 0)
-		    {
-		      value_end = r2.location-1;
-		    }
-		  else
-		    {
-		      value_end = len;
-		    }
+		  r1.location = theRange.location;
+		  r1.length = theRange.length;
+		  parameters_count = 1;
 		  
-		  [aMutableData appendData: [[[theLine subdataWithRange: NSMakeRange(value_start,value_end-value_start)]
-					       dataFromSemicolonTerminatedData] dataFromQuotedData]];
-		}
-	      else
-		{
-		  break;
-		}
-	    }
+		  while (YES)
+		  {
+			  // end = NSMaxRange(r1);
+			  r1 = [theLine rangeOfCString: [[NSString stringWithFormat: @"%s*%ld", 
+											  [[theLine subdataWithRange: theRange] cString],
+											  (long)parameters_count] UTF8String]
+								   options: 0
+									 range: NSMakeRange(NSMaxRange(r1), len-NSMaxRange(r1))];
+			  parameters_count++;
+			  
+			  if (r1.location != NSNotFound)
+			  {
+				  value_start = NSMaxRange(r1)+2;
+				  
+				  if ([theLine characterAtIndex: value_start+1] == '*') value_start++;
+				  
+				  r2 = [theLine rangeOfCString: ";"  options: 0  range: NSMakeRange(NSMaxRange(r1), len-NSMaxRange(r1))];
+				  
+				  if (r2.length > 0)
+				  {
+					  value_end = r2.location-1;
+				  }
+				  else
+				  {
+					  value_end = len;
+				  }
+				  
+				  [aMutableData appendData: [[[theLine subdataWithRange: NSMakeRange(value_start,value_end-value_start)]
+											  dataFromSemicolonTerminatedData] dataFromQuotedData]];
+			  }
+			  else
+			  {
+				  break;
+			  }
+		  }
 	      
 	      // We now search again for ";"
 	      //r2 = [theLine rangeOfCString: ";"
-	  //		options: 0
-	  //		range: NSMakeRange(end, len-end)];
-	  // 
-	  //if (r2.length > 0)
-	  //  {
-	  //    value_end = r2.location-1;
-	  // }
-	  //else
-	  //  {
-	  //   value_end = len-1;
-	  //}
-	}
+		  //		options: 0
+		  //		range: NSMakeRange(end, len-end)];
+		  // 
+		  //if (r2.length > 0)
+		  //  {
+		  //    value_end = r2.location-1;
+		  // }
+		  //else
+		  //  {
+		  //   value_end = len-1;
+		  //}
+	  }
       else if ([theLine characterAtIndex: NSMaxRange(theRange)+1] == '=')
-	{
-	  has_charset = YES;
-	}
-    }
+	  {
+		  has_charset = YES;
+	  }
+  }
   
   if (is_rfc2231)
     {
@@ -1089,7 +1095,7 @@ int next_word(unsigned char *buf, unsigned int start, unsigned int len, unsigned
 	    {
 	      NSString *aString;
 	      
-	      aString = AUTORELEASE([[NSString alloc] initWithData: aMutableData  encoding: NSASCIIStringEncoding]);
+	      aString = [[NSString alloc] initWithData: aMutableData  encoding: NSASCIIStringEncoding];
 	      
 	      return [aString stringByReplacingPercentEscapesUsingEncoding: [NSString encodingForCharset: aCharset]];
 	    }

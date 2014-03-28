@@ -20,17 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWFolder
-#define _Pantomime_H_CWFolder
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSDictionary.h>
-#import <Foundation/NSNotification.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
-
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 @class CWFlags;
 @class CWMessage;
@@ -391,7 +381,7 @@ extern NSString* PantomimeFolderSearchFailed;
   @param theIndex The index of the message.
   @result The message at the specified index, nil otherwise.
 */
-- (CWMessage *) messageAtIndex: (int) theIndex;
+- (CWMessage *) messageAtIndex: (NSInteger) theIndex;
 
 /*!
   @method count
@@ -404,7 +394,7 @@ extern NSString* PantomimeFolderSearchFailed;
 	      8 as the messages count.
   @result The number of messages in the folder.
 */
-- (int) count;
+- (NSInteger) count;
 
 /*!
   @method close
@@ -491,7 +481,7 @@ extern NSString* PantomimeFolderSearchFailed;
               folder that have the PantomimeDeleted flag set.
   @result The number of message marked has deleted, 0 if none.
 */
-- (int) numberOfDeletedMessages;
+- (NSInteger) numberOfDeletedMessages;
 
 /*!
   @method numberOfUnreadMessages
@@ -499,7 +489,7 @@ extern NSString* PantomimeFolderSearchFailed;
               folder that do not have the PantomimeSeen flag set.
   @result The number of unread messages, 0 if none.
 */
-- (int) numberOfUnreadMessages;
+- (NSInteger) numberOfUnreadMessages;
 
 /*!
   @method size
@@ -635,5 +625,3 @@ extern NSString* PantomimeFolderSearchFailed;
 - (void) setProperty: (id) theProperty
               forKey: (id) theKey;
 @end
-
-#endif // _Pantomime_H_CWFolder

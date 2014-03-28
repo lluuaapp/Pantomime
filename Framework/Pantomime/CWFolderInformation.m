@@ -20,74 +20,15 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWFolderInformation.h>
+#import "CWFolderInformation.h"
 
 //
 //
 //
 @implementation CWFolderInformation
 
-- (id) init
-{
-  self = [super init];
-
-  _nb_of_messages = _nb_of_unread_messages = _size = 0;
-
-  return self;
-}
-
-
-//
-//
-//
-- (unsigned int) nbOfMessages
-{
-  return _nb_of_messages;
-}
-
-
-//
-//
-//
-- (void) setNbOfMessages: (unsigned int) theValue
-{
-  _nb_of_messages = theValue;
-}
-
-
-//
-//
-//
-- (unsigned int) nbOfUnreadMessages
-{
-  return _nb_of_unread_messages;
-}
-
-
-//
-//
-//
-- (void) setNbOfUnreadMessages: (unsigned int) theValue
-{
-  _nb_of_unread_messages = theValue;
-}
-
-
-//
-//
-//
-- (unsigned int) size
-{
-  return _size;
-}
-
-
-//
-//
-//
-- (void) setSize: (unsigned int) theSize
-{
-  _size = theSize;
-}
+@synthesize nbOfMessages;
+@synthesize nbOfUnreadMessages;
+@synthesize size;
 
 @end

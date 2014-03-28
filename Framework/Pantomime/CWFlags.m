@@ -20,9 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWFlags.h>
+#import "CWFlags.h"
 
-#include <Pantomime/NSData+Extensions.h>
+#import "NSData+CWExtensions.h"
 
 #define CHECK_FLAG(c, value) \
   theRange = [theData rangeOfCString: c]; \
@@ -48,7 +48,7 @@
 //
 - (void) encodeWithCoder: (NSCoder *) theCoder
 {
-  [theCoder encodeObject: [NSNumber numberWithInt: flags]];
+  [theCoder encodeObject: [NSNumber numberWithInteger:flags]];
 }
 
 
@@ -56,7 +56,7 @@
 {
   self = [super init];
 
-  flags = [[theCoder decodeObject] intValue];
+  flags = [[theCoder decodeObject] integerValue];
 
   return self;
 }
@@ -196,7 +196,7 @@
       [aMutableString appendFormat: @"%c", 'A'];
     }
 
-  return AUTORELEASE(aMutableString);
+  return aMutableString;
 }
 
 
@@ -234,7 +234,7 @@
       [aMutableString appendString: @"T"];
     }
 
-  return AUTORELEASE(aMutableString);
+  return aMutableString;
 }
 
 @end

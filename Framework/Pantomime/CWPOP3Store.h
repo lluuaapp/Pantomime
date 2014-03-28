@@ -23,8 +23,8 @@
 #ifndef _Pantomime_H_CWPOP3Store
 #define _Pantomime_H_CWPOP3Store
 
-#include <Pantomime/CWService.h>
-#include <Pantomime/CWStore.h>
+#include "CWService.h"
+#include "CWStore.h"
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSString.h>

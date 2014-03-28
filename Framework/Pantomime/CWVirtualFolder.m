@@ -20,9 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWVirtualFolder.h>
+#import "CWVirtualFolder.h"
 
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 //
 //
@@ -38,17 +38,6 @@
   return self;
 }
 
-
-//
-//
-//
-- (void) dealloc
-{
-  RELEASE(_allFolders);
-  [super dealloc];
-}
-
-
 //
 // New, VitualFolder specific methods.
 //
@@ -63,7 +52,6 @@
   aMutableArray = [[NSMutableArray alloc] initWithArray: self->allMessages];
   [aMutableArray addObjectsFromArray: theFolder->allMessages];
   [super setMessages: aMutableArray];
-  RELEASE(aMutableArray);
 }
 
 - (void) removeFolder: (CWFolder *) theFolder
@@ -89,12 +77,12 @@
 // the allMessages ivar since it's holding messages potentially removed
 // from the real Folder objects.
 //
-#warning FIXME
+// #warning FIXME
 - (void) expunge: (BOOL) returnDeletedMessages
 {
 #if 0
   NSMutableArray *aMutableArray;
-  int i;
+  NSInteger i;
 
   aMutableArray = [[NSMutableArray alloc] init];
   [self->allMessages removeAllObjects];
@@ -110,7 +98,7 @@
 
   [self updateCache];
 
-  return AUTORELEASE(aMutableArray);
+  return aMutableArray;
 #endif
 }
 
@@ -123,10 +111,10 @@
 	   mask: (PantomimeSearchMask) theMask
 	options: (PantomimeSearchOption) theOptions
 {
-#warning FIXME
+// #warning FIXME
 #if 0
   NSMutableArray *aMutableArray;
-  int i;
+  NSInteger i;
 
   aMutableArray = [[NSMutableArray alloc] init];
 

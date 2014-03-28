@@ -20,14 +20,14 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWPOP3CacheManager.h>
+#include "CWPOP3CacheManager.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWPOP3CacheObject.h>
+#include "CWConstants.h"
+#include "CWPOP3CacheObject.h"
 
 #include <Foundation/NSArchiver.h>
 #include <Foundation/NSException.h>
-#include <Pantomime/io.h>
+#include "io.h"
 
 // LUDO
 #include <Foundation/NSAutoreleasePool.h>
@@ -62,7 +62,7 @@ static unsigned short version = 1;
     {
       CWPOP3CacheObject* aCacheObject;      
       cache_record r;
-      int i;
+      NSInteger i;
 
       ftruncate(_fd, 0);
       [self synchronize];
@@ -114,14 +114,14 @@ static unsigned short version = 1;
   attributes = [[NSFileManager defaultManager] fileAttributesAtPath: thePath  traverseLink: NO];
 
   // If the cache exists, lets parse it.
-  if ([[attributes objectForKey: NSFileSize] intValue])
+  if ([[attributes objectForKey: NSFileSize] integerValue])
     {
       NSString *aUID;
       NSDate *aDate;
 
       unsigned short len;
       char *s;
-      int i;
+      NSInteger i;
 
       v = read_unsigned_short(_fd);
 

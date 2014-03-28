@@ -20,17 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWIMAPFolder
-#define _Pantomime_H_CWIMAPFolder
-
-#include <Pantomime/CWFolder.h>
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSString.h>
-#import <Foundation/NSCalendarDate.h>
-
-#include <Pantomime/CWConstants.h>
+#import "CWFolder.h"
+#import "CWConstants.h"
 
 /*!
   @const PantomimeMessagesCopyCompleted
@@ -74,7 +65,7 @@ extern NSString* PantomimeMessageStoreFailed;
 @interface CWIMAPFolder : CWFolder
 {
   @private
-    unsigned int _uid_validity;
+    NSUInteger _uid_validity;
     BOOL _selected;
 }
 
@@ -142,7 +133,7 @@ extern NSString* PantomimeMessageStoreFailed;
 	      RFC 3501 for a detailed description of this parameter.
   @result The UID validity of the folder.
 */
-- (unsigned int) UIDValidity;
+- (NSUInteger) UIDValidity;
 
 /*!
   @method setUIDValidity:
@@ -152,7 +143,7 @@ extern NSString* PantomimeMessageStoreFailed;
 	      all cache entries are invalidated.
   @param theUIDValidity The UID validity value.
 */
-- (void) setUIDValidity: (unsigned int) theUIDValidity;
+- (void) setUIDValidity: (NSUInteger) theUIDValidity;
 
 /*!
   @method selected
@@ -173,5 +164,3 @@ extern NSString* PantomimeMessageStoreFailed;
 - (void) setSelected: (BOOL) theBOOL;
 
 @end
-
-#endif // _Pantomime_H_CWIMAPFolder

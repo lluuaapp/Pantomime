@@ -20,17 +20,17 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWIMAPFolder.h>
+#import "CWIMAPFolder.h"
 
-#include <Pantomime/CWConnection.h>
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWFlags.h>
-#include <Pantomime/CWIMAPCacheManager.h>
-#include <Pantomime/CWIMAPStore.h>
-#include <Pantomime/CWIMAPMessage.h>
-#include <Pantomime/CWTCPConnection.h>
-#include <Pantomime/NSData+Extensions.h>
-#include <Pantomime/NSString+Extensions.h>
+#import "CWConnection.h"
+#import "CWConstants.h"
+#import "CWFlags.h"
+#import "CWIMAPCacheManager.h"
+#import "CWIMAPStore.h"
+#import "CWIMAPMessage.h"
+#import "CWTCPConnection.h"
+#import "NSData+CWExtensions.h"
+#import "NSString+CWExtensions.h"
 
 //
 // Private methods
@@ -60,9 +60,12 @@
 - (id) initWithName: (NSString *) theName
                mode: (PantomimeFolderMode) theMode
 {
-  [self initWithName: theName];
-  _mode = theMode;
-  return self;
+    self = [self initWithName: theName];
+    if (self)
+    {
+        _mode = theMode;
+    }
+    return self;
 }
 
 
@@ -115,7 +118,7 @@
       [_store sendCommand: IMAP_APPEND
 	      info: aDictionary
 	      arguments: @"APPEND \"%@\" (%@) \"%@\" {%d}",                    // IMAP command
-	      [_name modifiedUTF7String],                                      // folder name
+	      _name,                                      // folder name
 	      flagsAsString,                                                   // flags
 	      [theDate descriptionWithCalendarFormat:@"%d-%b-%Y %H:%M:%S %z"], // internal date
 	      [aData length]];                                                 // length of the data to write
@@ -125,7 +128,7 @@
       [_store sendCommand: IMAP_APPEND
 	      info: aDictionary
 	      arguments: @"APPEND \"%@\" (%@) {%d}",  // IMAP command
-	      [_name modifiedUTF7String],             // folder name
+	      _name,             // folder name
 	      flagsAsString,                          // flags
 	      [aData length]];                        // length of the data to write
     }
@@ -138,7 +141,7 @@
 	     toFolder: (NSString *) theFolder
 {
   NSMutableString *aMutableString;
-  int i, count;
+  NSInteger i, count;
 
   // We create our message's UID set
   aMutableString = [[NSMutableString alloc] init];
@@ -148,11 +151,11 @@
     {
       if (i == count-1)
 	{
-	  [aMutableString appendFormat: @"%u", [[theMessages objectAtIndex: i] UID]];
+	  [aMutableString appendFormat: @"%lu", (unsigned long)[[theMessages objectAtIndex: i] UID]];
 	}
       else
 	{
-	  [aMutableString appendFormat: @"%u,", [[theMessages objectAtIndex: i] UID]];
+	  [aMutableString appendFormat: @"%lu,", (unsigned long)[[theMessages objectAtIndex: i] UID]];
 	}
     }
  
@@ -161,9 +164,7 @@
 	  info: [NSDictionary dictionaryWithObjectsAndKeys: theMessages, @"Messages", theFolder, @"Name", self, @"Folder", nil]
 	  arguments: @"UID COPY %@ \"%@\"",
 	  aMutableString,
-	  [theFolder modifiedUTF7String]];
- 
-  RELEASE(aMutableString);
+	  theFolder];
 }
 
 
@@ -262,7 +263,7 @@
 //
 //
 //
-- (unsigned int) UIDValidity
+- (NSUInteger) UIDValidity
 {
   return _uid_validity;
 }
@@ -271,7 +272,7 @@
 //
 //
 //
-- (void) setUIDValidity: (unsigned int) theUIDValidity
+- (void) setUIDValidity: (NSUInteger) theUIDValidity
 {
   _uid_validity = theUIDValidity;
  
@@ -320,13 +321,13 @@
       // in IMAPStore: -_parseOK:.
       // We do the same below, when the count > 1
       [[aMessage flags] replaceWithFlags: theFlags];
-      aSequenceSet = [NSMutableString stringWithFormat: @"%u:%u", [aMessage UID], [aMessage UID]];
+      aSequenceSet = [NSMutableString stringWithFormat: @"%lu:%lu", (unsigned long)[aMessage UID], (unsigned long)[aMessage UID]];
     }
   else
     {
-      int i, count;
+      NSInteger i, count;
 
-      aSequenceSet = AUTORELEASE([[NSMutableString alloc] init]);
+      aSequenceSet = [[NSMutableString alloc] init];
       count = [theMessages count];
 
       for (i = 0; i < count; i++)
@@ -336,11 +337,11 @@
 
 	  if (aMessage == [theMessages lastObject])
 	    {
-	      [aSequenceSet appendFormat: @"%u", [aMessage UID]];
+	      [aSequenceSet appendFormat: @"%lu", (unsigned long)[aMessage UID]];
 	    }
 	  else
 	    {
-	      [aSequenceSet appendFormat: @"%u,", [aMessage UID]];
+	      [aSequenceSet appendFormat: @"%lu,", (unsigned long)[aMessage UID]];
 	    }
 	}
     }
@@ -368,7 +369,6 @@
   [_store sendCommand: IMAP_UID_STORE
 	  info: [NSDictionary dictionaryWithObjectsAndKeys: theMessages, @"Messages", theFlags, @"Flags", nil]
 	  arguments: aMutableString];
-  RELEASE(aMutableString);
 }
 
 
@@ -418,7 +418,6 @@
   NSMutableString *aMutableString;
 
   aMutableString = [[NSMutableString alloc] init];
-  AUTORELEASE(aMutableString);
 
   if ([theFlags contain: PantomimeAnswered])
     {
@@ -456,7 +455,7 @@
 {
   NSMutableData *aMutableData;
   NSArray *allLines;
-  int i, count;
+  NSInteger i, count;
 
   // We allocate our mutable data object
   aMutableData = [[NSMutableData alloc] initWithCapacity: [theMessage length]];
@@ -482,7 +481,7 @@
       [aMutableData appendCString: "\r\n"];
     }
 
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 @end

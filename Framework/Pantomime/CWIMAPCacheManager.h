@@ -20,15 +20,11 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWIMAPCacheManager
-#define _Pantomime_H_CWIMAPCacheManager
-
-#import <Foundation/NSMapTable.h>
-
-#include <Pantomime/CWCacheManager.h>
+#import "CWCacheManager.h"
 
 @class CWFolder;
 @class CWIMAPMessage;
+@class CWCacheRecord;
 
 /*!
   @class CWIMAPCacheManager
@@ -38,13 +34,13 @@
 @interface CWIMAPCacheManager: CWCacheManager
 {
   @private
-    NSMapTable *_table;
-    unsigned int _UIDValidity;
+    NSMutableDictionary *messageTable;
+    NSUInteger _UIDValidity;
 
     CWFolder *_folder;
 
-    unsigned int _count;
-    int _fd;
+    NSUInteger _count;
+    NSInteger _fd;
 }
 
 /*!
@@ -54,7 +50,7 @@
   @param theUID The UID of the message to obtain from the cache.
   @result The instance, nil if not present in the receiver's cache.
 */
-- (CWIMAPMessage *) messageWithUID: (unsigned int) theUID;
+- (CWIMAPMessage *) messageWithUID: (NSUInteger) theUID;
 
 
 /*!
@@ -63,7 +59,7 @@
               message from the cache based on the supplied UID.
   @param theUID The UID of the message to remove from the cache.
 */
-- (void) removeMessageWithUID: (unsigned int) theUID;
+- (void) removeMessageWithUID: (NSUInteger) theUID;
 
 /*!
   @method UIDValidity
@@ -73,7 +69,7 @@
 	      CWIMAPFolder instance, you should invalidate the cache.
   @result The UID validity.
 */
-- (unsigned int) UIDValidity;
+- (NSUInteger) UIDValidity;
 
 /*!
   @method setUIDValidity:
@@ -81,7 +77,7 @@
               of the receiver's cache.
   @param theUIDValidity The value to set.
 */
-- (void) setUIDValidity: (unsigned int) theUIDValidity;
+- (void) setUIDValidity: (NSUInteger) theUIDValidity;
 
 /*!
   @method writeRecord:message:
@@ -89,7 +85,5 @@
   @param theRecord The record to write.
   @param theMessage The message associated to the record <i>theRecord</i>.
 */
-- (void) writeRecord: (cache_record *) theRecord  message: (id) theMessage;
+- (void) writeRecord: (CWCacheRecord *) theRecord  message: (id) theMessage;
 @end
-
-#endif // _Pantomime_H_CWIMAPCacheManager

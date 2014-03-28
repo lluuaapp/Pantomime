@@ -20,19 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWMessage
-#define _Pantomime_H_CWMessage
-
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWCacheManager.h>
-#include <Pantomime/CWPart.h>
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSCalendarDate.h>
-#import <Foundation/NSCoder.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSDictionary.h>
-#import <Foundation/NSObject.h>
+#import "CWConstants.h"
+#import "CWCacheManager.h"
+#import "CWPart.h"
 
 /*!
   @const PantomimeMessageFetchCompleted
@@ -72,6 +62,7 @@ extern NSString* PantomimeMessageExpunged;
 @class CWFlags;
 @class CWFolder;
 @class CWInternetAddress;
+@class CWCacheRecord;
 
 /*!
   @class CWMessage
@@ -91,7 +82,7 @@ extern NSString* PantomimeMessageExpunged;
     CWFolder *_folder;
     CWFlags *_flags;
 
-    unsigned int _message_number;
+    NSUInteger _message_number;
     BOOL _initialized;    
 }
 
@@ -140,7 +131,7 @@ extern NSString* PantomimeMessageExpunged;
 	      messages (see 2.3.1.2. of RFC3501 for details).
   @result The MSN, 0 if none was previously set.
 */
-- (unsigned int) messageNumber;
+- (NSUInteger) messageNumber;
 
 /*!
   @method setMessageNumber:
@@ -148,7 +139,7 @@ extern NSString* PantomimeMessageExpunged;
               of the receiver.
   @param theMessageNumber The value.
 */
-- (void) setMessageNumber: (unsigned int) theMessageNumber;
+- (void) setMessageNumber: (NSUInteger) theMessageNumber;
 
 /*!
   @method messageID
@@ -240,7 +231,7 @@ extern NSString* PantomimeMessageExpunged;
               the receiver has.
   @result The count.
 */
-- (unsigned int) recipientsCount;
+- (NSUInteger) recipientsCount;
 
 /*!
   @method removeAllRecipients:
@@ -551,9 +542,9 @@ extern NSString* PantomimeMessageExpunged;
 	      the cache record <i>theRecord</i> with the decoded
 	      information.
   @param The additional headers, in their raw representation.
-  @param theRecord The cache_record to update.
+  @param theRecord The CWCacheRecord to update.
 */
-- (void) addHeadersFromData: (NSData *) theHeaders  record: (cache_record *) theRecord;
+- (void) addHeadersFromData: (NSData *) theHeaders  record: (CWCacheRecord *) theRecord;
 
 /*!
   @method setHeadersFromData:record:
@@ -564,7 +555,7 @@ extern NSString* PantomimeMessageExpunged;
 	      the decoded information.
   @param theHeaders The bytes to use.
 */
-- (void) setHeadersFromData: (NSData *) theHeaders record: (cache_record *) theRecord;
+- (void) setHeadersFromData: (NSData *) theHeaders record: (CWCacheRecord *) theRecord;
 @end
 
 
@@ -573,18 +564,14 @@ extern NSString* PantomimeMessageExpunged;
 //
 @interface CWMessage (Comparing)
 
-- (int) compareAccordingToNumber: (CWMessage *) aMessage;
-- (int) reverseCompareAccordingToNumber: (CWMessage *) aMessage;
-- (int) compareAccordingToDate: (CWMessage *) aMessage;
-- (int) reverseCompareAccordingToDate: (CWMessage *) aMessage;
-- (int) compareAccordingToSender: (CWMessage *) aMessage;
-- (int) reverseCompareAccordingToSender: (CWMessage *) aMessage;
-- (int) compareAccordingToSize: (CWMessage *) aMessage;
-- (int) reverseCompareAccordingToSize: (CWMessage *) aMessage;
+- (NSInteger) compareAccordingToNumber: (CWMessage *) aMessage;
+- (NSInteger) reverseCompareAccordingToNumber: (CWMessage *) aMessage;
+- (NSInteger) compareAccordingToDate: (CWMessage *) aMessage;
+- (NSInteger) reverseCompareAccordingToDate: (CWMessage *) aMessage;
+- (NSInteger) compareAccordingToSender: (CWMessage *) aMessage;
+- (NSInteger) reverseCompareAccordingToSender: (CWMessage *) aMessage;
+- (NSInteger) compareAccordingToSize: (CWMessage *) aMessage;
+- (NSInteger) reverseCompareAccordingToSize: (CWMessage *) aMessage;
 
 @end
-
-#endif // _Pantomime_H_CWMessage
-
-
 

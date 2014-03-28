@@ -46,6 +46,9 @@ NSString* PantomimeMessagesCopyFailed = @"PantomimeMessagesCopyFailed";
 NSString* PantomimeMessageStoreCompleted = @"PantomimeMessageStoreCompleted";
 NSString* PantomimeMessageStoreFailed = @"PantomimeMessageStoreFailed";
 
+// CWIMAPFolder IDLE notifications
+NSString* PantomimeFolderNewMessageWhileIDLE = @"PantomimeFolderNewMessageWhileIDLE";
+
 // CWIMAPStore notifications
 NSString* PantomimeFolderStatusCompleted = @"PantomimeFolderStatusCompleted";
 NSString* PantomimeFolderStatusFailed = @"PantomimeFolderStatusFailed";

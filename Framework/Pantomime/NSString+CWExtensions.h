@@ -20,13 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_NSString_Extensions
-#define _Pantomime_H_NSString_Extensions
-
-#import <Foundation/NSString.h>
-#import <Foundation/NSData.h>
-
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 @class CWPart;
 
@@ -59,10 +53,10 @@
   @param theCharacter The caracter to be searched for.
   @result The index of the character, -1 if it's not found in the receiver.
 */
-- (int) indexOfCharacter: (unichar) theCharacter;
+- (NSInteger) indexOfCharacter: (unichar) theCharacter;
 
-- (int) indexOfCharacter: (unichar) theCharacter
-               fromIndex: (unsigned int) theIndex;
+- (NSInteger) indexOfCharacter: (unichar) theCharacter
+               fromIndex: (NSUInteger) theIndex;
 
 
 /*!
@@ -101,7 +95,7 @@
   @param theEncoding The int value of the specified encoding.
   @result Returns a NSString holding the string value of the encoding.
 */
-+ (NSString *) stringValueOfTransferEncoding: (int) theEncoding;
++ (NSString *) stringValueOfTransferEncoding: (NSInteger) theEncoding;
 
 /*!
   @method encodingForCharset:
@@ -110,7 +104,7 @@
   @param theCharset The charset, as NSData.
   @result The encoding which might not be a NSStringEncoding.
 */
-+ (int) encodingForCharset: (NSData *) theCharset;
++ (NSInteger) encodingForCharset: (NSData *) theCharset;
 
 /*!
   @method encodingForPart:
@@ -120,7 +114,7 @@
                  will be derived from.
   @result The encoding which might not be a NSStringEncoding.
 */
-+ (int) encodingForPart: (CWPart *) thePart;
++ (NSInteger) encodingForPart: (CWPart *) thePart;
 
 /*!
   @method stringWithData:charset:
@@ -140,25 +134,6 @@
   @result The best charset, UTF-8 otherwise.
 */
 - (NSString *) charset;
-
-/*!
-  @method modifiedUTF7String
-  @discussion This method returns a newly created NSString
-              object which can be converted using the NSASCIIStringEncoding
-	      using the modified UTF-7 encoding described in RFC3501.
-	      A modified UTF-7 string MUST be used in IMAP for maibox names.
-  @result A modified UTF-7 string.
-*/
-- (NSString *) modifiedUTF7String;
-
-/*!
-  @method stringFromModifiedUTF7
-  @discussion This method creates a new string NSString object
-              from the modified UTF-7 string which is 7-bit based.
-              The newly created string can contain Unicode characters.
-  @result An Unicode string object, nil if the conversion failed.
-*/
-- (NSString *) stringFromModifiedUTF7;
 
 /*!
   @method hasREPrefix
@@ -219,5 +194,3 @@
 + (NSString *) stringFromRecipients: (NSArray *) theRecipients
                                type: (PantomimeRecipientType) theRecipientType;
 @end
-
-#endif // _Pantomime_H_NSString_Extensions

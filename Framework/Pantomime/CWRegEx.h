@@ -21,14 +21,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWRegEx
-#define _Pantomime_H_CWRegEx
-
-#include <sys/types.h>
 #include <regex.h>
-
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
 
 /*!
   @class CWRegEx
@@ -61,7 +54,7 @@
   @result An instance of CWRegEx, nil in case of an error.
 */
 - (id) initWithPattern: (NSString *) thePattern
-                 flags: (int) theFlags;
+                 flags: (NSInteger) theFlags;
 
 /*!
   @method regexWithPattern:
@@ -76,7 +69,7 @@
               <i>theFlags</i>, then autoreleases the returned instance.
 */
 + (id) regexWithPattern: (NSString *) thePattern
-                  flags: (int) theFlags;
+                  flags: (NSInteger) theFlags;
 
 /*!
   @method matchString:
@@ -102,5 +95,3 @@
           isCaseSensitive: (BOOL) theBOOL;
 
 @end
-
-#endif // _Pantomime_H_CWRegEx

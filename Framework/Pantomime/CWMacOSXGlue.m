@@ -21,10 +21,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "CWMacOSXGlue.h"
-
-#include <Foundation/NSException.h>
-#include <Foundation/NSString.h>
+#import "CWMacOSXGlue.h"
 
 //
 //
@@ -33,8 +30,7 @@
 
 - (id) subclassResponsibility: (SEL) theSel
 {
-  [NSException raise: NSGenericException
-	       format: @"subclass %s should override %s", object_getClassName(self),
+  [NSException raise:NSGenericException format:@"subclass %s should override %s", object_getClassName(self),
 	       sel_getName(theSel)];
   return nil;
 }

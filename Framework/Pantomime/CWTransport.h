@@ -20,12 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWTransport
-#define _Pantomime_H_CWTransport
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSNotification.h>
+#import <Foundation/Foundation.h>
 
 /*!
   @const PantomimeMessageSent
@@ -141,4 +136,3 @@ extern NSString* PantomimeMessageNotSent;
 
 @end
 
-#endif // _Pantomime_H_CWTransport

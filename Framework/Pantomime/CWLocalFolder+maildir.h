@@ -20,10 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWLocalFolder_maildir
-#define _Pantomime_H_CWLocalFolder_maildir
 
-#include <Pantomime/CWLocalFolder.h>
+#import "CWLocalFolder.h"
 
 @interface CWLocalFolder (maildir)
 
@@ -33,4 +31,3 @@
 
 @end
 
-#endif // _Pantomime_H_CWLocalFolder_maildir

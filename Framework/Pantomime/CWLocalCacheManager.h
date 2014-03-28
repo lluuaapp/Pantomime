@@ -20,14 +20,12 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWLocalCacheManager
-#define _Pantomime_H_CWLocalCacheManager
-
-#include <Pantomime/CWCacheManager.h>
+#import "CWCacheManager.h"
 
 @class CWFolder;
 @class CWLocalMessage;
 @class NSDate;
+@class CWCacheRecord;
 
 /*!
   @class CWLocalCacheManager
@@ -37,14 +35,16 @@
 @interface CWLocalCacheManager: CWCacheManager
 {
   @private
-    NSString *_pathToFolder;
+    // NSString *_pathToFolder;
     CWFolder *_folder;
 
-    unsigned int _modification_date;
-    unsigned int _size;
-    unsigned int _count;
-    int _fd;
+    NSUInteger _modification_date;
+    NSUInteger _size;
+    NSUInteger _count;
+    NSInteger _fd;
 }
+
+- (id) initWithPath: (NSString *) thePath  folder: (id) theFolder;
 
 /*!
   @method modificationDate
@@ -70,7 +70,7 @@
               associated CWLocalFolder's mailbox.
   @result The size.
 */
-- (unsigned int) fileSize;
+- (NSUInteger) fileSize;
 
 /*!
   @method setFileSize:
@@ -80,14 +80,13 @@
               this method directly.
   @param theSize The new size value.
 */
-- (void) setFileSize: (unsigned int) theSize;
+- (void) setFileSize: (NSUInteger) theSize;
 
 /*!
   @method writeRecord:
   @discussion This method is used to write a cache record to disk.
   @param theRecord The record to write.
 */
-- (void) writeRecord: (cache_record *) theRecord;
+- (void) writeRecord: (CWCacheRecord *) theRecord;
 @end
 
-#endif // _Pantomime_H_LocalCacheManager

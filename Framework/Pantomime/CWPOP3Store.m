@@ -19,18 +19,18 @@
 **  License along with this library; if not, write to the Free Software
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
-#include <Pantomime/CWPOP3Store.h>
+#include "CWPOP3Store.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWMD5.h>
-#include <Pantomime/CWMIMEUtility.h>
-#include <Pantomime/NSData+Extensions.h>
-#include <Pantomime/CWPOP3CacheManager.h>
-#include <Pantomime/CWPOP3Folder.h>
-#include <Pantomime/CWPOP3Message.h>
-#include <Pantomime/CWStore.h>
-#include <Pantomime/CWTCPConnection.h>
-#include <Pantomime/CWURLName.h>
+#include "CWConstants.h"
+#include "CWMD5.h"
+#include "CWMIMEUtility.h"
+#include "NSData+Extensions.h"
+#include "CWPOP3CacheManager.h"
+#include "CWPOP3Folder.h"
+#include "CWPOP3Message.h"
+#include "CWStore.h"
+#include "CWTCPConnection.h"
+#include "CWURLName.h"
 
 #include <Foundation/NSArray.h>
 #include <Foundation/NSBundle.h>
@@ -118,7 +118,7 @@ static NSData *CRLF;
 //
 //
 - (id) initWithName: (NSString *) theName
-	       port: (unsigned int) thePort
+	       port: (NSUInteger) thePort
 {
   if (thePort == 0) thePort = 110;
 
@@ -399,7 +399,7 @@ static NSData *CRLF;
   id aData;
  
   char *buf;
-  int count;
+  NSInteger count;
 
   [super updateRead];
 
@@ -615,7 +615,7 @@ static NSData *CRLF;
 - (void) _parseCAPA
 {
   NSData *aData;
-  int i, count;
+  NSInteger i, count;
 
   count = [_responsesFromServer count];
 
@@ -647,14 +647,18 @@ static NSData *CRLF;
 - (void) _parseLIST
 {
   CWPOP3Message *aMessage;
-  int i, index, count;
+  NSInteger i, index, count;
   long size;
 
   count = [_responsesFromServer count];
   
   for (i = 1; i < count; i++)
     {
-      sscanf([[_responsesFromServer objectAtIndex: i] cString], "%i %li", &index, &size);
+#if __LP64__
+		sscanf([[_responsesFromServer objectAtIndex: i] cString], "%li %li", &index, &size);
+#else
+		sscanf([[_responsesFromServer objectAtIndex: i] cString], "%i %li", &index, &size);
+#endif
       
       aMessage = [_folder->allMessages objectAtIndex: (index-1)];
       [aMessage setSize: size];
@@ -717,10 +721,10 @@ static NSData *CRLF;
     {
       NSMutableData *aMutableData;
       CWPOP3Message *aMessage;
-      int count, i, index;
+      NSInteger count, i, index;
 
       // We get the index of the message we are parsing...
-      sscanf([((CWPOP3QueueObject *)[_queue lastObject])->arguments cString], "RETR %d", &index);
+      sscanf([((CWPOP3QueueObject *)[_queue lastObject])->arguments UTF8String], "RETR %ld", (long)(&index));
 
       aMessage = (CWPOP3Message *)[_folder messageAtIndex: (index-1)];
       aMutableData = [[NSMutableData alloc] initWithCapacity: [aMessage size]];
@@ -791,10 +795,14 @@ static NSData *CRLF;
   if ([aData hasCPrefix: "+OK"])
     {
       CWPOP3Message *aMessage;
-      int count;
+      NSInteger count;
       long size;
 
-      sscanf([aData cString], "+OK %i %li", &count, &size);
+#if __LP64__
+		sscanf([aData cString], "+OK %li %li", &count, &size);
+#else
+		sscanf([aData cString], "+OK %i %li", &count, &size);
+#endif
       //NSLog(@"count = %d  size = %li", count, size);
 
       while (count--)
@@ -853,10 +861,14 @@ static NSData *CRLF;
       NSMutableData *aMutableData;
       CWPOP3Message *aMessage;
 
-      int count, i, index, num;
+      NSInteger count, i, index, num;
 
       // We get the index of the message we are parsing...
-      sscanf([((CWPOP3QueueObject *)[_queue lastObject])->arguments cString], "TOP %d %d", &index, &num);
+#if __LP64__
+		sscanf([((CWPOP3QueueObject *)[_queue lastObject])->arguments UTF8String], "TOP %ld %ld", &index, &num);
+#else
+		sscanf([((CWPOP3QueueObject *)[_queue lastObject])->arguments UTF8String], "TOP %d %d", &index, &num);
+#endif
 
       //NSLog(@"PARTIALLY DECODING MESSAGE no. %d - number of lines %d!", index, num);
       
@@ -884,7 +896,7 @@ static NSData *CRLF;
 //
 - (void) _parseUIDL
 {
-  int i, index, count;
+  NSInteger i, index, count;
   char buf[71];
 
   count = [_responsesFromServer count];
@@ -892,7 +904,11 @@ static NSData *CRLF;
   for (i = 1; i < count; i++)
     {
        memset(buf, 0, 71);
-       sscanf([[_responsesFromServer objectAtIndex: i] cString],"%i %s", &index, buf);
+#if __LP64__
+		sscanf([[_responsesFromServer objectAtIndex: i] cString],"%ld %s", &index, buf);
+#else
+		sscanf([[_responsesFromServer objectAtIndex: i] cString],"%i %s", &index, buf);
+#endif
        [[_folder->allMessages objectAtIndex: (index-1)] setUID: [NSString stringWithCString: buf]];
     }
 

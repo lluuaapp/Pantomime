@@ -20,21 +20,15 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "Pantomime/NSData+Extensions.h"
+#import "NSData+CWExtensions.h"
 
-#include <Foundation/NSArray.h>
-#include <Foundation/NSException.h>
-#include <Foundation/NSString.h>
+#import "CWConstants.h"
 
-#include "Pantomime/CWConstants.h"
-
-#include <stdlib.h>
-#include <string.h>
 
 //
 // C functions and constants
 //
-int getValue(char c);
+NSInteger getValue(char c);
 void nb64ChunkFor3Characters(char *buf, const char *inBuf, int numChars);
 
 static const char basis_64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -46,7 +40,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 // add an NSData cluster member NSSubrangeData that retaind its parent and
 // used its data. Would make almost all of these operations work without
 // copying.
-@implementation NSData (PantomimeExtensions)
+@implementation NSData (CWExtensions)
 
 + (id) dataWithCString: (const char *) theCString
 {
@@ -61,7 +55,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (NSData *) decodeBase64
 {
-  int i, j, length, rawIndex, block, pad, data_len;
+  NSInteger i, j, length, rawIndex, block, pad, data_len;
   const unsigned char *bytes;
   char *raw;
 
@@ -107,9 +101,13 @@ static const char *hexDigit = "0123456789ABCDEF";
   //
   // ====
   //
-  if (length < 0) return [NSData data];
+  if (length < 0)
+  {
+      free(raw);
+      return [NSData data];
+  }
 
-  return AUTORELEASE([[NSData alloc] initWithBytesNoCopy: raw  length: length]);
+  return [[NSData alloc] initWithBytesNoCopy: raw  length: length];
 }
 
 
@@ -120,13 +118,13 @@ static const char *hexDigit = "0123456789ABCDEF";
 {
   const char *inBytes = [self bytes];
   const char *inBytesPtr = inBytes;
-  int inLength = [self length];
+  NSInteger inLength = [self length];
 
   char *outBytes = malloc(sizeof(char)*inLength*2);
   char *outBytesPtr = outBytes;
 
-  int numWordsPerLine = theLength/4;
-  int wordCounter = 0;
+  NSInteger numWordsPerLine = theLength/4;
+  NSInteger wordCounter = 0;
 
   // We memset 0 our buffer so with are sure to not have
   // any garbage in it.
@@ -149,7 +147,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 	}
     }
 
-  return AUTORELEASE([[NSData alloc] initWithBytesNoCopy: outBytes length: (outBytesPtr-outBytes)]);
+  return [[NSData alloc] initWithBytesNoCopy: outBytes length: (outBytesPtr-outBytes)];
 }
 
 
@@ -159,12 +157,12 @@ static const char *hexDigit = "0123456789ABCDEF";
 - (NSData *) unfoldLines
 {
   NSMutableData *aMutableData;
-  int i, length;
+  NSInteger i, length;
   
-  const unsigned char *bytes, *b;
+  const unsigned char *b;
   
   length = [self length];
-  b = bytes = [self bytes];
+  b = [self bytes];
   
   aMutableData = [[NSMutableData alloc] initWithCapacity: length];
   
@@ -181,7 +179,7 @@ static const char *hexDigit = "0123456789ABCDEF";
       [aMutableData appendBytes: b length: 1];
     }
 
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 
@@ -193,8 +191,8 @@ static const char *hexDigit = "0123456789ABCDEF";
   NSMutableData *result;
 
   const unsigned char *bytes,*b;
-  unsigned char ch;
-  int i,len;
+  unsigned char ch = 0;
+  NSInteger i,len;
 
   len = [self length];
   bytes = [self bytes];
@@ -230,11 +228,11 @@ static const char *hexDigit = "0123456789ABCDEF";
 
 	  if (*b>='A' && *b<='F')
 	    {
-	      ch+=*b-'A'+10;
+	      ch += *b-'A'+10;
 	    }
 	  else if (*b>='a' && *b<='f')
 	    {
-	      ch+=*b-'a'+10;
+	      ch += *b-'a'+10;
 	    }
 	  else if (*b>='0' && *b<='9')
 	    {
@@ -254,19 +252,19 @@ static const char *hexDigit = "0123456789ABCDEF";
 	}
     }
 
-  return AUTORELEASE(result);
+  return result;
 }
 
 
 //
 //
 //
-- (NSData *) encodeQuotedPrintableWithLineLength: (int) theLength
+- (NSData *) encodeQuotedPrintableWithLineLength: (NSInteger) theLength
 					inHeader: (BOOL) aBOOL
 {
   NSMutableData *aMutableData;
   const unsigned char *b;
-  int i, length, line;
+  NSInteger i, length, line;
   char buf[4];
   
   aMutableData = [[NSMutableData alloc] initWithCapacity: [self length]];
@@ -334,7 +332,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 	}
     }
   
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 
@@ -344,7 +342,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 - (NSRange) rangeOfData: (NSData *) theData
 {
   const char *b, *bytes, *str;
-  int i, len, slen;
+  NSInteger i, len, slen;
   
   bytes = [self bytes];
   len = [self length];
@@ -361,7 +359,7 @@ static const char *hexDigit = "0123456789ABCDEF";
   
   // TODO: this could be optimized
   i = 0;
-  b += i;
+  // b += i;
   for (; i<= len-slen; i++, b++)
     {
       if (!memcmp(str,b,slen))
@@ -389,7 +387,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 //
 -(NSRange) rangeOfCString: (const char *) theCString
-		  options: (unsigned int) theOptions
+		  options: (NSUInteger) theOptions
 {
   return [self rangeOfCString: theCString 
 	       options: theOptions 
@@ -401,75 +399,75 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 //
 -(NSRange) rangeOfCString: (const char *) theCString
-		  options: (unsigned int) theOptions
-		    range: (NSRange) theRange
+                  options: (NSUInteger) theOptions
+                    range: (NSRange) theRange
 {
-  const char *b, *bytes;
-  int i, len, slen;
-  
-  if (!theCString)
+    const char *b, *bytes;
+    NSInteger i, len, slen;
+    
+    if (!theCString)
     {
-      return NSMakeRange(NSNotFound,0);
+        return NSMakeRange(NSNotFound,0);
     }
-  
-  bytes = [self bytes];
-  len = [self length];
-  slen = strlen(theCString);
-  
-  b = bytes;
-  
-  if (len > theRange.location + theRange.length)
+    
+    bytes = [self bytes];
+    len = [self length];
+    slen = strlen(theCString);
+    
+    b = bytes;
+    
+    if (len > theRange.location + theRange.length)
     {
-      len = theRange.location + theRange.length;
+        len = theRange.location + theRange.length;
     }
-
-#warning this could be optimized
-  if (theOptions == NSCaseInsensitiveSearch)
+    
+    // #warning this could be optimized
+    if (theOptions == NSCaseInsensitiveSearch)
     {
-      i = theRange.location;
-      b += i;
-      
-      for (; i <= len-slen; i++, b++)
-	{
-	  if (!strncasecmp(theCString,b,slen))
-	    {
-	      return NSMakeRange(i,slen);
-	    }
-	}
+        i = theRange.location;
+        b += i;
+        
+        for (; i <= len-slen; i++, b++)
+        {
+            if (!strncasecmp(theCString,b,slen))
+            {
+                return NSMakeRange(i,slen);
+            }
+        }
     }
-  else
+    else
     {
-      i = theRange.location;
-      b += i;
-      
-      for (; i <= len-slen; i++, b++)
-	{
-	  if (!memcmp(theCString,b,slen))
-	    {
-	      return NSMakeRange(i,slen);
-	    }
-	}
+        i = theRange.location;
+        b += i;
+        
+        for (; i <= len-slen; i++, b++)
+        {
+            if (!memcmp(theCString,b,slen))
+            {
+                return NSMakeRange(i,slen);
+            }
+        }
     }
-  
-  return NSMakeRange(NSNotFound,0);
+    
+    return NSMakeRange(NSNotFound,0);
 }
 
 
 //
 //
 //
-- (NSData *) subdataFromIndex: (int) theIndex
+- (NSData *) subdataFromIndex: (NSInteger) theIndex
 {
-  return [self subdataWithRange: NSMakeRange(theIndex, [self length] - theIndex)];
+    return [self subdataWithRange: NSMakeRange(theIndex, [self length] - theIndex)];
 }
 
 
 //
 //
 //
-- (NSData *) subdataToIndex: (int) theIndex
+- (NSData *) subdataToIndex: (NSInteger) theIndex
 {
-  return [self subdataWithRange: NSMakeRange(0, theIndex)];
+    return [self subdataWithRange: NSMakeRange(0, theIndex)];
 }
 
 
@@ -478,21 +476,21 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (NSData *) dataByTrimmingWhiteSpaces
 {
-  const char *bytes;
-  int i, j, len;
-  
-  bytes = [self bytes];
-  len = [self length];
-
-  for (i = 0; i < len && (bytes[i] == ' ' || bytes[i] == '\t'); i++) ;
-  for (j = len-1; j >= 0 && (bytes[j] == ' ' || bytes[i] == '\t'); j--) ;
-  
-  if (j <= i)
+    const char *bytes;
+    NSInteger i, j, len;
+    
+    bytes = [self bytes];
+    len = [self length];
+    
+    for (i = 0; i < len && (bytes[i] == ' ' || bytes[i] == '\t'); i++) ;
+    for (j = len-1; j >= 0 && (bytes[j] == ' ' || bytes[i] == '\t'); j--) ;
+    
+    if (j <= i)
     {
-      return AUTORELEASE(RETAIN(self));
+        return self;
     }
-      
-  return [self subdataWithRange: NSMakeRange(i, j-i+1)];
+    
+    return [self subdataWithRange: NSMakeRange(i, j-i+1)];
 }
 
 
@@ -501,30 +499,30 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (NSData *) dataByRemovingLineFeedCharacters
 {
-  NSMutableData *aMutableData;
-  const char *bytes;
-  int i, j, len;
-  char *dest;
-  
-  bytes = [self bytes];
-  len = [self length];
-  
-  aMutableData = [[NSMutableData alloc] init];
-  [aMutableData setLength: len];
-  
-  dest = [aMutableData mutableBytes];
-  
-  for (i = j = 0; i < len; i++)
+    NSMutableData *aMutableData;
+    const char *bytes;
+    NSInteger i, j, len;
+    char *dest;
+    
+    bytes = [self bytes];
+    len = [self length];
+    
+    aMutableData = [[NSMutableData alloc] init];
+    [aMutableData setLength: len];
+    
+    dest = [aMutableData mutableBytes];
+    
+    for (i = j = 0; i < len; i++)
     {
-      if (bytes[i] != '\n')
-	{
-	  dest[j++] = bytes[i];
-	}
+        if (bytes[i] != '\n')
+        {
+            dest[j++] = bytes[i];
+        }
     }
-  
-  [aMutableData setLength: j];
-  
-  return AUTORELEASE(aMutableData);
+    
+    [aMutableData setLength: j];
+    
+    return aMutableData;
 }
 
 
@@ -533,23 +531,23 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (NSData *) dataFromQuotedData
 {
-  const char *bytes;
-  int len;
-  
-  bytes = [self bytes];
-  len = [self length];
-
-  if (len < 2)
+    const char *bytes;
+    NSInteger len;
+    
+    bytes = [self bytes];
+    len = [self length];
+    
+    if (len < 2)
     {
-      return AUTORELEASE(RETAIN(self));
+        return self;
     }
-  
-  if (bytes[0] == '"' && bytes[len-1] == '"')
+    
+    if (bytes[0] == '"' && bytes[len-1] == '"')
     {
-      return [self subdataWithRange: NSMakeRange(1, len-2)];
+        return [self subdataWithRange: NSMakeRange(1, len-2)];
     }
-  
-  return AUTORELEASE(RETAIN(self));
+    
+    return self;
 }
 
 
@@ -558,43 +556,45 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (NSData *) dataFromSemicolonTerminatedData
 {
-  const char *bytes;
-  int len;
-  
-  bytes = [self bytes];
-  len = [self length];
-
-  if (len < 2)
+    const char *bytes;
+    NSInteger len;
+    
+    bytes = [self bytes];
+    len = [self length];
+    
+    if (len < 2)
     {
-      return AUTORELEASE(RETAIN(self));
+        return self;
     }
-
-  if (bytes[len-1] == ';')
+    
+    if (bytes[len-1] == ';')
     {
-      return [self subdataToIndex: len-1];
+        return [self subdataToIndex: len-1];
     }
-
-  return AUTORELEASE(RETAIN(self));
+    
+    return self;
 }
 
 //
 //
 //
-- (int) indexOfCharacter: (char) theCharacter
+- (NSInteger) indexOfCharacter: (char) theCharacter
 {
-  const char *b;
-  int i, len;
- 
-  b = [self bytes];
-  len = [self length];
-
-  for ( i = 0; i < len; i++, b++)
-    if (*b == theCharacter)
-      {
-	return i;
-      }
-  
-  return -1;
+    const char *b;
+    NSInteger i, len;
+    
+    b = [self bytes];
+    len = [self length];
+    
+    for ( i = 0; i < len; i++, b++)
+    {
+        if (*b == theCharacter)
+        {
+            return i;
+        }
+    }
+    
+    return -1;
 }
 
 
@@ -603,30 +603,30 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (BOOL) hasCPrefix: (const char *) theCString
 {
-  const char *bytes;
-  int len, slen;
-  
-  if (!theCString)
+    const char *bytes;
+    NSInteger len, slen;
+    
+    if (!theCString)
     {
-      return NO;
+        return NO;
     }
-  
-  bytes = [self bytes];
-  len = [self length];
-
-  slen = strlen(theCString);
-  
-  if ( slen > len)
+    
+    bytes = [self bytes];
+    len = [self length];
+    
+    slen = strlen(theCString);
+    
+    if ( slen > len)
     {
-      return NO;
+        return NO;
     }
-
-  if (!strncmp(bytes,theCString,slen))
+    
+    if (!strncmp(bytes,theCString,slen))
     {
-      return YES;
+        return YES;
     }
-  
-  return NO;
+    
+    return NO;
 }
 
 
@@ -635,30 +635,30 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (BOOL) hasCSuffix: (const char *) theCString
 {
-  const char *bytes;
-  int len, slen;
-  
-  if (!theCString) 
+    const char *bytes;
+    NSInteger len, slen;
+    
+    if (!theCString) 
     {
-      return NO;
+        return NO;
     }
-
-  bytes = [self bytes];
-  len = [self length];
-
-  slen = strlen(theCString);
-
-  if (slen > len) 
+    
+    bytes = [self bytes];
+    len = [self length];
+    
+    slen = strlen(theCString);
+    
+    if (slen > len) 
     {
-      return NO;
+        return NO;
     }
-
-  if (!strncmp(&bytes[len-slen],theCString,slen))
+    
+    if (!strncmp(&bytes[len-slen],theCString,slen))
     {
-      return YES;
+        return YES;
     }
-  
-  return NO;
+    
+    return NO;
 }
 
 
@@ -667,29 +667,29 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (BOOL) hasCaseInsensitiveCPrefix: (const char *) theCString
 {
-  const char *bytes;
-  int len, slen;
-  
-  if (!theCString) 
+    const char *bytes;
+    NSInteger len, slen;
+    
+    if (!theCString) 
     {
-      return NO;
+        return NO;
     }
-
-  bytes = [self bytes];
-  len = [self length];
-  slen = strlen(theCString);
-  
-  if ( slen > len)
+    
+    bytes = [self bytes];
+    len = [self length];
+    slen = strlen(theCString);
+    
+    if ( slen > len)
     {
-      return NO;
+        return NO;
     }
-      
-  if ( !strncasecmp(bytes,theCString,slen) )
+    
+    if ( !strncasecmp(bytes,theCString,slen) )
     {
-      return YES;
+        return YES;
     }
-
-  return NO;
+    
+    return NO;
 }
 
 
@@ -698,29 +698,29 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (BOOL) hasCaseInsensitiveCSuffix: (const char *) theCString
 {
-  const char *bytes;
-  int len, slen;
-  
-  if (!theCString)
+    const char *bytes;
+    NSInteger len, slen;
+    
+    if (!theCString)
     {
-      return NO;
+        return NO;
     }
-  
-  bytes = [self bytes];
-  len = [self length];
-  slen = strlen(theCString);
-
-  if (slen > len) 
+    
+    bytes = [self bytes];
+    len = [self length];
+    slen = strlen(theCString);
+    
+    if (slen > len) 
     {
-      return NO;
+        return NO;
     }  
-
-  if (!strncasecmp(&bytes[len-slen],theCString,slen))
+    
+    if (!strncasecmp(&bytes[len-slen],theCString,slen))
     {
-      return YES;
+        return YES;
     }
-  
-  return NO;
+    
+    return NO;
 }
 
 
@@ -729,51 +729,51 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (NSComparisonResult) caseInsensitiveCCompare: (const char *) theCString
 {
-  int slen, len, clen, i;
-  const char *bytes;
-  
-  // Is this ok?
-  if (!theCString)
+    NSInteger slen, len, clen, i;
+    const char *bytes;
+    
+    // Is this ok?
+    if (!theCString)
     {
-      return NSOrderedDescending;
+        return NSOrderedDescending;
     }
-      
-  bytes = [self bytes];
-  len = [self length];
-  slen = strlen(theCString);
-  
-  if (slen > len)
+    
+    bytes = [self bytes];
+    len = [self length];
+    slen = strlen(theCString);
+    
+    if (slen > len)
     {
-      clen = len;
+        clen = len;
     }
-  else
+    else
     {
-      clen = slen;
+        clen = slen;
     }
-
-  i = strncasecmp(bytes,theCString,clen);
-  
-  if (i < 0)
+    
+    i = strncasecmp(bytes,theCString,clen);
+    
+    if (i < 0)
     {
-      return NSOrderedAscending;
+        return NSOrderedAscending;
     }
-  
-  if (i > 0)
+    
+    if (i > 0)
     {
-      return NSOrderedDescending;
+        return NSOrderedDescending;
     }
-  
-  if (slen == len)
+    
+    if (slen == len)
     {
-      return NSOrderedSame;
+        return NSOrderedSame;
     }
-
-  if (slen < len)
+    
+    if (slen < len)
     {
-      return NSOrderedAscending;
+        return NSOrderedAscending;
     }
-  
-  return NSOrderedDescending;
+    
+    return NSOrderedDescending;
 }
 
 
@@ -784,7 +784,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 {
   NSMutableArray *aMutableArray;
   NSRange r1, r2;
-  int len;
+  NSInteger len;
   
   aMutableArray = [[NSMutableArray alloc] init];
   len = [self length];
@@ -805,7 +805,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 
   [aMutableArray addObject: [self subdataWithRange: NSMakeRange(r1.location, len - r1.location)]];
   
-  return AUTORELEASE(aMutableArray);
+  return aMutableArray;
 }
 
 //
@@ -813,7 +813,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (NSString *) asciiString
 {
-  return AUTORELEASE([[NSString alloc] initWithData: self  encoding: NSASCIIStringEncoding]);
+  return [[NSString alloc] initWithData: self  encoding: NSASCIIStringEncoding];
 }
 
 
@@ -822,25 +822,19 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 - (const char *) cString
 {
-  NSMutableData *aMutableData;
-  
-  aMutableData = [[NSMutableData alloc] init];
-  AUTORELEASE(aMutableData);
-   
-  [aMutableData appendData: self];
-  [aMutableData appendBytes: "\0"  length: 1];
-  
-  return [aMutableData mutableBytes];
+  __autoreleasing NSMutableData *aMutableData = [[NSMutableData alloc] initWithData:self];
+  [aMutableData appendBytes:"\0" length:1];
+  return [aMutableData bytes];
 }
 
 
 //
 //
 //
-- (unichar) characterAtIndex: (int) theIndex
+- (unichar) characterAtIndex: (NSInteger) theIndex
 {
   const char *bytes;
-  int i, len;
+  NSInteger i, len;
   
   len = [self length];
 
@@ -867,181 +861,179 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 //
 //
-- (NSData *) unwrapWithLimit: (int) theQuoteLimit
+- (NSData *) unwrapWithLimit: (NSInteger) theQuoteLimit
 {
-  NSMutableData *aMutableData, *lines;
-  NSData *aLine;
-
-  int i, len, quote_depth, line_quote_depth, line_start;
-  BOOL is_flowed;
-
-  len = [self length];
-
-  aMutableData = [[NSMutableData alloc] init];//WithCapacity: len];
-  lines = [[NSMutableData alloc] init];
-  quote_depth = -1;
-  
-  // We analyse the string until the last character
-  for (i = 0; i < len;)
+    NSMutableData *aMutableData, *lines;
+    NSData *aLine;
+    
+    NSInteger i, len, quote_depth, line_quote_depth, line_start;
+    BOOL is_flowed;
+    
+    len = [self length];
+    
+    aMutableData = [[NSMutableData alloc] init];//WithCapacity: len];
+    lines = [[NSMutableData alloc] init];
+    quote_depth = -1;
+    
+    // We analyse the string until the last character
+    for (i = 0; i < len;)
     {
-      // We analyse the quote depth of the current line
-      if ([self characterAtIndex: i] == '>')
-	{
-	  for (line_quote_depth = 0; i < len && [self characterAtIndex: i] == '>'; i++)
-	    {
-	      line_quote_depth++;
-	    }
-	}
-      else
-	{
-	  line_quote_depth = 0;
-	}
-      
-      // If the current quote depth is not defined, set it to quote depth of current line
-      if (quote_depth == -1)
-	{
-	  quote_depth = line_quote_depth;
-	}
-      
-      // We verify if the line has been space-stuffed
-      if (i < len && [self characterAtIndex: i] == ' ')
-	{
-	  i++;
-	}
-      line_start = i;
-
-      // We look for the next line break
-      for (; i < len && [self characterAtIndex: i] != '\n'; i++);
-      
-      // We get the actual content of the current line
-      aLine = [self subdataWithRange: NSMakeRange(line_start, i-line_start)];
-      
-      // We verify if the line ends with a soft break 
-      is_flowed = [aLine length] > 0 && [aLine characterAtIndex: [aLine length]-1] == ' ';
-
-      // We must handle usenet signature as a special case
-      if (is_flowed && [aLine caseInsensitiveCCompare: "-- "] == NSOrderedSame)
-	{
-	  is_flowed = NO;
-	}
-
-      if (is_flowed && quote_depth == line_quote_depth)
-	{ 
-	  // The current line is flowed;
-	  // we append it to the buffer without quote characters
-	  [lines appendData: aLine];
-	}
-      else if (is_flowed)
-	{ 
-	  // The current line is flowed but has mis-matched quoting
-
-	  // We first append the previous paragraph to the buffer with the necessary quote characters
-	  if (quote_depth)
-	    {
-	      [lines replaceBytesInRange: NSMakeRange(0, [lines length])
-		     withBytes: [[lines quoteWithLevel: quote_depth  wrappingLimit: theQuoteLimit] bytes]];
-	    }
-
-	  [aMutableData appendData: lines];
-	  [aMutableData appendCString: "\n"];
-	  
-	  // We initialize the current paragraph with the current line
-	  [lines replaceBytesInRange: NSMakeRange(0, [lines length])  withBytes: [aLine bytes]];
-	  
-	  // We set the paragraph depth with the current line depth
-	  quote_depth = line_quote_depth;
-	}
-      else if (!is_flowed && quote_depth == line_quote_depth)
-	{ 
-	  // The line is fixed, we append it.
-	  [lines appendData: aLine];
-	  
-	  // We add the necessary quote characters in the paragraph
-	  if (quote_depth)
-	    {
-	      NSData *d;
-	      
-	      d = [lines quoteWithLevel: quote_depth   wrappingLimit: theQuoteLimit];
-	      [lines replaceBytesInRange: NSMakeRange(0, [lines length])
-		     withBytes: [d bytes]  length: [d length]];
-	    }
-
-	  // We append the paragraph (if any)
-	  if ([lines length])
-	    {
-	      [aMutableData appendData: lines];
-	    }
-	  [aMutableData appendCString: "\n"];
-	  
-	  // We empty the paragraph buffer
-	  [lines replaceBytesInRange: NSMakeRange(0,[lines length])  withBytes: NULL  length: 0];
-	  
-	  // We reset the paragraph depth
-	  quote_depth = -1;
-	}
-      else
-	{
-	  // The line is fixed but has mis-matched quoting
-	  
-	  // We first append the previous paragraph (if any) to the buffer with the necessary quote characters
-	  if (quote_depth)
-	    {
-	      [lines replaceBytesInRange: NSMakeRange(0, [lines length])
-		     withBytes: [[lines quoteWithLevel: quote_depth  wrappingLimit: theQuoteLimit] bytes]];
-	    }
-	  
-	  [aMutableData appendData: lines];
-	  [aMutableData appendCString: "\n"];
-
-	  // We append the fixed line to the buffer with the necessary quote characters
-	  if (line_quote_depth)
-	    {
-	      aLine = [aLine quoteWithLevel: line_quote_depth  wrappingLimit: theQuoteLimit];
-	    }
-
-	  [aMutableData appendData: aLine];
-	  [aMutableData appendCString: "\n"];
-
-	  // We empty the paragraph buffer
-	  [lines replaceBytesInRange: NSMakeRange(0,[lines length])  withBytes: NULL  length: 0];
-
-	  // We reset the paragraph depth
-	  quote_depth = -1;
-	}
-      
-      // The next iteration must starts after the line break
-      i++;
+        // We analyse the quote depth of the current line
+        if ([self characterAtIndex: i] == '>')
+        {
+            for (line_quote_depth = 0; i < len && [self characterAtIndex: i] == '>'; i++)
+            {
+                line_quote_depth++;
+            }
+        }
+        else
+        {
+            line_quote_depth = 0;
+        }
+        
+        // If the current quote depth is not defined, set it to quote depth of current line
+        if (quote_depth == -1)
+        {
+            quote_depth = line_quote_depth;
+        }
+        
+        // We verify if the line has been space-stuffed
+        if (i < len && [self characterAtIndex: i] == ' ')
+        {
+            i++;
+        }
+        line_start = i;
+        
+        // We look for the next line break
+        for (; i < len && [self characterAtIndex: i] != '\n'; i++);
+        
+        // We get the actual content of the current line
+        aLine = [self subdataWithRange: NSMakeRange(line_start, i-line_start)];
+        
+        // We verify if the line ends with a soft break 
+        is_flowed = [aLine length] > 0 && [aLine characterAtIndex: [aLine length]-1] == ' ';
+        
+        // We must handle usenet signature as a special case
+        if (is_flowed && [aLine caseInsensitiveCCompare: "-- "] == NSOrderedSame)
+        {
+            is_flowed = NO;
+        }
+        
+        if (is_flowed && quote_depth == line_quote_depth)
+        { 
+            // The current line is flowed;
+            // we append it to the buffer without quote characters
+            [lines appendData: aLine];
+        }
+        else if (is_flowed)
+        { 
+            // The current line is flowed but has mis-matched quoting
+            
+            // We first append the previous paragraph to the buffer with the necessary quote characters
+            if (quote_depth)
+            {
+                [lines replaceBytesInRange: NSMakeRange(0, [lines length])
+                                 withBytes: [[lines quoteWithLevel: quote_depth  wrappingLimit: theQuoteLimit] bytes]];
+            }
+            
+            [aMutableData appendData: lines];
+            [aMutableData appendCString: "\n"];
+            
+            // We initialize the current paragraph with the current line
+            [lines replaceBytesInRange: NSMakeRange(0, [lines length])  withBytes: [aLine bytes]];
+            
+            // We set the paragraph depth with the current line depth
+            quote_depth = line_quote_depth;
+        }
+        else if (!is_flowed && quote_depth == line_quote_depth)
+        { 
+            // The line is fixed, we append it.
+            [lines appendData: aLine];
+            
+            // We add the necessary quote characters in the paragraph
+            if (quote_depth)
+            {
+                NSData *d;
+                
+                d = [lines quoteWithLevel: quote_depth   wrappingLimit: theQuoteLimit];
+                [lines replaceBytesInRange: NSMakeRange(0, [lines length])
+                                 withBytes: [d bytes]  length: [d length]];
+            }
+            
+            // We append the paragraph (if any)
+            if ([lines length])
+            {
+                [aMutableData appendData: lines];
+            }
+            [aMutableData appendCString: "\n"];
+            
+            // We empty the paragraph buffer
+            [lines replaceBytesInRange: NSMakeRange(0,[lines length])  withBytes: NULL  length: 0];
+            
+            // We reset the paragraph depth
+            quote_depth = -1;
+        }
+        else
+        {
+            // The line is fixed but has mis-matched quoting
+            
+            // We first append the previous paragraph (if any) to the buffer with the necessary quote characters
+            if (quote_depth)
+            {
+                [lines replaceBytesInRange: NSMakeRange(0, [lines length])
+                                 withBytes: [[lines quoteWithLevel: quote_depth  wrappingLimit: theQuoteLimit] bytes]];
+            }
+            
+            [aMutableData appendData: lines];
+            [aMutableData appendCString: "\n"];
+            
+            // We append the fixed line to the buffer with the necessary quote characters
+            if (line_quote_depth)
+            {
+                aLine = [aLine quoteWithLevel: line_quote_depth  wrappingLimit: theQuoteLimit];
+            }
+            
+            [aMutableData appendData: aLine];
+            [aMutableData appendCString: "\n"];
+            
+            // We empty the paragraph buffer
+            [lines replaceBytesInRange: NSMakeRange(0,[lines length])  withBytes: NULL  length: 0];
+            
+            // We reset the paragraph depth
+            quote_depth = -1;
+        }
+        
+        // The next iteration must starts after the line break
+        i++;
     }
-
-  // We must handle flowed lines that don't have a fixed line break at the end of the message
-  if ([lines length])
+    
+    // We must handle flowed lines that don't have a fixed line break at the end of the message
+    if ([lines length])
     {
-      if (quote_depth)
-	{
-	  [lines replaceBytesInRange: NSMakeRange(0, [lines length])
-		 withBytes: [[lines quoteWithLevel: quote_depth  wrappingLimit: theQuoteLimit] bytes]];
-	}
-
-      [aMutableData appendData: lines];
-      [aMutableData appendCString: "\n"];
+        if (quote_depth)
+        {
+            [lines replaceBytesInRange: NSMakeRange(0, [lines length])
+                             withBytes: [[lines quoteWithLevel: quote_depth  wrappingLimit: theQuoteLimit] bytes]];
+        }
+        
+        [aMutableData appendData: lines];
+        [aMutableData appendCString: "\n"];
     }
-
-  DESTROY(lines);
-
-  return AUTORELEASE(aMutableData);
+    
+    return aMutableData;
 }
 
 
 //
 //
 //
-- (NSData *) wrapWithLimit: (int) theLimit
+- (NSData *) wrapWithLimit: (NSInteger) theLimit
 {
   NSMutableData *aMutableData;
   NSData *aLine, *part;
   NSArray *lines;
-  int i, j, k, split;
-  int depth;
+  NSInteger i, j, k, split;
+  NSInteger depth;
 
   // We first verify if the string is valid
   if ([self length] == 0)
@@ -1223,20 +1215,20 @@ static const char *hexDigit = "0123456789ABCDEF";
       [aMutableData replaceBytesInRange: NSMakeRange([aMutableData length]-1, 1)  withBytes: NULL  length: 0];
     }
   
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 //
 //
 //
-- (NSData *) quoteWithLevel: (int) theLevel
-	      wrappingLimit: (int) theLimit
+- (NSData *) quoteWithLevel: (NSInteger) theLevel
+	      wrappingLimit: (NSInteger) theLimit
 {
   NSMutableData *aMutableData, *aQuotePrefix;
   NSData *aData, *aLine;
   NSArray *lines;
   BOOL isQuoted;
-  int i;
+  NSInteger i;
 
   // We verify if the wrapping limit is smaller then the quote level
   if (theLevel > theLimit) 
@@ -1277,9 +1269,7 @@ static const char *hexDigit = "0123456789ABCDEF";
       [aMutableData replaceBytesInRange: NSMakeRange([aMutableData length]-1, 1)  withBytes: NULL  length: 0];
     }
 
-  RELEASE(aQuotePrefix);
-
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 @end
@@ -1288,7 +1278,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 //
 //
-@implementation NSMutableData (PantomimeExtensions)
+@implementation NSMutableData (CWExtensions)
 
 - (void) appendCFormat: (NSString *) theFormat, ...
 {
@@ -1301,8 +1291,6 @@ static const char *hexDigit = "0123456789ABCDEF";
   
   // We allow lossy conversion to not lose any information / raise an exception
   [self appendData: [aString dataUsingEncoding: NSASCIIStringEncoding  allowLossyConversion: YES]];
-  
-  RELEASE(aString);
 }
 
 
@@ -1319,9 +1307,9 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 //
 - (void) insertCString: (const char *) theCString
-	       atIndex: (int) theIndex
+	       atIndex: (NSInteger) theIndex
 {
-  int s_length, length;
+  NSInteger s_length, length;
 
   if (!theCString)
     {
@@ -1356,7 +1344,7 @@ static const char *hexDigit = "0123456789ABCDEF";
     {
       NSMutableData *data;
 
-      data = [NSMutableData dataWithBytes: [self subdataWithRange: NSMakeRange(0, theIndex)]  length: theIndex];
+      data = [NSMutableData dataWithBytes: (__bridge const void *)([self subdataWithRange: NSMakeRange(0, theIndex)])  length: theIndex];
       [data appendCString: theCString];
       [data appendData: [self subdataWithRange: NSMakeRange(theIndex, length - theIndex)]];
       [self setData: data];
@@ -1370,7 +1358,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 - (void) replaceCRLFWithLF
 {
   unsigned char *bytes, *bi, *bo;
-  int delta, i,length;
+  NSInteger delta, i,length;
   
   bytes = [self mutableBytes];
   length = [self length];
@@ -1400,7 +1388,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 {
   NSMutableData *aMutableData;
   unsigned char *bytes, *bi, *bo;
-  int delta, i, length;
+  NSInteger delta, i, length;
   
   bi = bytes = [self mutableBytes];
   length = [self length];
@@ -1443,7 +1431,7 @@ static const char *hexDigit = "0123456789ABCDEF";
       *bo = *bi;
     }
 
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 @end
@@ -1452,7 +1440,7 @@ static const char *hexDigit = "0123456789ABCDEF";
 //
 // C functions
 //
-int getValue(char c)
+NSInteger getValue(char c)
 {
   if (c >= 'A' && c <= 'Z') return (c - 'A');
   if (c >= 'a' && c <= 'z') return (c - 'a' + 26);

@@ -1,7 +1,7 @@
 /*
-**  NSFileManager+Extensions.h
+**  NSScanner+Extensions.h
 **
-**  Copyright (c) 2004
+**  Copyright (c) 2005
 **
 **  Author: Ludovic Marcotte <ludovic@Sophos.ca>
 **
@@ -20,30 +20,23 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_NSFileManager_Extensions
-#define _Pantomime_H_NSFileManager_Extensions
-
-#import <Foundation/NSFileManager.h>
-
-@class NSString;
+#import <Foundation/NSScanner.h>
 
 /*!
-  @category NSFileManager (PantomimeFileManagerExtensions)
-  @abstract Pantomime extensions to NSFileManager.
+  @category NSScanner (PantomimeScannerExtensions)
+  @abstract Pantomime extensions to NSScanner.
   @discussion This category provides useful extensions to the
-              default NSFileManager class.
+              default NSScanner class.
 */
-@interface NSFileManager (PantomimeFileManagerExtensions)
+@interface NSScanner (PantomimeScannerExtensions)
 
 /*!
-  @method enforceMode: atPath:
-  @discussion This method is used to enforce the specified
-              POSIX file permissions at <i>thePath</i>.
-  @param theMode The POSIX file permissions to use.
-  @param thePath The path where to enforce the permissions.
+  @method scanUnsignedInt:
+  @discussion This method is used to scan an unsigned int.
+  @param theValue The value in which the unsigned int
+         will be stored.
+  @result YES if we find a decimal unsigned int, no otherwise.
 */            
-- (void) enforceMode: (unsigned long) theMode
-              atPath: (NSString *) thePath;
-@end
+- (BOOL) scanUnsignedInt: (NSUInteger *) theValue;
 
-#endif // _Pantomime_H_NSFileManager_Extensions
+@end

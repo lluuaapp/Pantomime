@@ -20,16 +20,11 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/io.h>
+#include "io.h"
 
 #include <errno.h>
-#ifdef __MINGW32__
-#include <io.h> 	// For _read(), _write() and _close() on MinGW
-#include <winsock2.h>	// For recv() on MinGW
-#else
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#endif
 
 #include <stdio.h>
 #include <string.h>     // For memset()
@@ -37,23 +32,17 @@
 
 #include <unistd.h>	// For read(), write() and close()
 
-#ifdef MACOSX
 #include <sys/uio.h>	// For read() and write() on OS X
-#endif
+#include <stdlib.h>
 
-#if !defined(FIONBIO) && !defined(__MINGW32__)
-#include <sys/filio.h>  // For FIONBIO on Solaris
-#endif
 
 //
 //
 //
 ssize_t read_block(int fd, void *buf, size_t count)
 {
-  ssize_t tot, bytes;
+  ssize_t tot = 0, bytes = 0;
   
-  tot = bytes = 0;
-
   while (tot < count)
     {
 #ifdef __MINGW32__ 

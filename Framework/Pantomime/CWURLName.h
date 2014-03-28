@@ -20,11 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWURLName
-#define _Pantomime_H_CWURLName
 
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
+#import <Foundation/Foundation.h>
 
 /*!
   @class CWURLName
@@ -42,7 +39,7 @@
     NSString *_path;
   
     NSString *_host;
-    unsigned int _port;
+    NSUInteger _port;
 
     NSString *_username;
     NSString *_password;
@@ -106,7 +103,7 @@
               of an URL.
   @result The port.
 */
-- (unsigned int) port;
+- (NSUInteger) port;
 
 /*!
   @method username
@@ -135,5 +132,3 @@
 - (NSString *) stringValue;
 
 @end
-
-#endif // _Pantomime_H_CWURLName

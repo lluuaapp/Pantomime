@@ -21,14 +21,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWRegEx.h>
+#import "CWRegEx.h"
 
-#include <Pantomime/CWConstants.h>
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSValue.h>
-
-#include <stdlib.h>
+#import "CWConstants.h"
 
 
 //
@@ -55,21 +50,20 @@
 //
 //
 - (id) initWithPattern: (NSString *) thePattern
-		 flags: (int) theFlags
+		 flags: (NSInteger) theFlags
 {
-  int status;
+  NSInteger status;
   char *error;
   
   if ((self = [super init]))
     {
-      status = regcomp(&_re, [thePattern cString], theFlags);
+      status = regcomp(&_re, [thePattern UTF8String], theFlags);
       if (status != 0)
         {
 	  error = malloc(255*sizeof(char));
 	  regerror(status, &_re, error, 255);
 	  free(error);
 	  
-	  AUTORELEASE(self);
 	  self = nil;
         }
     }
@@ -83,7 +77,7 @@
 //
 + (id) regexWithPattern: (NSString *) thePattern
 {
-  return AUTORELEASE([[self alloc] initWithPattern: thePattern]);
+  return [[self alloc] initWithPattern: thePattern];
 }
 
 
@@ -91,9 +85,9 @@
 //
 //
 + (id) regexWithPattern: (NSString *) thePattern
-		  flags: (int) theFlags
+		  flags: (NSInteger) theFlags
 {
-  return AUTORELEASE([[self alloc] initWithPattern: thePattern  flags: theFlags]);
+  return [[self alloc] initWithPattern: thePattern  flags: theFlags];
 }
 
 
@@ -103,7 +97,6 @@
 - (void)dealloc
 {
   regfree(&_re);
-  [super dealloc];
 }
 
 
@@ -114,11 +107,11 @@
 {
   NSMutableArray *aMutableArray;
     
-  int offset, status;
+  NSInteger offset, status;
   char *s, *error;
   regmatch_t rm[1];
   
-  s = (char*)[theString lossyCString];
+  s = (char*)[theString UTF8String];
   aMutableArray = [[NSMutableArray alloc] init];
   
   status = regexec(&_re, s, 1, rm, 0);
@@ -151,7 +144,7 @@
       free(error);
     }
   
-  return AUTORELEASE(aMutableArray);
+  return aMutableArray;
 }
 
 
@@ -162,7 +155,7 @@
 	      withPattern: (NSString *) thePattern
 	  isCaseSensitive: (BOOL) theBOOL
 {
-  int flags;
+  NSInteger flags;
   CWRegEx *regex;
   NSArray *result;
   

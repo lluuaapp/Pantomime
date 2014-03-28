@@ -20,11 +20,11 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWPOP3CacheObject.h>
+#include "CWPOP3CacheObject.h"
 
-#include <Pantomime/CWConstants.h>
+#include "CWConstants.h"
 
-static int currentPOP3CacheObjectVersion = 1;
+static NSInteger currentPOP3CacheObjectVersion = 1;
 
 
 //
@@ -85,7 +85,7 @@ static int currentPOP3CacheObjectVersion = 1;
 //
 - (id) initWithCoder: (NSCoder *) theCoder
 {
-  int version;
+  NSInteger version;
   
   version = [theCoder versionForClassName: NSStringFromClass([self class])];
 

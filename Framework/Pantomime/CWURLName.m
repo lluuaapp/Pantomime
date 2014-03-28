@@ -20,10 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWURLName.h>
+#import "CWURLName.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Foundation/NSPathUtilities.h>
+#import "CWConstants.h"
 
 //
 // Private methods
@@ -67,33 +66,11 @@
  
   _path = thePath;
   
-  if (_path)
-    {
-      RETAIN(_path);
-    }
-
   // We now decode our URL
   [self _decodeURL: theString];
   
   return self;
 }
-
-
-//
-//
-//
-- (void) dealloc
-{
-  TEST_RELEASE(_protocol);
-  TEST_RELEASE(_foldername);
-  TEST_RELEASE(_path);
-  TEST_RELEASE(_host);
-  TEST_RELEASE(_username);
-  TEST_RELEASE(_password);
-  
-  [super dealloc];
-}
-
 
 //
 // access/mutation methods
@@ -118,7 +95,7 @@
   return _host;
 }
 
-- (unsigned int) port
+- (NSUInteger) port
 {
   return _port;
 }
@@ -135,8 +112,8 @@
 
 - (NSString *) description
 {
-  return [NSString stringWithFormat: @"protocol = (%@), foldername = (%@), path = (%@), host = (%@), port = (%d), username = (%@), password = (%@)",
-		   _protocol, _foldername, _path, _host, _port, _username, _password];
+  return [NSString stringWithFormat: @"protocol = (%@), foldername = (%@), path = (%@), host = (%@), port = (%lu), username = (%@), password = (%@)",
+		   _protocol, _foldername, _path, _host, (unsigned long)_port, _username, _password];
 }
 
 - (NSString *) stringValue
@@ -185,7 +162,6 @@
   if (r1.length)
     {
       _username = [theString substringToIndex: r1.location];
-      RETAIN(_username);
     }
   else
     {
@@ -202,13 +178,10 @@
     }
   else
     {
-      _host = [theString substringWithRange: NSMakeRange(r1.location, r2.location - r1.location)];
+      _host = [theString substringWithRange: NSMakeRange(r1.location, r2.location /*- r1.location*/)];
     }
   
-  RETAIN(_host);
-
   _foldername = [theString substringFromIndex: (r2.location + 1)];
-  RETAIN(_foldername);
 }
 
 
@@ -224,15 +197,12 @@
   if (!_path)
     {
       _foldername = [theString lastPathComponent];
-      RETAIN(_foldername);
       
       _path = [theString substringToIndex: ([theString length] - [_foldername length])];
-      RETAIN(_path);
     }
   else
     {
       _foldername = [theString substringFromIndex: ([_path length] + 1)];
-      RETAIN(_foldername);
     }
 }
 
@@ -251,15 +221,13 @@
 {
   NSRange aRange;
 
-  _foldername = [[NSString alloc] initWithString: @"INBOX"];
+  _foldername = @"INBOX";
   
   aRange = [theString rangeOfString: @"@"];
   
   _username = [theString substringToIndex: aRange.location];
-  RETAIN(_username);
 
   _host = [theString substringFromIndex: (aRange.location + 1)];
-  RETAIN(_host);
 }
 
 
@@ -278,7 +246,6 @@
       NSString *aString;
 
       _protocol = [theString substringToIndex: aRange.location];
-      RETAIN(_protocol);
       
       aString = [theString substringFromIndex: (aRange.location + aRange.length)];
 

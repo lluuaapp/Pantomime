@@ -20,13 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWStore
-#define _Pantomime_H_CWStore
 
-#import <Foundation/NSEnumerator.h>
-#import <Foundation/NSString.h>
-
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 /*!
   @const PantomimeFolderCreateCompleted
@@ -130,14 +125,6 @@ extern NSString* PantomimeFolderRenameFailed;
 - (NSEnumerator *) subscribedFolderEnumerator;
 
 /*!
-  @method openFoldersEnumerator
-  @discussion This method is used to obtain all the CWFolder subclass
-              instance which are in the open state in the receiver.
-  @result The list of open folders.
-*/
-- (NSEnumerator *) openFoldersEnumerator;
-
-/*!
   @method removeFolderFromOpenFolders:
   @discussion This method is used to remove the specified folder
               from the list of open folders in the receiver.
@@ -225,5 +212,3 @@ extern NSString* PantomimeFolderRenameFailed;
 - (void) renameFolderWithName: (NSString *) theName
                        toName: (NSString *) theNewName;
 @end
-
-#endif // _Pantomime_H_CWStore

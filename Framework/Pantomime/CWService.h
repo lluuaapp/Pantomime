@@ -20,21 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWService
-#define _Pantomime_H_CWService
 
-#include <Pantomime/CWConnection.h>
+#import "CWConnection.h"
 
-#import <Foundation/NSArray.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSNotification.h>
-#import <Foundation/NSRunLoop.h>
-#import <Foundation/NSTimer.h>
-
-#ifdef MACOSX
-#import <Foundation/NSMapTable.h>
-#include <CoreFoundation/CoreFoundation.h>
-#endif
 
 /*!
   @function split_lines
@@ -47,27 +35,27 @@
 */
 static inline NSData *split_lines(NSMutableData *theMutableData)
 {
-  char *bytes, *end;
-  int i, count;
-
-  end = bytes = (char *)[theMutableData mutableBytes];
-  count = [theMutableData length];
-
-  for (i = 0; i < count; i++)
+    char *bytes, *end;
+    NSInteger i, count;
+    
+    end = bytes = (char *)[theMutableData mutableBytes];
+    count = [theMutableData length];
+    
+    for (i = 0; i < count; i++)
     {
-      if (*end == '\n' && *(end-1) == '\r')
-	{
-	  NSData *aData;
-	  
-	  aData = [NSData dataWithBytes: bytes  length: (i-1)];
-	  memmove(bytes,end+1,count-i-1);
-	  [theMutableData setLength: count-i-1];
-	  return aData;
-	}
-
-      end++;
+        if (*end == '\n' && *(end-1) == '\r')
+        {
+            NSData *aData;
+            
+            aData = [NSData dataWithBytes: bytes  length: (i-1)];
+            memmove(bytes,end+1,count-i-1);
+            [theMutableData setLength: count-i-1];
+            return aData;
+        }
+        
+        end++;
     }
-  return nil;
+    return nil;
 }
 
 @class CWNSString;
@@ -247,9 +235,6 @@ extern NSString* PantomimeProtocolException;
 @end
 
 
-#ifdef MACOSX
-typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
-
 /*!
   @class CWService
   @discussion This abstract class defines the basic behavior and implementation
@@ -258,10 +243,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
 	      need to instantiate the CWSMTP, CWPOP3Store or CWIMAPStore classes,
 	      which fully implement the abstract methods found in this class.
 */
-@interface CWService : NSObject
-#else
-@interface CWService : NSObject <RunLoopEvents>
-#endif
+@interface CWService : NSObject <CWConnectionDelegate>
 {
   @protected
     NSMutableArray *_supportedMechanisms;
@@ -276,29 +258,19 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
     NSString *_password;
     NSString *_name;
 
-#ifdef MACOSX
-    CFRunLoopSourceRef _runLoopSource;
-    CFSocketContext *_context;
-    CFSocketRef _socket;
-#endif
-
-    unsigned int _connectionTimeout;
-    unsigned int _readTimeout;
-    unsigned int _writeTimeout;
-    unsigned int _lastCommand;
-    unsigned int _port;
+    NSUInteger _connectionTimeout;
+    NSUInteger _readTimeout;
+    NSUInteger _writeTimeout;
+    NSUInteger _lastCommand;
+    NSUInteger _port;
     BOOL _connected;
     id _delegate;
     
     id<CWConnection> _connection;
-    NSTimer * _timer;
-    int _counter;
     
-    struct {
-      NSMutableArray *previous_queue;
-      BOOL reconnecting;
-      BOOL opening_mailbox;
-    } _connection_state;
+  NSMutableArray *previous_queue;
+  BOOL reconnecting;
+  BOOL opening_mailbox;
 }
 
 /*!
@@ -311,7 +283,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
   @result An instance of a Service class, nil on error.
 */
 - (id) initWithName: (NSString *) theName
-               port: (unsigned int) thePort;
+               port: (NSUInteger) thePort;
 
 /*!
   @method setDelegate:
@@ -350,7 +322,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
   @discussion This method is used to obtain the server port.
   @result The server port.
 */
-- (unsigned int) port;
+- (NSUInteger) port;
 
 /*!
   @method setPort:
@@ -358,7 +330,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
               we will eventually connect to.
   @param theName The port of the server.
 */
-- (void) setPort: (unsigned int) thePort;
+- (void) setPort: (NSUInteger) thePort;
 
 /*!
   @method connection
@@ -444,7 +416,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
 	      (or until it fails).
   @result 0 on success, -1 on error.
 */
-- (int) connect;
+- (NSInteger) connect;
 
 /*!
   @method connectInBackgroundAndNotify
@@ -466,26 +438,11 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
 - (void) noop;
 
 /*!
-  @method receivedEvent: type: extra: forMode:
-  @discussion This method is automatically invoked when the receiver can
-              either read or write bytes to its underlying CWConnection
-	      instance. Never call this method directly.
-  @param theData The file descriptor.
-  @param theType The type of event that occured.
-  @param theExtra Additional information.
-  @param theMode The runloop modes.
-*/
-- (void) receivedEvent: (void *) theData
-                  type: (RunLoopEventType) theType
-                 extra: (void *) theExtra
-               forMode: (NSString *) theMode;
-
-/*!
   @method reconnect
   @discussion Pending.
   @result Pending.
 */       
-- (int) reconnect;
+- (NSInteger) reconnect;
 
 /*!
   @method updateRead
@@ -526,7 +483,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
               connecting to the host.
   @result The connecton timeout.
 */
-- (unsigned int) connectionTimeout;
+- (NSUInteger) connectionTimeout;
 
 /*!
   @method setConnectionTimeout:
@@ -534,7 +491,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
               connecting to the host.
   @param theConnectionTimeout The timeout to use.
 */
-- (void) setConnectionTimeout: (unsigned int) theConnectionTimeout;
+- (void) setConnectionTimeout: (NSUInteger) theConnectionTimeout;
 
 /*!
   @method readTimeout
@@ -542,7 +499,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
               reading bytes from the socket.
   @result The read timeout.
 */
-- (unsigned int) readTimeout;
+- (NSUInteger) readTimeout;
 
 /*!
   @method setReadTimeout
@@ -550,7 +507,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
               reading bytes from the socket.
   @param The timeout to use.
 */
-- (void) setReadTimeout: (unsigned int) theReadTimeout;
+- (void) setReadTimeout: (NSUInteger) theReadTimeout;
 
 /*!
   @method writeTimeout
@@ -558,7 +515,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
               writing bytes from the socket.
   @result The write timeout.
 */
-- (unsigned int) writeTimeout;
+- (NSUInteger) writeTimeout;
 
 /*!
   @method setWriteTimeout
@@ -566,7 +523,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
               writing bytes from the socket.
   @param The timeout to use.
 */
-- (void) setWriteTimeout: (unsigned int) theWriteTimeout;
+- (void) setWriteTimeout: (NSUInteger) theWriteTimeout;
 
 /*!
   @method startTLS
@@ -587,7 +544,7 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
 	      subclasses.
   @result The last command sent, 0 otherwise.
 */
-- (unsigned int) lastCommand;
+- (NSUInteger) lastCommand;
 
 
 /*!
@@ -599,5 +556,3 @@ typedef enum {ET_RDESC, ET_WDESC, ET_EDESC} RunLoopEventType;
 - (NSArray *) capabilities;
 
 @end
-
-#endif // _Pantomime_H_CWService

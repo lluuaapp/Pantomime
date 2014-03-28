@@ -19,15 +19,11 @@
 **  License along with this library; if not, write to the Free Software
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
-#include <Pantomime/CWInternetAddress.h>
+#import "CWInternetAddress.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWMIMEUtility.h>
-#include <Pantomime/NSString+Extensions.h>
-
-//#include <Pantomime/elm_defs.h>
-
-#include <Foundation/NSValue.h>
+#import "CWConstants.h"
+#import "CWMIMEUtility.h"
+#import "NSString+CWExtensions.h"
 
 //
 //
@@ -36,13 +32,12 @@
 
 - (id) initWithString: (NSString *) theString
 {
-  int a, b;
+  NSInteger a, b;
 
   self = [super init];
   
   if (!theString)
     {
-      AUTORELEASE(self);
       return nil;
     }
   
@@ -53,7 +48,7 @@
   // <ludovic@Sophos.ca>
   // "Marcotte, Ludovic" <ludovic@Sophos.ca>
   //
-#warning also support "joe@acme.com (Joe User)"
+// #warning also support "joe@acme.com (Joe User)"
 
   a = [theString indexOfCharacter: '<'];
 
@@ -73,7 +68,7 @@
 	  
       if (a > 0)
 	{
-	  int c, d;
+	  NSInteger c, d;
 
 	  c = [theString indexOfCharacter: '"'];
 
@@ -118,24 +113,12 @@
   return self;
 }
 
-
-//
-//
-//
-- (void) dealloc
-{
-  RELEASE(_address);
-  RELEASE(_personal);
-  [super dealloc];
-}
-
-
 //
 // NSCoding protocol
 //
 - (void) encodeWithCoder: (NSCoder *) theCoder
 {
-  [theCoder encodeObject: [NSNumber numberWithInt: _type]];
+  [theCoder encodeObject: [NSNumber numberWithInteger:_type]];
   [theCoder encodeObject: _address];
   [theCoder encodeObject: [self personal]];
 }
@@ -144,7 +127,7 @@
 {
   self = [super init];
 
-  [self setType: [[theCoder decodeObject] intValue]];
+  [self setType: [[theCoder decodeObject] integerValue]];
   [self setAddress: [theCoder decodeObject]];
   [self setPersonal: [theCoder decodeObject]];
 
@@ -222,7 +205,7 @@
 	  [aMutableData appendBytes: ">" length: 1];
 	}
 
-      return AUTORELEASE(aMutableData);
+      return aMutableData;
     }
   else
     {

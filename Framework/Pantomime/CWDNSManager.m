@@ -20,15 +20,16 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWDNSManager.h>
+#include "CWDNSManager.h"
 
-#include <Pantomime/CWConstants.h>
+#include "CWConstants.h"
 #ifdef __MINGW32__
 #include <winsock2.h>
 #else
 #include <netdb.h>
 #endif
 #include <unistd.h>
+#include <err.h>
 
 static CWDNSManager *singleInstance = nil;
 
@@ -56,6 +57,51 @@ static CWDNSManager *singleInstance = nil;
   [super dealloc];
 }
 
+- (NSArray *) availableAddressesForName:(NSString *)theName
+								   port:(unsigned short) thePort
+							 tryConnect:(BOOL)inFlag
+{
+	NSMutableArray *result = [NSMutableArray array];
+	struct addrinfo hints;
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = PF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	
+	struct addrinfo *res;
+	int ret;
+	if ((ret = getaddrinfo([theName UTF8String], [[NSString stringWithFormat:@"%d", thePort] UTF8String] , &hints, &res))!=0)
+		errx(EXIT_FAILURE, "getaddrinfo(): %s\n", gai_strerror(ret));
+	
+	struct addrinfo *walk;
+	for (walk = res; walk != NULL; walk = walk->ai_next)
+	{
+		if (inFlag)
+		{
+			int sockfd = socket(walk->ai_family, walk->ai_socktype, walk->ai_protocol);
+			if (sockfd < 0)
+			{
+				continue;
+			}
+			
+			if (0 != connect(sockfd, walk->ai_addr, walk->ai_addrlen))
+			{
+				close(sockfd);
+				continue;
+			}
+		}
+		
+		[result addObject:[NSData dataWithBytes:walk->ai_addr length:walk->ai_addrlen]];
+		// break;
+	}
+	
+	freeaddrinfo(res);
+	if (0 == [result count])
+	{
+		return nil;
+	}
+	
+	return result;
+}
 
 //
 //
@@ -70,11 +116,11 @@ static CWDNSManager *singleInstance = nil;
     {
       struct hostent *host_info;
 
-      host_info = gethostbyname([theName cString]);
+      host_info = gethostbyname([theName UTF8String]);
       
       if (host_info)
 	{
-	  int i;
+	  NSInteger i;
 
 	  o = [NSMutableArray array];
 	  

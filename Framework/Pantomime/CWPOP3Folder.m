@@ -20,18 +20,18 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWPOP3Folder.h>
+#include "CWPOP3Folder.h"
 
-#include <Pantomime/CWConnection.h>
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWMessage.h>
-#include <Pantomime/CWPOP3CacheManager.h>
-#include <Pantomime/CWPOP3CacheObject.h>
-#include <Pantomime/CWPOP3Message.h>
-#include <Pantomime/CWPOP3Store.h>
-#include <Pantomime/CWTCPConnection.h>
-#include <Pantomime/NSData+Extensions.h>
-#include <Pantomime/NSString+Extensions.h>
+#include "CWConnection.h"
+#include "CWConstants.h"
+#include "CWMessage.h"
+#include "CWPOP3CacheManager.h"
+#include "CWPOP3CacheObject.h"
+#include "CWPOP3Message.h"
+#include "CWPOP3Store.h"
+#include "CWTCPConnection.h"
+#include "NSData+Extensions.h"
+#include "NSString+Extensions.h"
 
 #include <Foundation/NSAutoreleasePool.h>
 #include <Foundation/NSException.h>
@@ -42,7 +42,7 @@
 #include <string.h>
 
 #if !defined(UINT_MAX)
-#define UINT_MAX (unsigned int)~0
+#define UINT_MAX NSUIntegerMax
 #endif
 
 //
@@ -70,8 +70,8 @@
 //
 //
 //
-- (void) prefetchMessageAtIndex: (int) theIndex
-		  numberOfLines: (unsigned int) theNumberOfLines
+- (void) prefetchMessageAtIndex: (NSInteger) theIndex
+		  numberOfLines: (NSUInteger) theNumberOfLines
 {
   [_store sendCommand: POP3_TOP  arguments: @"TOP %d %d", theIndex, theNumberOfLines];
 }
@@ -116,7 +116,7 @@
 //
 //
 //
-- (unsigned int) retainPeriod
+- (NSUInteger) retainPeriod
 {
   return _retain_period;
 }
@@ -125,7 +125,7 @@
 //
 // The retain period is set in days.
 //
-- (void) setRetainPeriod: (unsigned int) theRetainPeriod
+- (void) setRetainPeriod: (NSUInteger) theRetainPeriod
 {
   _retain_period = theRetainPeriod;
 }
@@ -145,14 +145,14 @@
 //
 - (void) expunge
 {
-  int count;
+  NSInteger count;
 
   count = [self count];
 
   // We mark it as deleted if we need to
   if (!_leave_on_server)
     {
-      int i;
+      NSInteger i;
 
       for (i = 1; i <= count; i++)
 	{
@@ -187,7 +187,7 @@
 
 - (void) _deleteOldMessages
 {
-  int i, count;
+  NSInteger i, count;
 
   count = [self count];
   
@@ -200,7 +200,7 @@
       if (aDate)
 	{
 	  NSCalendarDate *aCalendarDate;
-	  int days;
+	  NSInteger days;
 	  
 	  // We get the days interval between our two dates
 	  aCalendarDate = [NSCalendarDate calendarDate];
@@ -210,7 +210,7 @@
 			 hours: NULL
 			 minutes: NULL
 			 seconds: NULL
-			 sinceDate: aDate];
+			 sinceDate: [NSCalendarDate dateWithTimeIntervalSinceReferenceDate:[aDate timeIntervalSinceReferenceDate]]];
 	  
 	  if (days >= _retain_period)
 	    {

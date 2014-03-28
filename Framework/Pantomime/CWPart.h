@@ -20,16 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWPart
-#define _Pantomime_H_CWPart
-
-#import <Foundation/NSCoder.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSDictionary.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
-
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 /*!
   @class CWPart
@@ -47,8 +38,8 @@
     NSString *_defaultCharset;
     NSObject *_content;
 
-    int _line_length;
-    int _size;
+    NSInteger _line_length;
+    NSInteger _size;
 }
 
 /*!
@@ -211,7 +202,7 @@
               a line can use in a text part.
   @result The length, 0 if not defined.
 */
-- (int) lineLength;
+- (NSInteger) lineLength;
 
 /*!
   @method setLineLength:
@@ -219,7 +210,7 @@
               line that can be used for a text part.
   @param theLineLength The length.
 */
-- (void) setLineLength: (int) theLineLength;
+- (void) setLineLength: (NSInteger) theLineLength;
 
 /*!
   @method isMIMEType: subType:
@@ -401,5 +392,3 @@
 - (void) setHeaders: (NSDictionary *) theHeaders;
 
 @end
-
-#endif // _Pantomime_H_CWPart

@@ -20,18 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWTCPConnection
-#define _Pantomime_H_CWTCPConnection
 
-#include <Pantomime/CWConnection.h>
+#import "CWConnection.h"
 
-#define id openssl_id
-#define MD5 MDFIVE
-#include <openssl/ssl.h>
-#undef MD5
-#undef id
-
-#import <Foundation/NSObject.h>
 
 /*!
   @class CWTCPConnection
@@ -42,18 +33,16 @@
 	      of this class. Normally, you should never have to use
 	      this class or one of its methods directly.
 */
-@interface CWTCPConnection : NSObject <CWConnection>
+@interface CWTCPConnection : NSObject <CWConnection, NSStreamDelegate>
 {
-  @public
-    BOOL ssl_handshaking;
-  
-  @private
-    unsigned int _connectionTimeout;
-    int _fd;
-
-    SSL_CTX *_ctx;
-    SSL *_ssl;
+@private
+    NSInputStream   *inputStream;
+    NSOutputStream  *outputStream;
+    
+    id<CWConnectionDelegate> __unsafe_unretained delegate;
 }
+
+@property (nonatomic, unsafe_unretained) id<CWConnectionDelegate> delegate;
 
 /*!
   @method startSSL
@@ -61,7 +50,7 @@
               on an altready established TCP connection.
   @result 0 on success, < 0 on error.
 */
-- (int) startSSL;
+- (NSInteger) startSSL;
 
 /*!
   @method isSSL
@@ -72,5 +61,3 @@
 - (BOOL) isSSL;
 
 @end
-
-#endif // _Pantomime_H_CWTCPConnection

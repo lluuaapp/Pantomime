@@ -20,9 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/NSFileManager+Extensions.h>
-
-#include <Foundation/NSValue.h>
+#import "NSFileManager+CWExtensions.h"
 
 //
 //
@@ -38,8 +36,7 @@
   unsigned long current_attributes, desired_attributes;
   
   
-  currentFileAttributes = [[NSMutableDictionary alloc] initWithDictionary: [self fileAttributesAtPath: thePath
-										 traverseLink: YES]];
+  currentFileAttributes = [[NSMutableDictionary alloc] initWithDictionary:[self attributesOfItemAtPath:thePath error:NULL]];
   
   current_attributes = [currentFileAttributes filePosixPermissions];
   desired_attributes = theMode;
@@ -49,11 +46,11 @@
       [currentFileAttributes setObject: [NSNumber numberWithUnsignedLong: desired_attributes]
 			     forKey: NSFilePosixPermissions];
       
-      [self changeFileAttributes: currentFileAttributes
-	    atPath: thePath];
+      [self setAttributes:currentFileAttributes
+			 ofItemAtPath:thePath
+					error:NULL];
     }
 
-  [currentFileAttributes release];
 }
 
 @end

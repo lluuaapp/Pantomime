@@ -20,10 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWLocalFolder_mbox
-#define _Pantomime_H_CWLocalFolder_mbox
 
-#include <Pantomime/CWLocalFolder.h>
+#import "CWLocalFolder.h"
 
 @interface CWLocalFolder (mbox)
 
@@ -41,10 +39,9 @@
 - (NSData *) unfoldLinesStartingWith: (char *) firstLine
                           fileStream: (FILE *) theStream;
 
-+ (unsigned) numberOfMessagesFromData: (NSData *) theData;
++ (NSUInteger) numberOfMessagesFromData: (NSData *) theData;
 
 - (NSArray *) messagesFromMailSpoolFile;
 
 @end
 
-#endif // _Pantomime_H_CWLocalFolder_mbox

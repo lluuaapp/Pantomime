@@ -20,21 +20,16 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWLocalStore.h>
+#import "CWLocalStore.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWLocalCacheManager.h>
-#include <Pantomime/CWLocalFolder.h>
-#include <Pantomime/CWLocalFolder+mbox.h>
-#include <Pantomime/CWLocalMessage.h>
-#include <Pantomime/NSFileManager+Extensions.h>
-#include <Pantomime/NSString+Extensions.h>
-#include <Pantomime/CWURLName.h>
-
-#include <Foundation/NSAutoreleasePool.h>
-#include <Foundation/NSNotification.h>
-#include <Foundation/NSPathUtilities.h>
-#include <Foundation/NSValue.h>
+#import "CWConstants.h"
+#import "CWLocalCacheManager.h"
+#import "CWLocalFolder.h"
+#import "CWLocalFolder+mbox.h"
+#import "CWLocalMessage.h"
+#import "NSFileManager+CWExtensions.h"
+#import "NSString+CWExtensions.h"
+#import "CWURLName.h"
 
 //
 // Private interface
@@ -52,48 +47,36 @@
 //
 @implementation CWLocalStore
 
-- (void) dealloc
-{
-  RELEASE(_path);
-  RELEASE(_openFolders);
-  RELEASE(_folders);
-  
-  [super dealloc];
-}
-
-
 //
 //
 //
 - (id) initWithPath: (NSString *) thePath
 {
-  BOOL isDirectory;
-  
-  self = [super init];
-  
-  [self setPath: thePath];
-  
-  _openFolders = [[NSMutableDictionary alloc] init];
-  _folders = [[NSMutableArray alloc] init];
-  
-  if ([[NSFileManager defaultManager] fileExistsAtPath: thePath  isDirectory: &isDirectory])
+    BOOL isDirectory;
+    
+    self = [super init];
+    
+    [self setPath: thePath];
+    
+    _openFolders = [[NSMutableDictionary alloc] init];
+    _folders = [[NSMutableArray alloc] init];
+    
+    if ([[NSFileManager defaultManager] fileExistsAtPath: thePath  isDirectory: &isDirectory])
     {
-      if (!isDirectory)
-	{
-	  AUTORELEASE(self);
-	  return nil;
-	}
+        if (!isDirectory)
+        {
+            return nil;
+        }
     }
-  else
+    else
     {
-      AUTORELEASE(self);
-      return nil;
+        return nil;
     }
-  
-  // Just before returning, we finally enforce our file attributes
-  [self _enforceFileAttributes];
-
-  return self;
+    
+    // Just before returning, we finally enforce our file attributes
+    [self _enforceFileAttributes];
+    
+    return self;
 }
 
 
@@ -153,7 +136,6 @@
 
 		  POST_NOTIFICATION(PantomimeFolderOpenCompleted, self, [NSDictionary dictionaryWithObject: aFolder  forKey: @"Folder"]);
 		  PERFORM_SELECTOR_2(self, @selector(folderOpenCompleted:), PantomimeFolderOpenCompleted, aFolder, @"Folder");
-		  RELEASE(aFolder);
 		}
 	      else
 		{
@@ -184,8 +166,6 @@
   theURLName = [[CWURLName alloc] initWithString: theURL];
 
   aFolder = [self folderForName: [theURLName foldername]];
-
-  RELEASE(theURLName);
   
   return aFolder;
 }
@@ -256,26 +236,11 @@
 //
 - (void) close
 {
-  NSEnumerator *anEnumerator;
-  CWLocalFolder *aFolder;
-
-  anEnumerator = [self openFoldersEnumerator];
-  
-  while ((aFolder = [anEnumerator nextObject]))
+    for (CWLocalFolder *aFolder in _openFolders)
     {
-      [aFolder close];
+        [aFolder close];
     }
 }
-
-
-//
-//
-//
-- (NSEnumerator *) openFoldersEnumerator
-{
-  return [_openFolders objectEnumerator];
-}
-
 
 //
 //
@@ -291,20 +256,15 @@
 //
 - (BOOL) folderForNameIsOpen: (NSString *) theName
 {
-  NSEnumerator *anEnumerator;
-  CWLocalFolder *aFolder;
-  
-  anEnumerator = [self openFoldersEnumerator];
-
-  while ((aFolder = [anEnumerator nextObject]))
+    for (CWLocalFolder *aFolder in _openFolders)
     {
-      if ([[aFolder name] compare: theName] == NSOrderedSame)
-	{
-	  return YES;
-	}
+        if ([[aFolder name] compare: theName] == NSOrderedSame)
+        {
+            return YES;
+        }
     }
-
-  return NO;
+    
+    return NO;
 }
 
 
@@ -361,7 +321,7 @@
   NSFileManager *aFileManager;
   NSEnumerator *anEnumerator;
   BOOL b, is_dir;
-  int count;
+  NSInteger count;
 
   aFileManager = [NSFileManager defaultManager];
   anEnumerator = [self folderEnumerator];
@@ -389,7 +349,7 @@
       NSString *aString;
 
       aString = [NSString stringWithFormat: @"%@/%@", _path, theName];
-      b = [aFileManager createDirectoryAtPath: aString  attributes: nil];
+      b = [aFileManager createDirectoryAtPath:aString withIntermediateDirectories:NO attributes:nil error:NULL];
       
       if (b)
 	{
@@ -398,7 +358,7 @@
 	  [[NSFileManager defaultManager] enforceMode: 0700  atPath: aString];
 	  [self _rebuildFolderEnumerator];
 
-	  info = [NSDictionary dictionaryWithObjectsAndKeys: theName, @"Name", [NSNumber numberWithInt: 0], @"Count", nil];
+	  info = [NSDictionary dictionaryWithObjectsAndKeys: theName, @"Name", [NSNumber numberWithInteger:0], @"Count", nil];
 	  POST_NOTIFICATION(PantomimeFolderCreateCompleted, self, info);
 	  PERFORM_SELECTOR_3(self, @selector(folderCreateCompleted:), PantomimeFolderCreateCompleted, info);
 	}
@@ -416,9 +376,9 @@
   // We want to create a mailbox store; check if it already exists.
   if ([aFileManager fileExistsAtPath: pathToFile  isDirectory: &is_dir])
     {
-      int size;
+      NSInteger size;
       
-      size = [[[aFileManager fileAttributesAtPath: pathToFile traverseLink: NO] objectForKey: NSFileSize] intValue];
+      size = [[[aFileManager attributesOfItemAtPath:pathToFile error:NULL] objectForKey: NSFileSize] integerValue];
       
       // If we got an empty file or simply a directory...
       if (size == 0 || is_dir)
@@ -429,12 +389,12 @@
 	  // file to a directory. We also remove the cache file.
 	  if (size == 0)
 	    {
-	      [aFileManager removeFileAtPath:
+	      [aFileManager removeItemAtPath:
 			      [NSString stringWithFormat: @"%@/.%@.cache",
 					[pathToFile substringToIndex: ([pathToFile length]-[[pathToFile lastPathComponent] length]-1)],
-					[pathToFile lastPathComponent]]  handler: nil];
-	      [aFileManager removeFileAtPath: pathToFile  handler: nil];
-	      [aFileManager createDirectoryAtPath: pathToFile  attributes: nil];
+					[pathToFile lastPathComponent]]  error:NULL];
+	      [aFileManager removeItemAtPath: pathToFile  error:NULL];
+	      [aFileManager createDirectoryAtPath:pathToFile withIntermediateDirectories:NO attributes:nil error:NULL];
 	    }
 	  
 	  // We can now proceed with the creation of our store.
@@ -444,22 +404,22 @@
 	    case PantomimeFormatMaildir:
 	      // Create the main maildir directory
 	      aString = [NSString stringWithFormat: @"%@/%@", _path, theName];  
-	      b = [aFileManager createDirectoryAtPath: aString  attributes: nil];
+	      b = [aFileManager createDirectoryAtPath:aString withIntermediateDirectories:NO attributes:nil error:NULL];
 	      [[NSFileManager defaultManager] enforceMode: 0700  atPath: aString];
 								    
 	      // Now create the cur, new, and tmp sub-directories.
 	      aString = [NSString stringWithFormat: @"%@/%@/cur", _path, theName];
-	      b = b & [aFileManager createDirectoryAtPath: aString  attributes: nil];
+	      b = b & [aFileManager createDirectoryAtPath:aString withIntermediateDirectories:NO attributes:nil error:NULL];
 	      [[NSFileManager defaultManager] enforceMode: 0700  atPath: aString];
 	      
 	      // new
 	      aString = [NSString stringWithFormat: @"%@/%@/new", _path, theName];
-	      b = b & [aFileManager createDirectoryAtPath: aString  attributes: nil];
+	      b = b & [aFileManager createDirectoryAtPath:aString withIntermediateDirectories:NO attributes:nil error:NULL];
 	      [[NSFileManager defaultManager] enforceMode: 0700  atPath: aString];
 
 	      // tmp
 	      aString = [NSString stringWithFormat: @"%@/%@/tmp", _path, theName];
-	      b = b & [aFileManager createDirectoryAtPath: aString  attributes: nil];
+	      b = b & [aFileManager createDirectoryAtPath:aString withIntermediateDirectories:NO attributes:nil error:NULL];
 	      [[NSFileManager defaultManager] enforceMode: 0700  atPath: aString];
 	      break;
 	      
@@ -490,7 +450,7 @@
     {
       NSDictionary *info;
 
-      info = [NSDictionary dictionaryWithObjectsAndKeys: theName, @"Name", [NSNumber numberWithInt: count], @"Count", nil];
+      info = [NSDictionary dictionaryWithObjectsAndKeys: theName, @"Name", [NSNumber numberWithInteger:count], @"Count", nil];
       POST_NOTIFICATION(PantomimeFolderCreateCompleted, self, info);
       PERFORM_SELECTOR_3(self, @selector(folderCreateCompleted:), PantomimeFolderCreateCompleted, info);
     }
@@ -519,7 +479,7 @@
       if (is_dir)
 	{
 	  NSEnumerator *theEnumerator;
-	  NSArray *theEntries, *dirContents;
+	  NSArray *theEntries/*, *dirContents*/;
 	  
 	  theEnumerator = [aFileManager enumeratorAtPath: [NSString stringWithFormat: @"%@/%@",
 								    _path, theName]];
@@ -527,25 +487,25 @@
 	  // FIXME - Verify the Store's path.
 	  // If it doesn't contain any mailboxes and it's actually not or Store's path, we remove it.
 	  theEntries = [theEnumerator allObjects];
-	  dirContents = [aFileManager directoryContentsAtPath: [NSString stringWithFormat: @"%@/%@",
-									 _path, theName]];
+	  /*dirContents = [aFileManager directoryContentsAtPath: [NSString stringWithFormat: @"%@/%@",
+									 _path, theName]];*/
 	  if ([theEntries count] == 0)
 	    {
-	      aBOOL = [aFileManager removeFileAtPath: [NSString stringWithFormat: @"%@/%@",
+	      aBOOL = [aFileManager removeItemAtPath: [NSString stringWithFormat: @"%@/%@",
 								_path, theName]
-				    handler: nil];
+				    error:NULL];
 	      
 	      // Rebuild the folder tree
 	      if (aBOOL)
 		{
 		  [self _rebuildFolderEnumerator];
 		  POST_NOTIFICATION(PantomimeFolderDeleteCompleted, self, [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]);
-		  PERFORM_SELECTOR_1(self, @selector(folderDeleteCompleted:), PantomimeFolderDeleteCompleted);
+		  (void)PERFORM_SELECTOR_1(self, @selector(folderDeleteCompleted:), PantomimeFolderDeleteCompleted);
 		}
 	      else
 		{
 		  POST_NOTIFICATION(PantomimeFolderDeleteFailed, self, [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]);
-		  PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
+		  (void)PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
 		}
 
 	      return;
@@ -560,29 +520,29 @@
 				 isDirectory: &is_dir])
 		{
 		  POST_NOTIFICATION(PantomimeFolderDeleteFailed, self, [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]);
-		  PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
+		  (void)PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
 		  return;
 		}
 	      if (![aFileManager fileExistsAtPath: [NSString stringWithFormat: @"%@/%@/tmp", _path, theName]
 				 isDirectory: &is_dir] )
 		{
 		  POST_NOTIFICATION(PantomimeFolderDeleteFailed, self, [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]);
-		  PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
+		  (void)PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
 		  return;
 		}
 	    }
 	  else
 	    {
 	      POST_NOTIFICATION(PantomimeFolderDeleteFailed, self, [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]);
-	      PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
+	      (void)PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
 	      return;
 	    }
 	}
 
       // We remove the mbox or maildir store
-      aBOOL = [aFileManager removeFileAtPath: [NSString stringWithFormat: @"%@/%@",
+      aBOOL = [aFileManager removeItemAtPath: [NSString stringWithFormat: @"%@/%@",
 							_path, theName]
-			    handler: nil];
+			    error:NULL];
       
       // We remove the cache, if the store deletion was successful
       if (aBOOL)
@@ -591,11 +551,11 @@
 
 	  aString = [theName lastPathComponent];
 	  
-	  [[NSFileManager defaultManager] removeFileAtPath: [NSString stringWithFormat: @"%@/%@.%@.cache",
+	  [[NSFileManager defaultManager] removeItemAtPath: [NSString stringWithFormat: @"%@/%@.%@.cache",
 								      _path,
 								      [theName substringToIndex: ([theName length]-[aString length])],
 								      aString]
-					  handler: nil];
+					  error:NULL];
 	}
 
       // Rebuild the folder tree
@@ -605,12 +565,12 @@
   if (aBOOL)
     {
       POST_NOTIFICATION(PantomimeFolderDeleteCompleted, self, [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]);
-      PERFORM_SELECTOR_1(self, @selector(folderDeleteCompleted:), PantomimeFolderDeleteCompleted);
+      (void)PERFORM_SELECTOR_1(self, @selector(folderDeleteCompleted:), PantomimeFolderDeleteCompleted);
     }
   else
     {
       POST_NOTIFICATION(PantomimeFolderDeleteFailed, self, [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]);
-      PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
+      (void)PERFORM_SELECTOR_1(self, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
     }
 }
 
@@ -668,9 +628,9 @@
 	  
 	  if ([theEntries count] == 0)
 	    {
-	      aBOOL = [aFileManager movePath: [NSString stringWithFormat: @"%@/%@",_path, theName]
+	      aBOOL = [aFileManager moveItemAtPath: [NSString stringWithFormat: @"%@/%@",_path, theName]
 				    toPath: [NSString stringWithFormat: @"%@/%@",  _path, theNewName]
-				    handler: nil];
+				    error:NULL];
 	      if (aBOOL)
 		{
 		  POST_NOTIFICATION(PantomimeFolderRenameCompleted, self, info);
@@ -725,9 +685,9 @@
       
 
       // We rename the mailbox
-      aBOOL = [aFileManager movePath: [NSString stringWithFormat: @"%@/%@", _path, theName]
+      aBOOL = [aFileManager moveItemAtPath: [NSString stringWithFormat: @"%@/%@", _path, theName]
 			    toPath: [NSString stringWithFormat: @"%@/%@", _path, theNewName]
-			    handler: nil];
+			    error:NULL];
       
       // We rename the cache, if the store rename was successful
       if (aBOOL)
@@ -737,7 +697,7 @@
 	  str1 = [theName lastPathComponent];
 	  str2 = [theNewName lastPathComponent];
 	  
-	  [[NSFileManager defaultManager] movePath: [NSString stringWithFormat: @"%@/%@.%@.cache",
+	  [[NSFileManager defaultManager] moveItemAtPath: [NSString stringWithFormat: @"%@/%@.%@.cache",
 							      _path,
 							      [theName substringToIndex:
 									 ([theName length] - [str1 length])],
@@ -747,7 +707,7 @@
 							    [theNewName substringToIndex:
 									  ([theNewName length] - [str2 length])],
 							    str2]
-					  handler: nil];
+					  error:NULL];
 	}
       
       // If the folder was open, we must re-open and re-lock the mbox file,
@@ -763,10 +723,8 @@
 						     [theNewName substringToIndex: ([theNewName length] - [[theNewName lastPathComponent] length])],
 						     [theNewName lastPathComponent]]];
 	  // We recache the mailbox with its new name.
-	  RETAIN(aFolder);
 	  [_openFolders removeObjectForKey: theName];
 	  [_openFolders setObject: aFolder  forKey: theNewName];
-	  RELEASE(aFolder);
 
 	  // We now open and lock the mbox file. If we use maildir, we must adjust the "mail filename"
 	  // of every message in the maildir.
@@ -802,45 +760,45 @@
 
 - (void) _enforceFileAttributes
 {
-  NSEnumerator *anEnumerator;
-  NSAutoreleasePool *pool;
-  NSString *aString;
-
-  pool = [[NSAutoreleasePool alloc] init];
-
-  //
-  // We verify if our Store path's mode is 0700
-  //
-  [[NSFileManager defaultManager] enforceMode: 0700  atPath: _path];
-  
-  //
-  // We ensure that all subdirectories are using mode 0700 and files are using mode 0600
-  //
-  anEnumerator = [self folderEnumerator];
-
-  while ((aString = [anEnumerator nextObject]))
+    NSEnumerator *anEnumerator;
+    NSString *aString;
+    
+    @autoreleasepool
     {
-      BOOL is_dir;
-      
-      aString = [NSString stringWithFormat: @"%@/%@", _path, aString];
-      
-      if ([[NSFileManager defaultManager] fileExistsAtPath: aString
-					  isDirectory: &is_dir])
-	{
-	  if ( is_dir )
-	    {
-	      [[NSFileManager defaultManager] enforceMode: 0700
-		    atPath: aString];
-	    }
-	  else
-	    {
-	      [[NSFileManager defaultManager] enforceMode: 0600
-		    atPath: aString];
-	    }
-	}
-    } 
- 
-  RELEASE(pool);
+        
+        //
+        // We verify if our Store path's mode is 0700
+        //
+        [[NSFileManager defaultManager] enforceMode: 0700  atPath: _path];
+        
+        //
+        // We ensure that all subdirectories are using mode 0700 and files are using mode 0600
+        //
+        anEnumerator = [self folderEnumerator];
+        
+        while ((aString = [anEnumerator nextObject]))
+        {
+            BOOL is_dir;
+            
+            aString = [NSString stringWithFormat: @"%@/%@", _path, aString];
+            
+            if ([[NSFileManager defaultManager] fileExistsAtPath: aString
+                                                     isDirectory: &is_dir])
+            {
+                if ( is_dir )
+                {
+                    [[NSFileManager defaultManager] enforceMode: 0700
+                                                         atPath: aString];
+                }
+                else
+                {
+                    [[NSFileManager defaultManager] enforceMode: 0600
+                                                         atPath: aString];
+                }
+            }
+        } 
+        
+    }
 }
 
 
@@ -849,10 +807,10 @@
 //
 - (NSEnumerator *) _rebuildFolderEnumerator
 {
-  NSString *aString, *lastPathComponent, *pathToFolder;	
+  NSString *aString;	
   NSEnumerator *tmpEnumerator;
   NSArray *tmpArray;
-  int i;
+  NSInteger i;
   
   // Clear out our cached folder structure and refresh from the file system
   [_folders removeAllObjects];
@@ -871,8 +829,8 @@
       
       aString = [_folders objectAtIndex: i];
       
-      lastPathComponent = [aString lastPathComponent];
-      pathToFolder = [aString substringToIndex: ([aString length] - [lastPathComponent length])];
+      // NSString *lastPathComponent = [aString lastPathComponent];
+      // NSString *pathToFolder = [aString substringToIndex: ([aString length] - [lastPathComponent length])];
     
       //
       // First run:
@@ -883,7 +841,6 @@
 								      _path, aString] 
 					  isDirectory: &bIsMailDir] && bIsMailDir)
 	{
-	  NSDirectoryEnumerator *maildirEnumerator;
 	  NSArray *subpaths;
 	
 	  // Wust ensure 700 mode un cur/new/tmp folders and 600 on all files (ie., messages)
@@ -898,9 +855,9 @@
 	  
 	  
 	  // Get all the children of this directory an remove them from our mutable array.
-	  maildirEnumerator = [[NSFileManager defaultManager] enumeratorAtPath: 
+	  /*NSDirectoryEnumerator *maildirEnumerator = [[NSFileManager defaultManager] enumeratorAtPath: 
 								[NSString stringWithFormat: @"%@/%@", 
-									  _path, aString]];
+									  _path, aString]];*/
 	  
 	  subpaths = [[NSFileManager defaultManager] subpathsAtPath: [NSString stringWithFormat: @"%@/%@", 
 									       _path, aString]];
@@ -912,13 +869,12 @@
   // Second Run: Get rid of cache, summary and OS specific stuff
   //
   tmpArray = [[NSArray alloc] initWithArray: _folders];
-  AUTORELEASE(tmpArray);
   tmpEnumerator = [tmpArray objectEnumerator];
   
   while ((aString = [tmpEnumerator nextObject]))
     {
-      lastPathComponent = [aString lastPathComponent];
-      pathToFolder = [aString substringToIndex: ([aString length] - [lastPathComponent length])];
+      NSString *lastPathComponent = [aString lastPathComponent];
+      NSString *pathToFolder = [aString substringToIndex: ([aString length] - [lastPathComponent length])];
       
       // We remove Netscape/Mozilla summary file.
       [_folders removeObject: [NSString stringWithFormat: @"%@.%@.summary", pathToFolder, lastPathComponent]];

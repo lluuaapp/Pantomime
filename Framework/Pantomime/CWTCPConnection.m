@@ -20,38 +20,11 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWTCPConnection.h>
+#import "CWTCPConnection.h"
+#import "NSStream+IHExtensions.h"
 
-#include <Pantomime/io.h>
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWDNSManager.h>
+#import "CWConstants.h"
 
-#include <Foundation/NSException.h>
-#include <Foundation/NSRunLoop.h> //test
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#ifdef __MINGW32__
-#include <winsock2.h>
-#else
-#include <netinet/in.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#endif
-#include <sys/time.h>
-#include <sys/types.h>
-#include <string.h>
-#include <unistd.h>	// For read() and write() and close()
-
-#ifdef MACOSX
-#include <sys/uio.h>	// For read() and write() on OS X
-#endif
-
-#ifndef FIONBIO
-#include <sys/filio.h>  // For FIONBIO on Solaris
-#endif
 
 #define DEFAULT_TIMEOUT 60
 
@@ -60,26 +33,23 @@
 //
 @implementation CWTCPConnection
 
-+ (void) initialize
-{
-  SSL_library_init();
-  SSL_load_error_strings();
-}
-
+@synthesize delegate;
 
 //
 //
 //
-- (id) initWithName: (NSString *) theName
-	       port: (unsigned int) thePort
-	 background: (BOOL) theBOOL
+- (id) initWithName:(NSString*)theName
+               port:(unsigned short)thePort
+           delegate:(id<CWConnectionDelegate>)inDelegate
+         background:(BOOL)theBOOL
 {
-  return [self initWithName: theName
-	       port: thePort
-	       connectionTimeout: DEFAULT_TIMEOUT
-	       readTimeout: DEFAULT_TIMEOUT
-	       writeTimeout: DEFAULT_TIMEOUT
-	       background: theBOOL];
+    return [self initWithName:theName
+                         port:thePort
+                     delegate:inDelegate
+            connectionTimeout:DEFAULT_TIMEOUT
+                  readTimeout:DEFAULT_TIMEOUT
+                 writeTimeout:DEFAULT_TIMEOUT
+                   background:theBOOL];
 }
 
 
@@ -87,128 +57,114 @@
 // This methods throws an exception if the connection timeout
 // is exhausted and the connection hasn't been established yet.
 //
-- (id) initWithName: (NSString *) theName
-	       port: (unsigned int) thePort
-  connectionTimeout: (unsigned int) theConnectionTimeout
-	readTimeout: (unsigned int) theReadTimeout
-       writeTimeout: (unsigned int) theWriteTimeout
-	 background: (BOOL) theBOOL
+- (id) initWithName:(NSString *)theName
+               port:(unsigned short)thePort
+           delegate:(id<CWConnectionDelegate>)inDelegate
+  connectionTimeout:(NSUInteger)theConnectionTimeout
+        readTimeout:(NSUInteger)theReadTimeout
+       writeTimeout:(NSUInteger)theWriteTimeout
+         background:(BOOL)theBOOL;
 {
-  NSArray *addresses;
-
-  struct sockaddr_in server;
-#ifdef __MINGW32__
-  u_long nonblock = 1;
-#else
-  int nonblock = 1;
-#endif
-
-  ssl_handshaking = NO;
-  _ssl = NULL;
-
-  if (theName == nil || thePort <= 0)
+    self = [super init];
+    if (self)
     {
-      AUTORELEASE(self);
-      return nil;
-    }
- 
-  // We get the file descriptor associated to a socket
-  _fd = socket(PF_INET, SOCK_STREAM, 0);
-
-  if (_fd == -1) 
-    {
-      AUTORELEASE(self);
-      return nil;
-    }
-  
-  addresses = [[CWDNSManager singleInstance] addressesForName: theName];
-
-  if (!addresses)
-    {
-      safe_close(_fd);
-      AUTORELEASE(self);
-      return nil;
-    }
-
-  server.sin_family = AF_INET;
-  memcpy((char *)&server.sin_addr, [[addresses objectAtIndex: 0] bytes], [[addresses objectAtIndex: 0] length]);
-  server.sin_port = htons(thePort);
-
-  // If we don't connect in background, we must try to connect right away
-  // and return on any errors.
-  if (!theBOOL && connect(_fd, (struct sockaddr *)&server, sizeof(server)) != 0)
-    {
-      AUTORELEASE(self);
-      return nil;
-    }
-  
-  // We set the non-blocking I/O flag on _fd
-#ifdef __MINGW32__
-  if (ioctlsocket(_fd, FIONBIO, &nonblock) == -1)
-#else
-  if (ioctl(_fd, FIONBIO, &nonblock) == -1)
-#endif
-    {
-      safe_close(_fd);
-      AUTORELEASE(self);
-      return nil;
-    }
-
-  // If don't connect in background and we are connected, we return right away.
-  if (!theBOOL) return self;
-  
-  // We initiate our connection to the socket
-  if (connect(_fd, (struct sockaddr *)&server, sizeof(server)) == -1)
-    {
-#ifdef __MINGW32__
-      if (WSAGetLastError() == WSAEWOULDBLOCK)
-#else
-      if (errno == EINPROGRESS)
-#endif
+        if (theName == nil || thePort <= 0)
         {
-          // The socket is non-blocking and the connection cannot be completed immediately.
-	  if (theBOOL)
-	    {
-	      return self;
-	    }
-          
-	  if (![self isConnected])
-	    {
-	      safe_close(_fd);
-	      AUTORELEASE(self);
-	      return nil;
-	    }
-        } // if ( errno == EINPROGRESS ) ...
-      else
-        {
-	  safe_close(_fd);
-	  AUTORELEASE(self);
-	  return nil;
+            return nil;
         }
-    } // if ( connect(...) )
-  
-  return self;
+        
+        self.delegate = inDelegate;
+        
+        NSInputStream   *iStream = nil;
+        NSOutputStream  *oStream = nil;
+
+        [NSStream getStreamsToHostNamed:theName
+                                   port:thePort 
+                            inputStream:&iStream 
+                           outputStream:&oStream];
+        
+        inputStream = iStream;
+        outputStream = oStream;
+        
+        if ((nil == inputStream) ||
+            (nil == outputStream))
+        {
+            return nil;
+        }
+        
+        
+        [inputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+        [outputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+        
+        inputStream.delegate = self;
+        outputStream.delegate = self;
+        
+        if ([inputStream streamStatus] == NSStreamStatusNotOpen)
+            [inputStream open];
+        
+        if ([outputStream streamStatus] == NSStreamStatusNotOpen)
+            [outputStream open];
+        
+    }
+    return self;
 }
 
+- (void)stream:(NSStream *)stream handleEvent:(NSStreamEvent)eventCode
+{
+    switch(eventCode)
+    {
+        case NSStreamEventOpenCompleted:
+        {
+            if (stream == outputStream) // only handled the event once
+            {
+                [delegate connectionReceivedOpenCompleted:self];
+            }
+            break;
+        }
+        case NSStreamEventHasBytesAvailable:
+        {
+            if (stream == inputStream)
+            {
+                [delegate connectionReceivedReadEvent:self];
+            }
+            break;
+        }
+        case NSStreamEventHasSpaceAvailable:
+        {
+            if (stream == outputStream)
+            {
+                [delegate connectionReceivedWriteEvent:self];
+            }
+            break;
+        }
+        case NSStreamEventErrorOccurred:
+        {
+            [delegate connection:self receivedError:[stream streamError]];
+            break;
+        }
+            
+        case NSStreamEventNone:
+            break;
+        case NSStreamEventEndEncountered:
+            break;
+    }
+}
 
 //
 //
 //
 - (void) dealloc
 {
-  //NSLog(@"TCPConnection: -dealloc");
+    delegate = nil;
+    [self close];
+    
+    inputStream.delegate = nil;
+    outputStream.delegate = nil;
 
-  if (_ssl)
-    {
-      SSL_free(_ssl);    
-    }
 
-  if (_ctx)
-    {
-      SSL_CTX_free(_ctx);
-    }
-  
-  [super dealloc];
+    inputStream = nil;
+    outputStream = nil;
+
 }
 
 
@@ -218,134 +174,64 @@
 //
 - (int) fd
 {
-  return _fd;
+    NSAssert(nil, @"Not available");
+    return 0; // _fd;
 }
-
 
 //
 //
 //
 - (BOOL) isConnected
 {
-  struct timeval timeout;
-  fd_set fdset;
-  int value;
-
-  // We remove all descriptors from the set fdset
-  FD_ZERO(&fdset);
-  
-  // We add the descriptor _fd to the fdset set
-  FD_SET(_fd, &fdset);
-  
-  // We set the timeout for our connection
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 1;
-  
-  value = select(_fd + 1, NULL, &fdset, NULL, &timeout);
-  
-  // An error occured..
-  if (value == -1)
-    {
-      return NO;
-    }
-  // Our fdset has ready descriptors (for writability)
-  else if (value > 0)
-    {
-#ifdef __MINGW32__
-      int size;
-#else
-      socklen_t size;
-#endif
-      int error;
-      
-      size = sizeof(error);
-      
-      // We get the options at the socket level (so we use SOL_SOCKET)
-      // returns -1 on error, 0 on success
-      if (getsockopt(_fd, SOL_SOCKET, SO_ERROR, &error, &size) == -1)
-	{
-	  return NO;
-	}
-      
-      if (error != 0)
-	{
-#warning handle right way in CWService tick if the port was incorrectly specified
-	  return NO;
-	}
-    }
-  // select() has returned 0 which means that the timeout has expired.
-  else
-    {
-      return NO;
-    }
-
-  return YES;
+    return ((NSStreamStatusOpen <= [inputStream streamStatus]) &&
+            (NSStreamStatusClosed > [inputStream streamStatus]) &&
+            (NSStreamStatusOpen <= [outputStream streamStatus]) &&
+            (NSStreamStatusClosed > [outputStream streamStatus]));
 }
-
 
 //
 //
 //
 - (BOOL) isSSL
 {
-  return (_ssl ? YES : NO);
+    return ([[inputStream propertyForKey:NSStreamSocketSecurityLevelKey] isEqualToString:NSStreamSocketSecurityLevelNegotiatedSSL] &&
+            [[outputStream propertyForKey:NSStreamSocketSecurityLevelKey] isEqualToString:NSStreamSocketSecurityLevelNegotiatedSSL]);
 }
-
 
 //
 // other methods
 //
 - (void) close
 {
-  //NSLog(@"TCPConnection: -close");
+    [inputStream close];
+    [outputStream close];
+}
 
-  if (_ssl)
+//
+//
+//
+- (NSInteger)read:(uint8_t*)buf length:(NSInteger)len
+{
+    if ([inputStream hasBytesAvailable])
     {
-      SSL_shutdown(_ssl);
+        return [inputStream read:buf maxLength:len];
     }
-
-  safe_close(_fd);
-  _fd = -1;
+    
+    return 0;
 }
 
 
 //
 //
 //
-- (int) read: (char *) buf
-      length: (int) len
+- (NSInteger)write:(uint8_t*)buf length:(NSInteger)len
 {
-  if (ssl_handshaking)
+    if ([outputStream hasSpaceAvailable])
     {
-      return 0;
+        return [outputStream write:buf maxLength:len];
     }
-
-  if (_ssl)
-    {
-      return SSL_read(_ssl, buf, len);
-    }
-
-  return safe_recv(_fd, buf, len, 0);
-}
-
-
-//
-//
-//
-- (int) write: (char *) buf
-       length: (int) len
-{
-  if (ssl_handshaking)
-    {
-      return 0;
-    }
-
-  if (_ssl)
-    {
-      return SSL_write(_ssl, buf, len);
-    }
-
-  return send(_fd, buf, len, 0);
+    
+    return 0;
 }
 
 
@@ -354,79 +240,11 @@
 // -1 ->
 // -2 -> handshake error
 //
-- (int) startSSL
+- (NSInteger) startSSL
 {
-  int ret;
-
-  // For now, we do not verify the certificates...
-  _ctx = SSL_CTX_new(SSLv23_client_method());
-  SSL_CTX_set_verify(_ctx, SSL_VERIFY_NONE, NULL);
-  SSL_CTX_set_mode(_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
-
-  // We then connect the SSL socket
-  _ssl = SSL_new(_ctx);
-  SSL_set_fd(_ssl, _fd);
-  ret = SSL_connect(_ssl);
-
-  if (ret != 1)
-    {
-      int rc;
-
-      rc = SSL_get_error(_ssl, ret);
-
-      if ((rc != SSL_ERROR_WANT_READ) && (rc != SSL_ERROR_WANT_WRITE))
-	{
-	  // SSL handshake error...
-	  //NSLog(@"SSL handshake error.");
-	  return -2;
-	}
-      else
-	{
-	  NSDate *limit;
-
-	  //NSLog(@"SSL handshaking... %d", rc);
-	  ssl_handshaking = YES; 
-	  limit = [[NSDate alloc] initWithTimeIntervalSinceNow: DEFAULT_TIMEOUT];
-
-	  while ((rc == SSL_ERROR_WANT_READ || rc == SSL_ERROR_WANT_WRITE)
-		 && [limit timeIntervalSinceNow] > 0.0)
-	    {
-	      [[NSRunLoop currentRunLoop] runUntilDate: [NSDate dateWithTimeIntervalSinceNow: 0.1]];
-	      ret = SSL_connect(_ssl);
-	      //NSLog(@"ret = %d", ret);
-	      if (ret != 1)
-		{
-		  //int e = errno;
-		  rc = SSL_get_error(_ssl, ret);
-		  //NSLog(@"%s  errno = %s", ERR_error_string(rc, NULL), strerror(e));
-		}
-	      else
-		{
-		  rc = SSL_ERROR_NONE;
-		}
-	      
-	      //NSLog(@"rc = %d", rc);
-	    }
-
-	  RELEASE(limit);
-
-	  if (rc != SSL_ERROR_NONE)
-	    {
-	      //NSLog(@"ERROR DURING HANDSHAKING...");
-	      //NSLog(@"unable to make SSL connection: %s", ERR_error_string(rc, NULL));
-	      //ERR_print_errors_fp(stderr);
-	      ssl_handshaking = NO;
-	      SSL_free(_ssl);
-	      _ssl = NULL;
-	      return -2;
-	    }
-	  
-	  // We are done with handshaking
-	  ssl_handshaking = NO;
-	}
-    }
-
-  // Everything went all right, let's tell our caller.
-  return 0;
+    return ([inputStream setProperty:NSStreamSocketSecurityLevelNegotiatedSSL forKey:NSStreamSocketSecurityLevelKey] &&
+            [outputStream setProperty:NSStreamSocketSecurityLevelNegotiatedSSL forKey:NSStreamSocketSecurityLevelKey] ?
+            0 : 1);
 }
+
 @end

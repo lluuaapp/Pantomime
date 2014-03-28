@@ -20,13 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWUUFile.h>
+#import "CWUUFile.h"
 
-#include <Pantomime/CWConstants.h>
-
-#include <Foundation/NSArray.h>
-#include <Foundation/NSFileManager.h>
-#include <Foundation/NSValue.h>
+#import "CWConstants.h"
 
 #define UUDECODE(c)  (((c) - ' ') & 077)
 
@@ -35,7 +31,7 @@
 //
 void uudecodeline(char *line, NSMutableData *data)
 {
-  int c, len;
+  NSInteger c, len;
   
   len = UUDECODE(*line++);
   
@@ -85,19 +81,6 @@ void uudecodeline(char *line, NSMutableData *data)
 
   return self;
 }
-
-
-//
-//
-//
-- (void) dealloc
-{
-  RELEASE(_name);
-  RELEASE(_data);
-  RELEASE(_attributes);
-  [super dealloc];
-}
-
 
 //
 // access / mutation methods
@@ -151,7 +134,7 @@ void uudecodeline(char *line, NSMutableData *data)
   NSMutableData *aMutableData;
   NSArray *allLines;
   CWUUFile *aUUFile;
-  int i, count;
+  NSInteger i, count;
 
   aMutableData = [NSMutableData dataWithCapacity: [theString length]];
 
@@ -160,7 +143,7 @@ void uudecodeline(char *line, NSMutableData *data)
   // We decode our filename and our mode
   aString = [allLines objectAtIndex: 0];
 
-  theFilePermissions = [NSNumber numberWithInt: [[[aString componentsSeparatedByString: @" "] objectAtIndex: 1] intValue]];
+  theFilePermissions = [NSNumber numberWithInteger:[[[aString componentsSeparatedByString: @" "] objectAtIndex: 1] integerValue]];
   aFilename = [[aString componentsSeparatedByString: @" "] objectAtIndex: 2];
   
   // We now get the data representing our uuencoding string
@@ -176,7 +159,7 @@ void uudecodeline(char *line, NSMutableData *data)
 			      attributes: [NSDictionary dictionaryWithObject: theFilePermissions
 						      forKey: NSFilePosixPermissions]];
   
-  return AUTORELEASE(aUUFile);
+  return aUUFile;
 }
 
 

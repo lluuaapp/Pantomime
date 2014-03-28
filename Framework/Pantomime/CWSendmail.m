@@ -20,21 +20,12 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWSendmail.h>
+#import "CWSendmail.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWMessage.h>
-#include <Pantomime/NSFileManager+Extensions.h>
-#include <Pantomime/NSString+Extensions.h>
-
-#include <Foundation/NSFileHandle.h>
-#include <Foundation/NSFileManager.h>
-#include <Foundation/NSNotification.h>
-#include <Foundation/NSPathUtilities.h>
-#include <Foundation/NSProcessInfo.h>
-#include <Foundation/NSTask.h>
-
-#include <stdio.h>
+#import "CWConstants.h"
+#import "CWMessage.h"
+#import "NSFileManager+CWExtensions.h"
+#import "NSString+CWExtensions.h"
 
 
 //
@@ -55,26 +46,16 @@
 
 - (id) initWithPath: (NSString *) thePath;
 {
-  self = [super init];
-
-  [self setPath: thePath];
-  
-  _delegate = nil;
-
-  return self;
+	self = [super init];
+	
+	if (self)
+	{
+		[self setPath: thePath];
+		_tasks = [[NSMutableArray alloc] init];
+		_delegate = nil;
+	}
+	return self;
 }
-
-- (void) dealloc
-{
-  RELEASE(_message);
-  RELEASE(_data);
-  RELEASE(_recipients);
-  RELEASE(_path);  
-
-  [super dealloc];
-}
-
-
 
 //
 // access / mutation methods
@@ -153,85 +134,85 @@
 //
 - (void) sendMessage
 {
-  NSString *aString, *aFilename;
-  NSFileHandle *aFileHandle;
-  NSRange aRange; 
-  NSTask *aTask;
- 
-  if ((!_message && !_data) || !_path)
+	NSString *aString, *aFilename;
+	NSFileHandle *aFileHandle;
+	NSRange aRange; 
+	NSTask *aTask;
+	
+	if ((!_message && !_data) || !_path)
     {
-      [self _fail];
-      return;
+		[self _fail];
+		return;
     }
-
-  if (!_data && _message)
+	
+	if (!_data && _message)
     {
-      [self setMessageData: [_message dataValue]];
+		[self setMessageData: [_message dataValue]];
     }
-
-  // We verify if _pathToSendmail is a valid one (ie., readable and executable)
-  aRange = [_path rangeOfString: @" "];
-  aString = _path;
-  
-  if (aRange.location != NSNotFound)
+	
+	// We verify if _pathToSendmail is a valid one (ie., readable and executable)
+	aRange = [_path rangeOfString: @" "];
+	aString = _path;
+	
+	if (aRange.location != NSNotFound)
     {
-      aString = [_path substringToIndex: aRange.location];
+		aString = [_path substringToIndex: aRange.location];
     }
-
-  if (![[NSFileManager defaultManager] isExecutableFileAtPath: aString])
+	
+	if (![[NSFileManager defaultManager] isExecutableFileAtPath: aString])
     {
-      [self _fail];
-      return;
+		[self _fail];
+		return;
     }
-
-  // We now create our task and send the message
-  aFilename = [NSString stringWithFormat: @"%@/%d_%@", NSTemporaryDirectory(), 
-			[[NSProcessInfo processInfo] processIdentifier],
-			NSUserName()];
-  
-  if (![_data writeToFile: aFilename  atomically: YES])
+	
+	// We now create our task and send the message
+	aFilename = [NSString stringWithFormat: @"%@/%d_%@", NSTemporaryDirectory(), 
+				 [[NSProcessInfo processInfo] processIdentifier],
+				 NSUserName()];
+	
+	if (![_data writeToFile: aFilename  atomically: YES])
     {
-      [self _fail];
-      return;
+		[self _fail];
+		return;
     }
-  
-  [[NSFileManager defaultManager] enforceMode: 0600  atPath: aFilename];
-  aFileHandle = [NSFileHandle fileHandleForReadingAtPath: aFilename];
-  aTask = [[NSTask alloc] init];
-  
-  // We register for our notification
-  [[NSNotificationCenter defaultCenter] 
-    addObserver: self
-    selector: @selector(_taskDidTerminate:)
-    name: NSTaskDidTerminateNotification
-    object: aTask];
-
-  // We build our right string
-  aString = [_path stringByTrimmingWhiteSpaces];
-      
-  // We verify if our program to launch has any arguments
-  aRange = [aString rangeOfString: @" "];
-  
-  if (aRange.length)
+	
+	[[NSFileManager defaultManager] enforceMode: 0600  atPath: aFilename];
+	aFileHandle = [NSFileHandle fileHandleForReadingAtPath: aFilename];
+	aTask = [[NSTask alloc] init];
+	
+	// We register for our notification
+	[[NSNotificationCenter defaultCenter] addObserver:self
+											 selector:@selector(_taskDidTerminate:)
+												 name:NSTaskDidTerminateNotification
+											   object:aTask];
+	
+	// We build our right string
+	aString = [_path stringByTrimmingWhiteSpaces];
+	
+	// We verify if our program to launch has any arguments
+	aRange = [aString rangeOfString: @" "];
+	
+	if (aRange.length)
     {
-      [aTask setLaunchPath: [aString substringToIndex: aRange.location]];      
-      [aTask setArguments: [[aString substringFromIndex: (aRange.location + 1)] 
-			     componentsSeparatedByString: @" "]];
+		[aTask setLaunchPath: [aString substringToIndex: aRange.location]];      
+		[aTask setArguments: [[aString substringFromIndex: (aRange.location + 1)] 
+							  componentsSeparatedByString: @" "]];
     }
-  else
+	else
     {
-      [aTask setLaunchPath: aString];
+		[aTask setLaunchPath: aString];
     }
-  
-  [aTask setStandardInput: aFileHandle];
-  
-  // We launch our task
-  [aTask launch];
-  
-  [aFileHandle closeFile];
-  
-  [[NSFileManager defaultManager] removeFileAtPath: aFilename
-				  handler: nil];
+	
+	[aTask setStandardInput: aFileHandle];
+	[_tasks addObject:aTask];
+	// We launch our task
+	[aTask launch];
+	
+	(void)[aFileHandle closeFile];
+	
+	[[NSFileManager defaultManager] removeItemAtPath:aFilename
+											   error:NULL];
+	
 }
 
 @end
@@ -245,7 +226,7 @@
 - (void) _fail
 {
   POST_NOTIFICATION(PantomimeMessageNotSent, self, [NSDictionary dictionaryWithObject: _message  forKey: @"Message"]);
-  PERFORM_SELECTOR_1(_delegate, @selector(messageNotSent:), PantomimeMessageNotSent);
+  (void)PERFORM_SELECTOR_1(_delegate, @selector(messageNotSent:), PantomimeMessageNotSent);
 }
 
 - (void) _taskDidTerminate: (NSNotification *) theNotification
@@ -264,7 +245,7 @@
     }
 
   // We release our task...
-  AUTORELEASE([theNotification object]);
+	[_tasks removeObject:[theNotification object]];
 }
 
 @end

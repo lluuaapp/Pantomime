@@ -20,30 +20,17 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWLocalFolder+mbox.h>
+#import "CWLocalFolder+mbox.h"
 
-#include <Pantomime/CWFlags.h>
-#include <Pantomime/CWLocalCacheManager.h>
-#include <Pantomime/CWLocalMessage.h>
-#include <Pantomime/CWLocalStore.h>
-#include <Pantomime/NSData+Extensions.h>
-#include <Pantomime/NSString+Extensions.h>
-#include <Pantomime/CWParser.h>
+#import "CWFlags.h"
+#import "CWLocalCacheManager.h"
+#import "CWLocalMessage.h"
+#import "CWLocalStore.h"
+#import "NSData+CWExtensions.h"
+#import "NSString+CWExtensions.h"
+#import "CWParser.h"
+#import "CWCacheRecord.h"
 
-#include <Foundation/NSFileManager.h>
-#include <Foundation/NSNotification.h>
-
-#ifdef __MINGW32__
-#include <io.h>
-#endif
-
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/file.h>
-#include <unistd.h>
 
 //
 //
@@ -103,10 +90,10 @@
   BOOL writeWasSuccessful, seenStatus, seenXStatus, doneWritingHeaders;
   NSString *pathToMailbox;
   
-  int i, messageNumber, count;
+  NSInteger i, messageNumber, count;
   char aLine[1024];
 
-  aMutableArray = AUTORELEASE([[NSMutableArray alloc] init]);
+  aMutableArray = [[NSMutableArray alloc] init];
 
   pathToMailbox = [NSString stringWithFormat: @"%@/%@", [_store path], _name];
   
@@ -147,11 +134,10 @@
       else
 	{
 	  long delta, position, size;
-	  int headers_length;
+	  NSInteger headers_length = 0;
 	  
 	  // We get our position and headers_length
 	  position = ftell(theOutputStream);
-	  headers_length = 0;
 	  
 	  // We seek to the beginning of the message
 	  fseek(theInputStream, [aMessage filePosition], SEEK_SET);
@@ -176,13 +162,13 @@
 		      if (!seenStatus) 
 			{
 			  fputs([[NSString stringWithFormat: @"Status: %@\n",
-					   [theFlags statusString]] cString], theOutputStream);
+					   [theFlags statusString]] UTF8String], theOutputStream);
 			}
 		      
 		      if (!seenXStatus) 
 			{
 			  fputs([[NSString stringWithFormat: @"X-Status: %@\n",
-					   [theFlags xstatusString]] cString], theOutputStream);
+					   [theFlags xstatusString]] UTF8String], theOutputStream);
 			}
 
 		      delta =  ftell(theOutputStream)-headers_length;
@@ -203,19 +189,19 @@
 		    }
 		  
 		  // If we read the Status header, we replace it with the current Status header
-#warning we might need to adjust the size here too!
+// #warning we might need to adjust the size here too!
 #if 1
 		  if (strncasecmp(aLine,"Status:", 7) == 0) 
 		    {
 		      seenStatus = YES;
 		      memset(aLine, 0, 1024);
-		      sprintf(aLine, "Status: %s\n", [[theFlags statusString] cString]); 
+		      sprintf(aLine, "Status: %s\n", [[theFlags statusString] UTF8String]); 
 		    }
 		  else if (strncasecmp(aLine,"X-Status:", 9) == 0)
 		    {
 		      seenXStatus = YES;
 		      memset(aLine, 0, 1024);
-		      sprintf(aLine, "X-Status: %s\n", [[theFlags xstatusString] cString]); 
+		      sprintf(aLine, "X-Status: %s\n", [[theFlags xstatusString] UTF8String]); 
 		    }
 #endif
 		}
@@ -266,11 +252,8 @@
       [self close_mbox];
       
       // Now that everything is alright, replace <folder name> by <folder name>.tmp
-      [[NSFileManager defaultManager] removeFileAtPath: pathToMailbox
-				      handler: nil];
-      [[NSFileManager defaultManager] movePath: [NSString stringWithFormat: @"%@.tmp", pathToMailbox]
-				      toPath: pathToMailbox
-				      handler: nil];
+		[[NSFileManager defaultManager] removeItemAtPath:pathToMailbox error:NULL];
+		[[NSFileManager defaultManager] moveItemAtPath:[NSString stringWithFormat: @"%@.tmp", pathToMailbox] toPath:pathToMailbox error:NULL];
       
       // We sync our cache
       //[_cacheManager synchronize];
@@ -291,14 +274,14 @@
     {
       NSLog(@"Writing to %@ failed. We keep the original mailbox.", pathToMailbox);
       NSLog(@"This can be due to the fact that your partition containing this mailbox is full or that you don't have write permission in the directory where this mailbox is.");
-      [[NSFileManager defaultManager] removeFileAtPath: [NSString stringWithFormat: @"%@.tmp", pathToMailbox]
-				      handler: nil];
+      [[NSFileManager defaultManager] removeItemAtPath:[NSString stringWithFormat: @"%@.tmp", pathToMailbox]
+												 error:NULL];
       POST_NOTIFICATION(PantomimeFolderExpungeFailed, self, nil);
       PERFORM_SELECTOR_2([[self store] delegate], @selector(folderExpungeFailed:), PantomimeFolderExpungeFailed, self, @"Folder");
       return;
     }
   
-#warning also return when invoking the delegate
+// #warning also return when invoking the delegate
   POST_NOTIFICATION(PantomimeFolderExpungeCompleted, self, nil);
   PERFORM_SELECTOR_2([[self store] delegate], @selector(folderExpungeCompleted:), PantomimeFolderExpungeCompleted, self, @"Folder");
 }
@@ -397,15 +380,13 @@
 		all: (BOOL) theBOOL
 {
   CWLocalMessage *aMessage;
-  long begin, end, size;
-  cache_record record;
+  long begin = 0L, end = 0L, size;
+  CWCacheRecord *record = [[CWCacheRecord alloc] init];
   char aLine[1024];
   
   // We initialize our variables
   aMessage = [[CWLocalMessage alloc] init];
   CLEAR_CACHE_RECORD(record);
-
-  begin = end = 0L;
 
   if (_type == PantomimeFormatMbox)
     {
@@ -578,7 +559,7 @@
 	  record.flags = (theFlags ? theFlags->flags : [aMessage flags]->flags);
 	  record.position = begin;
 	  record.size = size;
-	  [_cacheManager writeRecord: &record];
+	  [_cacheManager writeRecord:record];
 	  CLEAR_CACHE_RECORD(record);
 	  //
 	  
@@ -586,7 +567,7 @@
 	  if (_type == PantomimeFormatMaildir)
 	    {
 	      NSString *info;
-	      int indexOfPatternSeparator;
+	      NSInteger indexOfPatternSeparator;
 	      
 	      [aMessage setMailFilename: [theFile lastPathComponent]];
 
@@ -609,7 +590,6 @@
 	    }		
 	  
 
-	  RELEASE(aMessage);	  
 	  begin = ftell(theStream);
 	  
 	  // We re-init our message and our mutable string for the next message we're gonna read
@@ -635,8 +615,6 @@
       //NSLog(@"Sync cache.");
       [_cacheManager synchronize];
     }
-
-  RELEASE(aMessage);
 }
 
 
@@ -692,7 +670,6 @@
       
       if (aLine == NULL)
         {
-	  RELEASE(aMutableData);
           return nil;
         }
     }
@@ -702,7 +679,7 @@
   
   // We trim our last " " that we added to our data
   [aMutableData setLength: [aMutableData length]-1];
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 
@@ -710,10 +687,10 @@
 // The returned value will always be at least "1", unless
 // theData is nil or its length is 0, in which case 0 is returned.
 //
-+ (unsigned) numberOfMessagesFromData: (NSData *) theData
++ (NSUInteger) numberOfMessagesFromData: (NSData *) theData
 {
   NSRange aRange;
-  int count, len;
+  NSInteger count, len;
 
   if (!theData || (len = [theData length]) == 0)
     {
@@ -740,7 +717,7 @@
 {
   NSMutableArray *aMutableArray;
   char aLine[1024];
-  long begin, end;
+  long begin = 0, end = 0;
 
   if (_type == PantomimeFormatMbox || _type == PantomimeFormatMaildir)
     {
@@ -749,7 +726,6 @@
 
   aMutableArray = [[NSMutableArray alloc] init];
   
-  begin = end = 0;
   memset(aLine, 0, 1024);
 
   fseek(stream, begin, SEEK_SET);
@@ -787,7 +763,6 @@
 	  
 	  aData = [[NSData alloc] initWithBytesNoCopy: buf  length: length];
 	  [aMutableArray addObject: aData];
-	  RELEASE(aData);
 	  
 	  // We reset our fp to the right position (end of previous message)
 	  fseek(stream, end, SEEK_SET);
@@ -801,7 +776,7 @@
       NSLog(@"CWLocalFolder+mbox: Could not truncate file: %@", _path);
     }
 
-  return  AUTORELEASE(aMutableArray);
+  return  aMutableArray;
 }
 
 @end

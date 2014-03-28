@@ -20,25 +20,20 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWPart.h>
+#import "CWPart.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWMessage.h>
-#include <Pantomime/CWMIMEMultipart.h>
-#include <Pantomime/CWMIMEUtility.h>
-#include <Pantomime/NSData+Extensions.h>
-#include <Pantomime/NSString+Extensions.h>
-#include <Pantomime/CWParser.h>
+#import "CWConstants.h"
+#import "CWMessage.h"
+#import "CWMIMEMultipart.h"
+#import "CWMIMEUtility.h"
+#import "NSData+CWExtensions.h"
+#import "NSString+CWExtensions.h"
+#import "CWParser.h"
 
-#include <Foundation/NSAutoreleasePool.h>
-#include <Foundation/NSException.h>
-#include <Foundation/NSValue.h>
-
-#include <string.h>
 
 #define LF "\n"
 
-static int currentPartVersion = 2;
+static NSInteger currentPartVersion = 2;
 
 //
 //
@@ -67,21 +62,6 @@ static int currentPartVersion = 2;
   return self;
 }
 
-
-//
-//
-//
-- (void) dealloc
-{
-  RELEASE(_defaultCharset);
-  RELEASE(_parameters);
-  RELEASE(_headers);
-  RELEASE(_content);
-
-  [super dealloc];
-}
-
-
 //
 //
 //
@@ -95,7 +75,6 @@ static int currentPartVersion = 2;
   
   if (aRange.length == 0)
     {
-      AUTORELEASE(self);
       return nil;
     }
   
@@ -152,12 +131,12 @@ static int currentPartVersion = 2;
   [theCoder encodeObject: [self contentType]];
   [theCoder encodeObject: [self contentID]];
   [theCoder encodeObject: [self contentDescription]];
-  [theCoder encodeObject: [NSNumber numberWithInt: [self contentDisposition]]];
+  [theCoder encodeObject: [NSNumber numberWithInteger:[self contentDisposition]]];
   [theCoder encodeObject: [self filename]];
  
-  [theCoder encodeObject: [NSNumber numberWithInt: [self contentTransferEncoding]]];
-  [theCoder encodeObject: [NSNumber numberWithInt: [self format]]];
-  [theCoder encodeObject: [NSNumber numberWithInt: _size]];
+  [theCoder encodeObject: [NSNumber numberWithInteger:[self contentTransferEncoding]]];
+  [theCoder encodeObject: [NSNumber numberWithInteger:[self format]]];
+  [theCoder encodeObject: [NSNumber numberWithInteger:_size]];
 
   [theCoder encodeObject: [self boundary]];
   [theCoder encodeObject: [self charset]];
@@ -175,12 +154,12 @@ static int currentPartVersion = 2;
   [self setContentType: [theCoder decodeObject]];
   [self setContentID: [theCoder decodeObject]];
   [self setContentDescription: [theCoder decodeObject]];
-  [self setContentDisposition: [[theCoder decodeObject] intValue]];
+  [self setContentDisposition: [[theCoder decodeObject] integerValue]];
   [self setFilename: [theCoder decodeObject]];
 
-  [self setContentTransferEncoding: [[theCoder decodeObject] intValue]];
-  [self setFormat: [[theCoder decodeObject] intValue]];
-  [self setSize: [[theCoder decodeObject] intValue]];
+  [self setContentTransferEncoding: [[theCoder decodeObject] integerValue]];
+  [self setFormat: [[theCoder decodeObject] integerValue]];
+  [self setSize: [[theCoder decodeObject] integerValue]];
 
   [self setBoundary: [theCoder decodeObject]];
   [self setCharset: [theCoder decodeObject]];
@@ -210,8 +189,7 @@ static int currentPartVersion = 2;
 		      [theContent isKindOfClass: [CWMessage class]] ||
 		      [theContent isKindOfClass: [CWMIMEMultipart class]]))
     {
-      [NSException raise: NSInvalidArgumentException
-		   format: @"Invalid argument to CWPart: -setContent:  The content MUST be either a NSData, CWMessage or CWMIMEMessage instance."];
+      [NSException raise:NSInvalidArgumentException format:@"Invalid argument to CWPart: -setContent:  The content MUST be either a NSData, CWMessage or CWMIMEMessage instance."];
     }
 
   ASSIGN(_content, theContent);
@@ -275,12 +253,12 @@ static int currentPartVersion = 2;
 
   o = [_headers objectForKey: @"Content-Disposition"];
 
-  return (o ? [o intValue] : PantomimeInlineDisposition);
+  return (o ? [o integerValue] : PantomimeInlineDisposition);
 }
 
 - (void) setContentDisposition: (PantomimeContentDisposition) theContentDisposition
 {
-  [_headers setObject: [NSNumber numberWithInt: theContentDisposition]  forKey: @"Content-Disposition"];
+  [_headers setObject: [NSNumber numberWithInteger:theContentDisposition]  forKey: @"Content-Disposition"];
 }
 
 
@@ -295,7 +273,7 @@ static int currentPartVersion = 2;
 
   if (o)
     {
-      return [o intValue];
+      return [o integerValue];
     }
  
   // Default value for the Content-Transfer-Encoding.
@@ -305,7 +283,7 @@ static int currentPartVersion = 2;
 
 - (void) setContentTransferEncoding: (PantomimeEncoding) theEncoding
 {
-  [_headers setObject: [NSNumber numberWithInt: theEncoding]  forKey: @"Content-Transfer-Encoding"];
+  [_headers setObject: [NSNumber numberWithInteger:theEncoding]  forKey: @"Content-Transfer-Encoding"];
 }
 
 
@@ -320,6 +298,7 @@ static int currentPartVersion = 2;
 
 - (void) setFilename: (NSString *) theFilename
 {
+	NSParameterAssert([theFilename isKindOfClass:[NSString class]]);
   if (theFilename && ([theFilename length] > 0))
     {
       //ASSIGN(_filename, theFilename);
@@ -344,7 +323,7 @@ static int currentPartVersion = 2;
 
   if (o)
     {
-      return [o intValue];
+      return [o integerValue];
     }
 
   return PantomimeFormatUnknown;
@@ -352,19 +331,19 @@ static int currentPartVersion = 2;
 
 - (void) setFormat: (PantomimeMessageFormat) theFormat
 {
-  [_parameters setObject: [NSNumber numberWithInt: theFormat]  forKey: @"format"];
+  [_parameters setObject: [NSNumber numberWithInteger:theFormat]  forKey: @"format"];
 }
 
 
 //
 //
 //
-- (int) lineLength
+- (NSInteger) lineLength
 {
   return _line_length;
 }
 
-- (void) setLineLength: (int) theLineLength
+- (void) setLineLength: (NSInteger) theLineLength
 {
   _line_length = theLineLength;
 }
@@ -387,7 +366,7 @@ static int currentPartVersion = 2;
     {
       aString = [self contentType];
       
-      if ([[self contentType] hasCaseInsensitivePrefix: thePrimaryType])
+      if ([aString hasCaseInsensitivePrefix: thePrimaryType])
 	{
 	  return YES;
 	}
@@ -430,7 +409,7 @@ static int currentPartVersion = 2;
   NSData *aDataToSend;
   NSArray *allLines;
   NSString *aFilename; 
-  int i, count;
+  NSInteger i, count;
 
   aMutableData = [[NSMutableData alloc] init];
   
@@ -444,7 +423,6 @@ static int currentPartVersion = 2;
       aFilename = [[NSString alloc] initWithData: [CWMIMEUtility encodeWordUsingQuotedPrintable: [self filename]
 								 prefixLength: 0]
 				    encoding: NSASCIIStringEncoding];
-      AUTORELEASE(aFilename);
     }
 
   // We encode our Content-Transfer-Encoding header.
@@ -570,7 +548,7 @@ static int currentPartVersion = 2;
       [md appendBytes: "--"  length: 2];
       [md appendBytes: LF  length: strlen(LF)];
 	  
-      aDataToSend = AUTORELEASE(md);
+      aDataToSend = md;
     }
   else
     {
@@ -592,7 +570,7 @@ static int currentPartVersion = 2;
   else if (([self contentTransferEncoding] == PantomimeEncodingNone || [self contentTransferEncoding] == PantomimeEncoding8bit) &&
 	   [self format] == PantomimeFormatFlowed)
     {
-      int limit;
+      NSInteger limit;
       
       limit = _line_length;
       
@@ -622,7 +600,7 @@ static int currentPartVersion = 2;
       [aMutableData appendBytes: LF  length: 1];
     }
   
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 
@@ -702,63 +680,62 @@ static int currentPartVersion = 2;
 //
 - (void) setHeadersFromData: (NSData *) theHeaders
 {
-  NSAutoreleasePool *pool;
-  NSArray *allLines;
-  int i, count;
-  
-  if (!theHeaders || [theHeaders length] == 0)
+    NSArray *allLines;
+    NSInteger i, count;
+    
+    if (!theHeaders || [theHeaders length] == 0)
     {
-      return;
+        return;
     }
-
-  // We initialize a local autorelease pool
-  pool = [[NSAutoreleasePool alloc] init];
-
-  // We MUST be sure to unfold all headers properly before
-  // decoding the headers
-  theHeaders = [theHeaders unfoldLines];
-
-  allLines = [theHeaders componentsSeparatedByCString: "\n"];
-  count = [allLines count];
-
-  for (i = 0; i < count; i++)
+    
+    // We initialize a local autorelease pool
+    @autoreleasepool
     {
-      NSData *aLine = [allLines objectAtIndex: i];
-
-      // We stop if we found the header separator. (\n\n) since someone could
-      // have called this method with the entire rawsource of a message.
-      if ([aLine length] == 0)
-	{
-	  break;
-	}
-
-      if ([aLine hasCaseInsensitiveCPrefix: "Content-Description"])
-	{
-	  [CWParser parseContentDescription: aLine  inPart: self];
-	}
-      else if ([aLine hasCaseInsensitiveCPrefix: "Content-Disposition"])
-	{
-	  [CWParser parseContentDisposition: aLine  inPart: self];
-	}
-      else if ([aLine hasCaseInsensitiveCPrefix: "Content-ID"])
-	{
-	  [CWParser parseContentID: aLine  inPart: self];
-	}
-      else if ([aLine hasCaseInsensitiveCPrefix: "Content-Length"])
-	{
-	  // We just ignore that for now.
-	}
-      else if ([aLine hasCaseInsensitiveCPrefix: "Content-Transfer-Encoding"])
-	{
-	  [CWParser parseContentTransferEncoding: aLine  inPart: self];
-	}
-      else if ([aLine hasCaseInsensitiveCPrefix: "Content-Type"])
-	{
-	  [CWParser parseContentType: aLine  inPart: self];
-	}
+        // We MUST be sure to unfold all headers properly before
+        // decoding the headers
+        theHeaders = [theHeaders unfoldLines];
+        
+        allLines = [theHeaders componentsSeparatedByCString: "\n"];
+        count = [allLines count];
+        
+        for (i = 0; i < count; i++)
+        {
+            NSData *aLine = [allLines objectAtIndex: i];
+            
+            // We stop if we found the header separator. (\n\n) since someone could
+            // have called this method with the entire rawsource of a message.
+            if ([aLine length] == 0)
+            {
+                break;
+            }
+            
+            if ([aLine hasCaseInsensitiveCPrefix: "Content-Description"])
+            {
+                [CWParser parseContentDescription: aLine  inPart: self];
+            }
+            else if ([aLine hasCaseInsensitiveCPrefix: "Content-Disposition"])
+            {
+                [CWParser parseContentDisposition: aLine  inPart: self];
+            }
+            else if ([aLine hasCaseInsensitiveCPrefix: "Content-ID"])
+            {
+                [CWParser parseContentID: aLine  inPart: self];
+            }
+            else if ([aLine hasCaseInsensitiveCPrefix: "Content-Length"])
+            {
+                // We just ignore that for now.
+            }
+            else if ([aLine hasCaseInsensitiveCPrefix: "Content-Transfer-Encoding"])
+            {
+                [CWParser parseContentTransferEncoding: aLine  inPart: self];
+            }
+            else if ([aLine hasCaseInsensitiveCPrefix: "Content-Type"])
+            {
+                [CWParser parseContentType: aLine  inPart: self];
+            }
+        }
+        
     }
-
-  RELEASE(pool);
 }
 
 
@@ -796,7 +773,7 @@ static int currentPartVersion = 2;
 - (id) headerValueForName: (NSString *) theName
 {
   NSArray *allKeys;
-  int count;
+  NSInteger count;
 
   allKeys = [_headers allKeys];
   count = [allKeys count];

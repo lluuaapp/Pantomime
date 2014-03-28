@@ -20,13 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWSendmail
-#define _Pantomime_H_CWSendmail
-
-#include <Pantomime/CWTransport.h>
-
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
+#import "CWTransport.h"
 
 @class NSTask;
 
@@ -41,6 +35,7 @@
 {    
   @private
     NSMutableArray *_recipients;
+    NSMutableArray *_tasks;
     CWMessage *_message;
     NSData *_data;
 
@@ -89,5 +84,3 @@
 - (NSString *) path;
 
 @end
-
-#endif // _Pantomime_H_CWSendmail

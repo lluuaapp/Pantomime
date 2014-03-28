@@ -20,15 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWMIMEUtility
-#define _Pantomime_H_CWMIMEUtility
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
-
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 @class CWMessage;
 @class CWMIMEMultipart;
@@ -76,10 +68,10 @@
                  encoding: (PantomimeEncoding) theEncoding;
 
 + (NSData *) encodeWordUsingBase64: (NSString *) theWord
-                      prefixLength: (int) thePrefixLength;
+                      prefixLength: (NSInteger) thePrefixLength;
 
 + (NSData *) encodeWordUsingQuotedPrintable: (NSString *) theWord
-                               prefixLength: (int) thePrefixLength;
+                               prefixLength: (NSInteger) thePrefixLength;
 
 /*!
   @method globallyUniqueBoundary
@@ -154,5 +146,3 @@
 + (NSData *) plainTextContentFromPart: (CWPart *) thePart;
 
 @end
-
-#endif // _Pantomime_H_CWMIMEUtility

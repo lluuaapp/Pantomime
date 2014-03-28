@@ -20,14 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWLocalMessage
-#define _Pantomime_H_CWLocalMessage
 
-#include <Pantomime/CWMessage.h>
-
-#import <Foundation/NSCoder.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSString.h>
+#import "CWMessage.h"
 
 /*!
   @class CWLocalMessage
@@ -39,8 +33,8 @@
 {
   @private
     NSString *_mailFilename;     // Name of file in which the message is stored (if using maildir)
-    int _type;	                 // PantomimeFormatMbox or PantomimeFormatMaildir
-    unsigned int _file_position;
+    NSInteger _type;	                 // PantomimeFormatMbox or PantomimeFormatMaildir
+    NSUInteger _file_position;
 }
 
 /*!
@@ -50,7 +44,7 @@
 	      helpful if -type returns something other than PantomimeFormatMbox.
   @result The position in the file.
 */
-- (unsigned int) filePosition;
+- (NSUInteger) filePosition;
 
 /*!
   @method setFilePosition:
@@ -59,7 +53,7 @@
 	      helpful if -type returns something other than PantomimeFormatMbox.
   @param theFilePosition The position in the file.
 */
-- (void) setFilePosition: (unsigned int) theFilePosition;
+- (void) setFilePosition: (NSUInteger) theFilePosition;
 
 /*!
   @method type
@@ -97,4 +91,3 @@
 
 @end
 
-#endif // _Pantomime_H_CWLocalMessage

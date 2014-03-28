@@ -20,11 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWConnection
-#define _Pantomime_H_CWConnection
+#import <Foundation/Foundation.h>
 
-#import <Foundation/NSData.h>
-#import <Foundation/NSString.h>
+@protocol CWConnectionDelegate; 
 
 /*!
   @protocol CWConnection
@@ -33,8 +31,9 @@
 	      to offer TCP connections support. An UDP implementation
 	      will likely be added in a near future (for DNS requests).
 */
-@protocol CWConnection 
+@protocol CWConnection <NSObject>
 
+@required
 /*!
   @method initWithName: port: background:
   @discussion This method is use to initialize a new connection
@@ -49,9 +48,10 @@
   @result An instance implementing the CWConnection protocol, nil
 	  if an error occurred, like DNS resolution.
 */
-- (id) initWithName: (NSString *) theName
-               port: (unsigned int) thePort
-         background: (BOOL) theBOOL;
+- (id) initWithName:(NSString*)theName
+               port:(unsigned short)thePort
+           delegate:(id<CWConnectionDelegate>)inDelegate
+         background:(BOOL)theBOOL;
 
 /*!
   @method initWithName: port: connectionTimeout: readTimeout: writeTimeout: background:
@@ -69,20 +69,13 @@
   @result An instance implementing the CWConnection protocol, nil
 	  if an error occurred, like DNS resolution.
 */
-- (id) initWithName: (NSString *) theName
-	       port: (unsigned int) thePort
-  connectionTimeout: (unsigned int) theConnectionTimeout
-	readTimeout: (unsigned int) theReadTimeout
-       writeTimeout: (unsigned int) theWriteTimeout
-         background: (BOOL) theBOOL;
-
-/*!
-  @method fd
-  @discussion This method is used to obtain the file descriptor
-              which is associated to our connection.
-  @result The file descriptor, -1 if the socket isn't yet connected.
-*/
-- (int) fd;
+- (id) initWithName:(NSString *)theName
+               port:(unsigned short)thePort
+           delegate:(id<CWConnectionDelegate>)inDelegate
+  connectionTimeout:(NSUInteger)theConnectionTimeout
+        readTimeout:(NSUInteger)theReadTimeout
+       writeTimeout:(NSUInteger)theWriteTimeout
+         background:(BOOL)theBOOL;
 
 /*!
   @method isConnected
@@ -106,8 +99,7 @@
   @param len The number of bytes we want to try to read.
   @result The number of bytes successfully read.
 */
-- (int) read: (char *) buf
-      length: (int) len;
+- (NSInteger) read:(uint8_t*)buf length:(NSInteger)len;
 
 /*!
   @method write: length:
@@ -117,8 +109,19 @@
   @param len The number of bytes we want to try to write.
   @result The number of bytes successfully written.
 */
-- (int) write: (char *) buf
-       length: (int) len;
+- (NSInteger) write:(uint8_t*)buf length:(NSInteger)len;
+
+@optional
+- (id<CWConnectionDelegate>)delegate;
+- (void)setDelegate:(id<CWConnectionDelegate>)inDelegate;
+
 @end
 
-#endif // _Pantomime_H_CWConnection
+@protocol CWConnectionDelegate <NSObject>
+
+- (void) connectionReceivedOpenCompleted:(id<CWConnection>)inConnection;
+- (void) connectionReceivedReadEvent:(id<CWConnection>)inConnection;
+- (void) connectionReceivedWriteEvent:(id<CWConnection>)inConnection;
+- (void) connection:(id<CWConnection>)inConnection receivedError:(NSError*)inError;
+
+@end

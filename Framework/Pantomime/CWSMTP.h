@@ -20,16 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWSMTP
-#define _Pantomime_H_CWSMTP
 
-#include <Pantomime/CWService.h>
-#include <Pantomime/CWTransport.h>
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
+#import "CWService.h"
+#import "CWTransport.h"
 
 /*!
   @const PantomimeTransactionInitiationCompleted
@@ -193,7 +186,7 @@ typedef enum {
     CWMessage *_message;
     NSData *_data;
     
-    unsigned int _max_size;
+    NSUInteger _max_size;
     BOOL _redirected;
 }
 
@@ -217,7 +210,7 @@ typedef enum {
   @result The last response code in its complete form, 0 if
           no response was read.         
 */
-- (int) lastResponseCode;
+- (NSInteger) lastResponseCode;
 
 /*!
   @method reset
@@ -240,5 +233,3 @@ typedef enum {
 - (void) sendCommand: (SMTPCommand) theCommand  arguments: (NSString *) theFormat, ...;
 
 @end
-
-#endif // _Pantomime_H_CWSMTP

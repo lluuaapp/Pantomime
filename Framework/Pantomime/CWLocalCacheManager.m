@@ -20,27 +20,17 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWLocalCacheManager.h>
+#import "CWLocalCacheManager.h"
 
-#include <Pantomime/io.h>
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWFlags.h>
-#include <Pantomime/CWLocalFolder.h>
-#include <Pantomime/CWLocalMessage.h>
-#include <Pantomime/CWParser.h>
-#include <Pantomime/NSData+Extensions.h>
+#include "io.h"
 
-#include <Foundation/NSArchiver.h>
-#include <Foundation/NSException.h>
-#include <Foundation/NSFileManager.h>
-#include <Foundation/NSNull.h>
-#include <Foundation/NSValue.h>
-
-#include <sys/types.h>  // For open() and friends.
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>     // For lseek()
-#include <netinet/in.h> // For ntohl()
+#import "CWConstants.h"
+#import "CWFlags.h"
+#import "CWLocalFolder.h"
+#import "CWLocalMessage.h"
+#import "CWParser.h"
+#import "CWCacheRecord.h"
+#import "NSData+CWExtensions.h"
 
 static unsigned short version = 1;
 
@@ -70,102 +60,100 @@ static unsigned short version = 1;
 //
 - (id) initWithPath: (NSString *) thePath  folder: (id) theFolder
 {
-  NSDictionary *attributes;
-  unsigned int d, s, c;
-  unsigned short int v;
-  BOOL broken;
-
-  self = [super initWithPath: thePath];
-
-  // We get the attributes of the mailbox
-  if ([theFolder type] == PantomimeFormatMbox)
+    self = [super initWithPath: thePath];
+    if (self)
     {
-      attributes = [[NSFileManager defaultManager] fileAttributesAtPath: [theFolder path]  traverseLink: NO];
+        NSDictionary *attributes;
+        NSUInteger d, s, c;
+        unsigned short int v;
+        BOOL broken;
+        
+        // We get the attributes of the mailbox
+        if ([(CWLocalFolder*)theFolder type] == PantomimeFormatMbox)
+        {
+            attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[theFolder path] error:NULL];
+        }
+        else
+        {
+            attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[NSString stringWithFormat:@"%@/cur", [theFolder path]] error:NULL];
+        }
+        
+        d = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
+        s = [[attributes objectForKey: NSFileSize] integerValue];
+        broken = NO;
+        
+        // We get the attribtes of the cache
+        attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:thePath  error:NULL];
+        
+        _folder = theFolder;
+        _count = _modification_date = 0;
+        
+        if ((_fd = open([thePath UTF8String], O_RDWR|O_CREAT, S_IRUSR|S_IWUSR)) < 0) 
+        {
+            return nil;
+        }
+        
+        if (lseek(_fd, 0L, SEEK_SET) < 0)
+        {
+            return nil;
+        }
+        
+        // If the cache exists, lets parse it.
+        if ([[attributes objectForKey: NSFileSize] integerValue])
+        {
+            NSUInteger i;
+            
+            v = read_unsigned_short(_fd);
+            
+            // HACK: We IGNORE all the previous cache.
+            if (v != version)
+            {
+                //NSLog(@"Ignoring the old cache format.");
+                ftruncate(_fd, 0);
+                [self synchronize];
+                return self;
+            }
+            
+            _count = read_unsigned_int(_fd);
+            _modification_date = read_unsigned_int(_fd);
+            
+            if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
+            {
+                _size = read_unsigned_int(_fd);
+                
+                if (s != _size || d != _modification_date) broken = YES;
+            }
+            else
+            {
+                //NSLog(@"Asking enumerator...");
+                c = [[[[NSFileManager defaultManager] enumeratorAtPath: [NSString stringWithFormat: @"%@/cur/", [theFolder path]]] allObjects] count];
+                //NSLog(@"Done! count = %d", c);
+                
+                if (c != _count || d != _modification_date) broken = YES;
+            }
+            
+            if (broken)
+            {
+                //NSLog(@"Broken cache, we must invalidate.");
+                _count = _size = 0;
+                ftruncate(_fd,0);
+                [self synchronize];
+                return self;
+            }
+            
+            //NSLog(@"Version = %i  date  = %d  size = %d count = %d", v, d, _size, _count);
+            
+            for (i = 0; i < _count; i++)
+            {
+                [((CWFolder *)_folder)->allMessages addObject:[[CWLocalMessage alloc] init]];
+            }
+        }
+        else
+        {
+            [self synchronize];
+        }
     }
-  else
-    {
-      attributes = [[NSFileManager defaultManager] fileAttributesAtPath: [NSString stringWithFormat: @"%@/cur", [theFolder path]]
-						   traverseLink: NO];
-    }
-
-  d = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
-  s = [[attributes objectForKey: NSFileSize] intValue];
-  broken = NO;
-
-  // We get the attribtes of the cache
-  attributes = [[NSFileManager defaultManager] fileAttributesAtPath: thePath  traverseLink: NO];
-
-  _folder = theFolder;
-  _count = _modification_date = 0;
-
-  if ((_fd = open([thePath UTF8String], O_RDWR|O_CREAT, S_IRUSR|S_IWUSR)) < 0) 
-    {
-      AUTORELEASE(self);
-      return nil;
-    }
-
-  if (lseek(_fd, 0L, SEEK_SET) < 0)
-    {
-      AUTORELEASE(self);
-      return nil;
-    }
-  
-  // If the cache exists, lets parse it.
-  if ([[attributes objectForKey: NSFileSize] intValue])
-    {
-      unsigned int i;
-
-      v = read_unsigned_short(_fd);
-
-      // HACK: We IGNORE all the previous cache.
-      if (v != version)
-	{
-	  //NSLog(@"Ignoring the old cache format.");
-	  ftruncate(_fd, 0);
-	  [self synchronize];
-	  return self;
-	}
-
-      _count = read_unsigned_int(_fd);
-      _modification_date = read_unsigned_int(_fd);
-
-      if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
-	{
-	  _size = read_unsigned_int(_fd);
-	  
-	  if (s != _size || d != _modification_date) broken = YES;
-	}
-      else
-	{
-	  //NSLog(@"Asking enumerator...");
-	  c = [[[[NSFileManager defaultManager] enumeratorAtPath: [NSString stringWithFormat: @"%@/cur/", [theFolder path]]] allObjects] count];
-	  //NSLog(@"Done! count = %d", c);
-	  
-	  if (c != _count || d != _modification_date) broken = YES;
-	}
- 
-      if (broken)
-	{
-	  //NSLog(@"Broken cache, we must invalidate.");
-	  _count = _size = 0;
-	  ftruncate(_fd,0);
-	  [self synchronize];
-	  return self;
-	}
-      
-      //NSLog(@"Version = %i  date  = %d  size = %d count = %d", v, d, _size, _count);
-
-      for (i = 0; i < _count; i++)
-	{
-	  [((CWFolder *)_folder)->allMessages addObject: AUTORELEASE([[CWLocalMessage alloc] init])];
-	}
-    }
-  else
-    {
-      [self synchronize];
-    }
-
-  return self;
+    return self;
 }
 
 //
@@ -177,7 +165,6 @@ static unsigned short version = 1;
   
   if (_fd >= 0) close(_fd);
 
-  [super dealloc];
 }
 
 
@@ -191,12 +178,12 @@ static unsigned short version = 1;
   CWLocalMessage *aMessage;
   CWFlags *theFlags;
   
-  unsigned short int len, tot;
+  unsigned short int len, tot = 0;
   unsigned char *r, *s;
-  int begin, end, i;
+  NSInteger begin, end, i;
   BOOL b;
 
-  begin = (theRange.location >= 0 ? theRange.location : 0);
+  begin = (NSNotFound != theRange.location) ? theRange.location : 0;
   end = (NSMaxRange(theRange) <= _count ? NSMaxRange(theRange) : _count);
 
   if (lseek(_fd, ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox) ? 14L : 10L, SEEK_SET) < 0)
@@ -208,7 +195,6 @@ static unsigned short version = 1;
   //NSLog(@"init from %d to %d, count = %d, size of char %d", begin, end, _count, sizeof(char));
 
   s = (unsigned char *)malloc(65536);
-  tot = 0;
 
   // We MUST skip the last few bytes...
   for (i = begin; i < end ; i++)
@@ -232,7 +218,7 @@ static unsigned short version = 1;
       
       if (read(_fd, r, len-4) < 0) { NSLog(@"read failed"); abort(); }
 
-      theFlags = AUTORELEASE([[CWFlags alloc] initWithFlags: read_unsigned_int_memory(r)]);
+      theFlags = [[CWFlags alloc] initWithFlags: read_unsigned_int_memory(r)];
       [aMessage setReceivedDate: [NSCalendarDate dateWithTimeIntervalSince1970: read_unsigned_int_memory(r+4)]];
 
       if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
@@ -329,12 +315,12 @@ static unsigned short version = 1;
 //
 //
 //
-- (unsigned int) fileSize
+- (NSUInteger) fileSize
 {
   return _size;
 }
 
-- (void) setFileSize: (unsigned int) theSize
+- (void) setFileSize: (NSUInteger) theSize
 {
   _size = theSize;
 }
@@ -346,18 +332,16 @@ static unsigned short version = 1;
 {
   NSDictionary *attributes; 
   CWLocalMessage *aMessage;
-  unsigned int len, flags;
-  int i;
+  NSUInteger len, flags;
+  NSInteger i;
 
   if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
     {
-      attributes = [[NSFileManager defaultManager] fileAttributesAtPath: [(CWLocalFolder *)_folder path]
-						   traverseLink: NO];
+      attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[(CWLocalFolder *)_folder path] error:NULL];
     }
   else
     {
-      attributes = [[NSFileManager defaultManager] fileAttributesAtPath: [NSString stringWithFormat: @"%@/cur", [(CWLocalFolder *)_folder path]]
-						   traverseLink: NO];
+      attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[NSString stringWithFormat: @"%@/cur", [(CWLocalFolder *)_folder path]] error:NULL];
     }
   
   _modification_date = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
@@ -375,7 +359,7 @@ static unsigned short version = 1;
 
   if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
     {
-      _size = [[attributes objectForKey: NSFileSize] intValue];
+      _size = [[attributes objectForKey: NSFileSize] integerValue];
       write_unsigned_int(_fd, _size);
     }
 
@@ -407,7 +391,7 @@ static unsigned short version = 1;
 //
 //
 //
-- (unsigned int) count
+- (NSUInteger) count
 {
   return _count;
 }
@@ -415,9 +399,9 @@ static unsigned short version = 1;
 //
 //
 //
-- (void) writeRecord: (cache_record *) theRecord
+- (void) writeRecord: (CWCacheRecord *) theRecord
 {
-  unsigned int len;
+  NSUInteger len;
 
   if (lseek(_fd, 0L, SEEK_END) < 0)
     {
@@ -429,17 +413,17 @@ static unsigned short version = 1;
   // first five fields, which is 20 bytes long and is added
   // at the very end)
   len = 0;
-  len += [theRecord->from length]+2;
-  len += [theRecord->in_reply_to length]+2;
-  len += [theRecord->message_id length]+2;
-  len += [theRecord->references length]+2;
-  len += [theRecord->subject length]+2;
-  len += [theRecord->to length]+2;
-  len += [theRecord->cc length]+2;
+  len += [theRecord.from length]+2;
+  len += [theRecord.in_reply_to length]+2;
+  len += [theRecord.message_id length]+2;
+  len += [theRecord.references length]+2;
+  len += [theRecord.subject length]+2;
+  len += [theRecord.to length]+2;
+  len += [theRecord.cc length]+2;
 
   if ([(CWLocalFolder *)_folder type] == PantomimeFormatMaildir)
     {
-      len += strlen(theRecord->filename)+2;
+      len += strlen(theRecord.filename)+2;
       len += 16;
     }
   else
@@ -451,28 +435,28 @@ static unsigned short version = 1;
   write_unsigned_int(_fd, len);
 
   // We write the flags, date, position and the size of the message.
-  write_unsigned_int(_fd, theRecord->flags);
-  write_unsigned_int(_fd, theRecord->date);
+  write_unsigned_int(_fd, theRecord.flags);
+  write_unsigned_int(_fd, theRecord.date);
 
   if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
     {
-      write_unsigned_int(_fd, theRecord->position);
+      write_unsigned_int(_fd, theRecord.position);
     }
   else
     {
-      write_string(_fd, (unsigned char *)theRecord->filename, strlen(theRecord->filename));
+      write_string(_fd, (unsigned char *)theRecord.filename, strlen(theRecord.filename));
     }
   
-  write_unsigned_int(_fd, theRecord->size);
+  write_unsigned_int(_fd, theRecord.size);
   
   // We write the read of our cached headers (From, In-Reply-To, Message-ID, References, Subject and To)
-  write_string(_fd, (unsigned char *)[theRecord->from bytes], [theRecord->from length]);
-  write_string(_fd, (unsigned char *)[theRecord->in_reply_to bytes], [theRecord->in_reply_to length]);
-  write_string(_fd, (unsigned char *)[theRecord->message_id bytes], [theRecord->message_id length]);
-  write_string(_fd, (unsigned char *)[theRecord->references bytes], [theRecord->references length]);
-  write_string(_fd, (unsigned char *)[theRecord->subject bytes], [theRecord->subject length]);
-  write_string(_fd, (unsigned char *)[theRecord->to bytes], [theRecord->to length]);
-  write_string(_fd, (unsigned char *)[theRecord->cc bytes], [theRecord->cc length]);
+  write_string(_fd, (unsigned char *)[theRecord.from bytes], [theRecord.from length]);
+  write_string(_fd, (unsigned char *)[theRecord.in_reply_to bytes], [theRecord.in_reply_to length]);
+  write_string(_fd, (unsigned char *)[theRecord.message_id bytes], [theRecord.message_id length]);
+  write_string(_fd, (unsigned char *)[theRecord.references bytes], [theRecord.references length]);
+  write_string(_fd, (unsigned char *)[theRecord.subject bytes], [theRecord.subject length]);
+  write_string(_fd, (unsigned char *)[theRecord.to bytes], [theRecord.to length]);
+  write_string(_fd, (unsigned char *)[theRecord.cc bytes], [theRecord.cc length]);
 
   _count++;
 }
@@ -491,7 +475,7 @@ static unsigned short version = 1;
   NSDictionary *attributes;
   CWLocalMessage *aMessage;
 
-  unsigned int cache_size, flags, i, len, total_deleted, total_length, type, v;
+  NSUInteger cache_size, flags, i, len, total_deleted, total_length, type, v;
   short delta;
   char *buf;
 
@@ -562,7 +546,7 @@ static unsigned short version = 1;
 	    {
 	      unsigned short c0, c1, old_len, r;
 	      char *filename;
-	      int s_len;
+	      NSInteger s_len;
 
 	      // We read our Flags, Date, and the first two bytes
 	      // of our filename into memory.
@@ -617,18 +601,16 @@ static unsigned short version = 1;
 
   if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
       {
-	attributes = [[NSFileManager defaultManager] fileAttributesAtPath: [(CWLocalFolder *)_folder path]
-						     traverseLink: NO];
+	attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[(CWLocalFolder *)_folder path] error:NULL];
 	
 	_modification_date = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
-	_size = [[attributes objectForKey: NSFileSize] intValue];
+	_size = [[attributes objectForKey: NSFileSize] integerValue];
 	write_unsigned_int(_fd, _modification_date);
 	write_unsigned_int(_fd, _size);
       }
   else
     {
-      attributes = [[NSFileManager defaultManager] fileAttributesAtPath: [NSString stringWithFormat: @"%@/cur", [(CWLocalFolder *)_folder path]]
-						   traverseLink: NO];
+      attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[NSString stringWithFormat: @"%@/cur", [(CWLocalFolder *)_folder path]] error:NULL];
       _modification_date = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
       _size = 0;
       write_unsigned_int(_fd, _modification_date);

@@ -20,11 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWMIMEMultipart
-#define _Pantomime_H_CWMIMEMultipart
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSObject.h>
+#import <Foundation/Foundation.h>
 
 @class CWPart;
 
@@ -61,7 +57,7 @@
               present in the receiver.
   @result The number of Part instances.
 */
-- (unsigned int) count;
+- (NSUInteger) count;
 
 /*!
   @method partAtIndex:
@@ -71,8 +67,6 @@
   @result The CWPart instance. If the index is out of bounds,
           an NSRangeException is raised.
 */
-- (CWPart *) partAtIndex: (unsigned int) theIndex;
+- (CWPart *) partAtIndex: (NSUInteger) theIndex;
 
 @end
-
-#endif // _Pantomime_H_CWMIMEMultipart 

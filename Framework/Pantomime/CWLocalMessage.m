@@ -20,27 +20,17 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWLocalMessage.h>
+#import "CWLocalMessage.h"
 
-#include <Pantomime/io.h>
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWLocalFolder.h>
-#include <Pantomime/CWLocalStore.h>
-#include <Pantomime/CWMIMEUtility.h>
-#include <Pantomime/NSData+Extensions.h>
+#include "io.h"
+#import "CWConstants.h"
+#import "CWLocalFolder.h"
+#import "CWLocalStore.h"
+#import "CWMIMEUtility.h"
+#import "NSData+CWExtensions.h"
 
-#include <Foundation/NSException.h>
-#include <Foundation/NSValue.h>
 
-#include <fcntl.h>  // O_RDONLY
-#include <stdlib.h> // free() and malloc()
-#include <unistd.h> // lseek() and close()
-
-#ifdef __MINGW32__
-#include <io.h>
-#endif
-
-static int currentLocalMessageVersion = 1;
+static NSInteger currentLocalMessageVersion = 1;
 
 //
 //
@@ -74,7 +64,7 @@ static int currentLocalMessageVersion = 1;
   [theCoder encodeObject: _mailFilename];
 
   // Store the message type; useful to have.
-  [theCoder encodeObject: [NSNumber numberWithInt: _type]];
+  [theCoder encodeObject: [NSNumber numberWithInteger:_type]];
 }
 
 
@@ -91,7 +81,7 @@ static int currentLocalMessageVersion = 1;
   [self setMailFilename: [theCoder decodeObject]];
   
   // Retrieve the message type
-  _type = [[theCoder decodeObject] intValue];
+  _type = [[theCoder decodeObject] integerValue];
   
   return self;
 }
@@ -100,12 +90,12 @@ static int currentLocalMessageVersion = 1;
 //
 // access / mutation methods
 //
-- (unsigned int) filePosition
+- (NSUInteger) filePosition
 {
   return _file_position;
 }
 
-- (void) setFilePosition: (unsigned int) theFilePosition
+- (void) setFilePosition: (NSUInteger) theFilePosition
 {
   _file_position = theFilePosition;
 }
@@ -137,17 +127,6 @@ static int currentLocalMessageVersion = 1;
   ASSIGN(_mailFilename, theFilename);
 }
 
-
-//
-//
-//
-- (void) dealloc
-{
-  TEST_RELEASE(_mailFilename);
-  [super dealloc];
-}
-
-
 //
 //
 //
@@ -155,7 +134,7 @@ static int currentLocalMessageVersion = 1;
 {
   NSData *aData;
   char *buf;
-  int fd;
+  NSInteger fd;
 
   // If we are reading from a mbox file, the file is already open
   if ([(CWLocalFolder *)[self folder] type] == PantomimeFormatMbox)
@@ -220,41 +199,41 @@ static int currentLocalMessageVersion = 1;
 //
 - (void) setInitialized: (BOOL) aBOOL
 {
-  [super setInitialized: aBOOL];
-
-  if (aBOOL)
+    [super setInitialized: aBOOL];
+    
+    if (aBOOL)
     {
-      NSData *aData;
-
-      aData = [self rawSource];
-
-      if (aData)
-	{
-	  NSRange aRange;
-
-	  aRange = [aData rangeOfCString: "\n\n"];
-	  
-	  if (aRange.length == 0)
-	    {
-	      [super setInitialized: NO];
-	      return;
-	    }
-	  
-	  [self setHeadersFromData: [aData subdataWithRange: NSMakeRange(0,aRange.location)]];
-	  [CWMIMEUtility setContentFromRawSource:
-			   [aData subdataWithRange:
-				    NSMakeRange(aRange.location + 2, [aData length]-(aRange.location+2))]
-			 inPart: self];
-	}
-      else
-	{
-	  [super setInitialized: NO];
-	  return;
-	}
+        NSData *aData;
+        
+        aData = [self rawSource];
+        
+        if (aData)
+        {
+            NSRange aRange;
+            
+            aRange = [aData rangeOfCString: "\n\n"];
+            
+            if (aRange.length == 0)
+            {
+                [super setInitialized: NO];
+                return;
+            }
+            
+            [self setHeadersFromData: [aData subdataWithRange: NSMakeRange(0,aRange.location)]];
+            [CWMIMEUtility setContentFromRawSource:
+             [aData subdataWithRange:
+              NSMakeRange(aRange.location + 2, [aData length]-(aRange.location+2))]
+                                            inPart: self];
+        }
+        else
+        {
+            [super setInitialized: NO];
+            return;
+        }
     }
-  else
+    else
     {
-      DESTROY(_content);
+        _content = nil;
     } 
 }
 

@@ -20,18 +20,10 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWIMAPStore
-#define _Pantomime_H_CWIMAPStore
-
-#include <Pantomime/CWConnection.h>
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWService.h>
-#include <Pantomime/CWStore.h>
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSDictionary.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
+#import "CWConnection.h"
+#import "CWConstants.h"
+#import "CWService.h"
+#import "CWStore.h"
 
 /*!
   @typedef IMAPCommand
@@ -105,7 +97,9 @@ typedef enum {
   IMAP_UID_SEARCH_UNSEEN,
   IMAP_UID_STORE,
   IMAP_UNSUBSCRIBE,
-  IMAP_EMPTY_QUEUE
+  IMAP_EMPTY_QUEUE,
+  IMAP_IDLE,
+  IMAP_DONE
 } IMAPCommand;
 
 /*!
@@ -138,6 +132,8 @@ extern NSString *PantomimeFolderStatusCompleted;
 */
 extern NSString *PantomimeFolderStatusFailed;
 
+// CWIMAPFolder IDLE notifications
+extern NSString* PantomimeFolderNewMessageWhileIDLE;
 
 @class CWConnection;
 @class CWFlags;
@@ -166,7 +162,9 @@ extern NSString *PantomimeFolderStatusFailed;
     CWIMAPFolder *_selectedFolder;
 
     unsigned char _folderSeparator;
-    int _tag;
+    NSInteger _tag;
+	
+	BOOL idling;
 }
 
 /*!
@@ -265,6 +263,7 @@ extern NSString *PantomimeFolderStatusFailed;
 */
 - (void) sendCommand: (IMAPCommand) theCommand  info: (NSDictionary *) theInfo  arguments: (NSString *) theFormat, ...;
 
-@end
+- (void) startIDLE;
+- (void) stopIDLE;
 
-#endif // _Pantomime_H_IMAPStore
+@end

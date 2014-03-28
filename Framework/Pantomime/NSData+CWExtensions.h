@@ -20,20 +20,15 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_NSData_Extensions
-#define _Pantomime_H_NSData_Extensions
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSString.h>
+#import <Foundation/Foundation.h>
 
 /*!
-  @category NSData (PantomimeExtensions)
+  @category NSData (CWExtensions)
   @abstract Pantomime extensions to NSData.
   @discussion This category provides useful extensions for handling
               NSData objects.
 */
-@interface NSData (PantomimeExtensions)
+@interface NSData (CWExtensions)
 
 + (id) dataWithCString: (const char *) theCString;
 
@@ -86,7 +81,7 @@
                    should be done. 0 disables any wrapping.
   @result Returns a NSData object.
 */
-- (NSData *) encodeQuotedPrintableWithLineLength: (int) theLength
+- (NSData *) encodeQuotedPrintableWithLineLength: (NSInteger) theLength
                                         inHeader: (BOOL) aBOOL;
 /*!
   @method rangeOfData:
@@ -115,7 +110,7 @@
   @result The associated range of the C string in the receiver.
 */
 -(NSRange) rangeOfCString: (const char *) theCString
-                  options: (unsigned int) theOptions;
+                  options: (NSUInteger) theOptions;
 
 /*!
   @method rangeOfCString:
@@ -127,7 +122,7 @@
   @result The associated range of the C string in the receiver.
 */
 -(NSRange) rangeOfCString: (const char *) theCString
-                  options: (unsigned int) theOptions
+                  options: (NSUInteger) theOptions
 	            range: (NSRange) theRange;
 
 /*!
@@ -138,7 +133,7 @@
   @param theIndex The index used to get the subdata from.
   @result The subdata.
 */
-- (NSData *) subdataFromIndex: (int) theIndex;
+- (NSData *) subdataFromIndex: (NSInteger) theIndex;
 
 /*!
   @method subdataToIndex:
@@ -148,7 +143,7 @@
   @param theIndex The index used to get the subdata to.
   @result The subdata.
 */
-- (NSData *) subdataToIndex: (int) theIndex;
+- (NSData *) subdataToIndex: (NSInteger) theIndex;
 
 /*!
   @method dataByTrimmingWhiteSpaces
@@ -193,7 +188,7 @@
   @param theCharacter The caracter to be searched for.
   @result The index of the character, -1 if it's not found in the receiver.
 */
-- (int) indexOfCharacter: (char) theCharacter;
+- (NSInteger) indexOfCharacter: (char) theCharacter;
 
 /*!
   @method hasCPrefix:
@@ -266,7 +261,7 @@
 */
 -(const char *) cString;
 
-- (unichar) characterAtIndex: (int) theIndex;
+- (unichar) characterAtIndex: (NSInteger) theIndex;
 
 /*!
   @method quoteWithLevel:wrappingLimit:
@@ -276,8 +271,8 @@
   @result Returns a quoted string as a NSData instance. An empty NSData 
           instance is returned if <i>theLevel</i> is greater than <i>theLimit</i>.
 */
-- (NSData *) quoteWithLevel: (int) theLevel
-             wrappingLimit: (int) theLimit;
+- (NSData *) quoteWithLevel: (NSInteger) theLevel
+             wrappingLimit: (NSInteger) theLimit;
 
 /*!
   @method unwrapWithLimit:
@@ -286,7 +281,7 @@
   @param theQuoteLimit The quote limit to use for unwrapping the string.
   @result The unwrapped string, as a NSData instance.
 */
-- (NSData *) unwrapWithLimit: (int) theQuoteLimit;
+- (NSData *) unwrapWithLimit: (NSInteger) theQuoteLimit;
 
 /*!
   @method wrapWithLimit:
@@ -297,17 +292,17 @@
                   in characters.
   @result The wrapped string.
 */
-- (NSData *) wrapWithLimit: (int) theLimit;
+- (NSData *) wrapWithLimit: (NSInteger) theLimit;
 
 @end
 
 /*!
-  @category NSMutableData (PantomimeExtensions)
+  @category NSMutableData (CWExtensions)
   @abstract Pantomime extensions to NSMutableData.
   @discussion This category provides useful extensions for handling
               NSMutableData objects.
 */
-@interface NSMutableData (PantomimeExtensions)
+@interface NSMutableData (CWExtensions)
 
 /*!
   @method appendCFormat:
@@ -337,7 +332,7 @@
   @param theIndex The index where to insert the C string.
 */
 - (void) insertCString: (const char *) theCString
-               atIndex: (int) theIndex;
+               atIndex: (NSInteger) theIndex;
 
 /*!
   @method replaceCRLFWithLF
@@ -355,5 +350,3 @@
 - (NSMutableData *) replaceLFWithCRLF;
 
 @end
-
-#endif // _Pantomime_H_NSData_Extensions

@@ -20,13 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWParser
-#define _Pantomime_H_CWParser
 
-#import <Foundation/NSData.h>
-#import <Foundation/NSObject.h>
-
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 @class CWPart;
 @class CWMessage;
@@ -236,5 +231,3 @@
                  inMessage: (CWMessage *) theMessage;
 
 @end
-
-#endif // _Pantomime_H_CWParser

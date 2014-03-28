@@ -20,11 +20,11 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWContainer.h>
+#import "CWContainer.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWInternetAddress.h>
-#include <Pantomime/CWMessage.h>
+#import "CWConstants.h"
+#import "CWInternetAddress.h"
+#import "CWMessage.h"
 
 
 //
@@ -44,32 +44,18 @@
   return self;
 }
 
-
-//
-//
-//
-- (void) dealloc
-{
-  TEST_RELEASE(parent);
-  TEST_RELEASE(child);
-  TEST_RELEASE(next);
-
-  [super dealloc];
-}
-
-
 //
 // access / mutation methods
 //
 - (void) setParent: (CWContainer *) theParent
 {
-  if (theParent && theParent != self)
+    if (theParent && theParent != self)
     {
-      ASSIGN(parent, theParent);
+        parent = theParent;
     }
-  else
+    else
     {
-      DESTROY(parent);
+        parent = nil;
     }
 }
 
@@ -77,73 +63,69 @@
 // 
 //
 //
-#warning Fix mem leaks
+// #warning Fix mem leaks
 - (void) setChild: (CWContainer *) theChild
 {
-  if (!theChild || theChild == self || theChild->next == self || theChild == child)
+    if (!theChild || theChild == self || theChild->next == self || theChild == child)
     {
-      return;
+        return;
     }
-  
-  if (theChild)
+    
+    if (theChild)
     {
-      CWContainer *aChild;
-
-      // We search down in the children of theChild to be sure that
-      // self IS NOT reachable
-      // FIXME - we should use childrenEnumerator since we are NOT looping
-      // in all children with this code
-      aChild = theChild->child;
-
-      while (aChild)
+        CWContainer *aChild;
+        
+        // We search down in the children of theChild to be sure that
+        // self IS NOT reachable
+        // FIXME - we should use childrenEnumerator since we are NOT looping
+        // in all children with this code
+        aChild = theChild->child;
+        
+        while (aChild)
       	{
-      	  if (aChild == self)
+            if (aChild == self)
       	    {
-	      return;
+                return;
       	    }
-	  aChild = aChild->next;
+            aChild = aChild->next;
       	}
-
-
-      RETAIN(theChild);
-      //RELEASE(child);
-      //child = theChild;
-      
-      // We finally add it!
-      if (!child)
-	{
-	  child = theChild;
-	}
-      else
-	{	  
-	  aChild = child;
-
-	  // We go at the end of our list of children
-	  //while ( aChild->next != nil && aChild->next != aChild )
-	  while (aChild->next != nil)
-	    {     
-	      if (aChild->next == aChild)
-		{
-		  aChild->next = theChild;
-		  return;
-		}
-
-	      // We don't add the child if it's already there
-	      if (aChild == theChild)
-		{
-		  return;
-		}
-
-	      aChild = aChild->next;
-	    }
-
-	  aChild->next = theChild;
-	}
-   
+        
+        
+        // We finally add it!
+        if (!child)
+        {
+            child = theChild;
+        }
+        else
+        {	  
+            aChild = child;
+            
+            // We go at the end of our list of children
+            //while ( aChild->next != nil && aChild->next != aChild )
+            while (aChild->next != nil)
+            {     
+                if (aChild->next == aChild)
+                {
+                    aChild->next = theChild;
+                    return;
+                }
+                
+                // We don't add the child if it's already there
+                if (aChild == theChild)
+                {
+                    return;
+                }
+                
+                aChild = aChild->next;
+            }
+            
+            aChild->next = theChild;
+        }
+        
     }
-  else
+    else
     {
-      DESTROY(child);
+        child = nil;
     }
 }
 
@@ -151,10 +133,10 @@
 //
 //
 //
-- (CWContainer *) childAtIndex: (unsigned int) theIndex
+- (CWContainer *) childAtIndex: (NSUInteger) theIndex
 {
   CWContainer *aChild;
-  unsigned int i;
+  NSUInteger i;
 
   aChild = child;
 
@@ -170,12 +152,12 @@
 //
 //
 //
-- (unsigned int) count
+- (NSUInteger) count
 {
   if (child)
     {
       CWContainer *aChild;
-      unsigned int count;
+      NSUInteger count;
 
       aChild = child;
       count = 0;
@@ -205,14 +187,7 @@
 //
 - (void) setNext: (CWContainer *) theNext
 {
-  if (theNext)
-    {
-      ASSIGN(next, theNext);
-    }
-  else
-    {
-      DESTROY(next);
-    }
+    next = theNext;
 }
 
 
@@ -221,26 +196,25 @@
 //
 - (NSEnumerator *) childrenEnumerator
 {
-  NSMutableArray *aMutableArray;
-  CWContainer *aContainer;
-
-  aMutableArray = [[NSMutableArray alloc] init];
-  AUTORELEASE(aMutableArray);
-
-  aContainer = child;
-  
-  while (aContainer)
+    NSMutableArray *aMutableArray;
+    CWContainer *aContainer;
+    
+    aMutableArray = [[NSMutableArray alloc] init];
+    
+    aContainer = child;
+    
+    while (aContainer)
     {
-      [aMutableArray addObject: aContainer];
-      
-      // We add, recursively, all its children
-      [aMutableArray addObjectsFromArray: [[aContainer childrenEnumerator] allObjects]];
-
-      // We get our next container
-      aContainer = aContainer->next;
+        [aMutableArray addObject: aContainer];
+        
+        // We add, recursively, all its children
+        [aMutableArray addObjectsFromArray: [[aContainer childrenEnumerator] allObjects]];
+        
+        // We get our next container
+        aContainer = aContainer->next;
     }
-
-  return [aMutableArray objectEnumerator];
+    
+    return [aMutableArray objectEnumerator];
 }
 
 @end

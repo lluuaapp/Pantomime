@@ -20,12 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWMD5
-#define _Pantomime_H_CWMD5
 
-#import <Foundation/NSData.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
+#import <Foundation/Foundation.h>
 
 /*!
   @class CWMD5
@@ -83,5 +79,3 @@
 - (NSString *) hmacAsStringUsingPassword: (NSString *) thePassword;
 
 @end
-
-#endif // _Pantomime_H_CWMD5

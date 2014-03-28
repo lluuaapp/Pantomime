@@ -20,15 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWInternetAddress
-#define _Pantomime_H_CWInternetAddress
-
-#import <Foundation/NSCoder.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
-
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 /*!
   @class CWInternetAddress
@@ -200,6 +192,3 @@
 */
 @interface BccRecipient: CWInternetAddress
 @end
-
-
-#endif // _Pantomime_H_CWInternetAddress

@@ -20,15 +20,11 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWCharset
-#define _Pantomime_H_CWCharset
-
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
+#import <Foundation/Foundation.h>
 
 struct charset_code
 {
-  int code;
+  NSInteger code;
   unichar value;
 };
 
@@ -41,8 +37,8 @@ struct charset_code
 {
   @private
     const struct charset_code *_codes;
-    int _num_codes;
-    int _identity_map;
+    NSInteger _num_codes;
+    NSInteger _identity_map;
 }
 
 /*!
@@ -55,7 +51,7 @@ struct charset_code
   @param num_codes The size of the table.
 */
 - (id) initWithCodeCharTable: (const struct charset_code *) codes
-                      length: (int) num_codes;
+                      length: (NSInteger) num_codes;
 
 /*!
   @method codeForCharacter:
@@ -64,7 +60,7 @@ struct charset_code
   @param theCharacter The Unicode character to use.
   @result The code from the code table.
 */
-- (int) codeForCharacter: (unichar) theCharacter;
+- (NSInteger) codeForCharacter: (unichar) theCharacter;
 
 /*!
   @method characterIsInCharset:
@@ -105,5 +101,3 @@ struct charset_code
 + (CWCharset *) charsetForName: (NSString *) theName;
 
 @end
-
-#endif // _Pantomime_H_CWCharset

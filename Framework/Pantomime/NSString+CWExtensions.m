@@ -25,32 +25,14 @@
 //          See the -hasREPrefix method for details.
 //
 
-#include <Pantomime/NSString+Extensions.h>
+#import "NSString+CWExtensions.h"
 
-#include <Pantomime/CWCharset.h>
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWInternetAddress.h>
-#include <Pantomime/CWPart.h>
-#include <Pantomime/NSData+Extensions.h>
+#import "CWCharset.h"
+#import "CWConstants.h"
+#import "CWInternetAddress.h"
+#import "CWPart.h"
+#import "NSData+CWExtensions.h"
 
-#include <Foundation/NSBundle.h>
-
-//
-// We include the CoreFoundation headers under Mac OS X so we can support
-// more string encodings.
-//
-#ifdef MACOSX
-#include <CoreFoundation/CFString.h>
-#include <CoreFoundation/CFStringEncodingExt.h>
-#else
-#include <GNUstepBase/GSCategories.h>
-#endif
-
-#include <ctype.h>
-
-#ifdef HAVE_ICONV
-#include <iconv.h>
-#endif
 
 #define IS_PRINTABLE(c) (isascii(c) && isprint(c))
 
@@ -65,9 +47,9 @@
   NSMutableString *aMutableString;
 
   aMutableString = [[NSMutableString alloc] initWithString: self];
-  CFStringTrimWhitespace((CFMutableStringRef)aMutableString);
+  CFStringTrimWhitespace((__bridge CFMutableStringRef)aMutableString);
   
-  return AUTORELEASE(aMutableString);
+  return aMutableString;
 }
 #endif
 
@@ -75,7 +57,7 @@
 //
 //
 //
-- (int) indexOfCharacter: (unichar) theCharacter
+- (NSInteger) indexOfCharacter: (unichar) theCharacter
 {
   return [self indexOfCharacter: theCharacter  fromIndex: 0];
 }
@@ -84,10 +66,10 @@
 //
 //
 //
-- (int) indexOfCharacter: (unichar) theCharacter
-               fromIndex: (unsigned int) theIndex
+- (NSInteger) indexOfCharacter: (unichar) theCharacter
+               fromIndex: (NSUInteger) theIndex
 {
-  int i, len;
+  NSInteger i, len;
   
   len = [self length];
   
@@ -136,7 +118,7 @@
 //
 - (NSString *) stringFromQuotedString
 {
-  int len;
+  NSInteger len;
 
   len = [self length];
   
@@ -154,7 +136,7 @@
 //
 //
 //
-+ (NSString *) stringValueOfTransferEncoding: (int) theEncoding
++ (NSString *) stringValueOfTransferEncoding: (NSInteger) theEncoding
 {
   switch (theEncoding)
     {
@@ -180,83 +162,83 @@
 //
 //
 //
-+ (int) encodingForCharset: (NSData *) theCharset
++ (NSInteger) encodingForCharset: (NSData *) theCharset
 {
   // We define some aliases for the string encoding.
-  static struct { NSString *name; int encoding; BOOL fromCoreFoundation; } encodings[] = {
-    {@"ascii"         ,NSASCIIStringEncoding          ,NO},
-    {@"us-ascii"      ,NSASCIIStringEncoding          ,NO},
-    {@"default"       ,NSASCIIStringEncoding          ,NO},  // Ah... spammers.
-    {@"utf-8"         ,NSUTF8StringEncoding           ,NO},
-    {@"iso-8859-1"    ,NSISOLatin1StringEncoding      ,NO},
-    {@"x-user-defined",NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Outlook.
-    {@"unknown"       ,NSISOLatin1StringEncoding      ,NO},  // Once more, blame Outlook.
-    {@"x-unknown"     ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Pine 4.21.
-    {@"unknown-8bit"  ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Mutt/1.3.28i
-    {@"0"             ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in QUALCOMM Windows Eudora Version 6.0.1.1
-    {@""              ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Ximian Evolution
-    {@"iso8859_1"     ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Openwave WebEngine
-    {@"iso-8859-2"    ,NSISOLatin2StringEncoding      ,NO},
+  static struct { char *name; NSInteger encoding; BOOL fromCoreFoundation; } encodings[] = {
+    {"ascii"         ,NSASCIIStringEncoding          ,NO},
+    {"us-ascii"      ,NSASCIIStringEncoding          ,NO},
+    {"default"       ,NSASCIIStringEncoding          ,NO},  // Ah... spammers.
+    {"utf-8"         ,NSUTF8StringEncoding           ,NO},
+    {"iso-8859-1"    ,NSISOLatin1StringEncoding      ,NO},
+    {"x-user-defined",NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Outlook.
+    {"unknown"       ,NSISOLatin1StringEncoding      ,NO},  // Once more, blame Outlook.
+    {"x-unknown"     ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Pine 4.21.
+    {"unknown-8bit"  ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Mutt/1.3.28i
+    {"0"             ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in QUALCOMM Windows Eudora Version 6.0.1.1
+    {""              ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Ximian Evolution
+    {"iso8859_1"     ,NSISOLatin1StringEncoding      ,NO},  // To prevent a lame bug in Openwave WebEngine
+    {"iso-8859-2"    ,NSISOLatin2StringEncoding      ,NO},
 #ifdef MACOSX
-    {@"iso-8859-3"    ,kCFStringEncodingISOLatin3        ,YES},
-    {@"iso-8859-4"    ,kCFStringEncodingISOLatin4        ,YES},
-    {@"iso-8859-5"    ,kCFStringEncodingISOLatinCyrillic ,YES},
-    {@"iso-8859-6"    ,kCFStringEncodingISOLatinArabic   ,YES},
-    {@"iso-8859-7"    ,kCFStringEncodingISOLatinGreek    ,YES},
-    {@"iso-8859-8"    ,kCFStringEncodingISOLatinHebrew   ,YES},
-    {@"iso-8859-9"    ,kCFStringEncodingISOLatin5        ,YES},
-    {@"iso-8859-10"   ,kCFStringEncodingISOLatin6        ,YES},
-    {@"iso-8859-11"   ,kCFStringEncodingISOLatinThai     ,YES},
-    {@"iso-8859-13"   ,kCFStringEncodingISOLatin7        ,YES},
-    {@"iso-8859-14"   ,kCFStringEncodingISOLatin8        ,YES},
-    {@"iso-8859-15"   ,kCFStringEncodingISOLatin9        ,YES},
-    {@"koi8-r"        ,kCFStringEncodingKOI8_R           ,YES},
-    {@"big5"          ,kCFStringEncodingBig5             ,YES},
-    {@"euc-kr"        ,kCFStringEncodingEUC_KR           ,YES},
-    {@"ks_c_5601-1987",kCFStringEncodingEUC_KR           ,YES},
-    {@"gb2312"        ,kCFStringEncodingHZ_GB_2312       ,YES},
-    {@"shift_jis"     ,kCFStringEncodingShiftJIS         ,YES},
-    {@"windows-1255"  ,kCFStringEncodingWindowsHebrew    ,YES},
-    {@"windows-1256"  ,kCFStringEncodingWindowsArabic    ,YES},
-    {@"windows-1257"  ,kCFStringEncodingWindowsBalticRim ,YES},
-    {@"windows-1258"  ,kCFStringEncodingWindowsVietnamese,YES},
+    {"iso-8859-3"    ,kCFStringEncodingISOLatin3        ,YES},
+    {"iso-8859-4"    ,kCFStringEncodingISOLatin4        ,YES},
+    {"iso-8859-5"    ,kCFStringEncodingISOLatinCyrillic ,YES},
+    {"iso-8859-6"    ,kCFStringEncodingISOLatinArabic   ,YES},
+    {"iso-8859-7"    ,kCFStringEncodingISOLatinGreek    ,YES},
+    {"iso-8859-8"    ,kCFStringEncodingISOLatinHebrew   ,YES},
+    {"iso-8859-9"    ,kCFStringEncodingISOLatin5        ,YES},
+    {"iso-8859-10"   ,kCFStringEncodingISOLatin6        ,YES},
+    {"iso-8859-11"   ,kCFStringEncodingISOLatinThai     ,YES},
+    {"iso-8859-13"   ,kCFStringEncodingISOLatin7        ,YES},
+    {"iso-8859-14"   ,kCFStringEncodingISOLatin8        ,YES},
+    {"iso-8859-15"   ,kCFStringEncodingISOLatin9        ,YES},
+    {"koi8-r"        ,kCFStringEncodingKOI8_R           ,YES},
+    {"big5"          ,kCFStringEncodingBig5             ,YES},
+    {"euc-kr"        ,kCFStringEncodingEUC_KR           ,YES},
+    {"ks_c_5601-1987",kCFStringEncodingEUC_KR           ,YES},
+    {"gb2312"        ,kCFStringEncodingHZ_GB_2312       ,YES},
+    {"shift_jis"     ,kCFStringEncodingShiftJIS         ,YES},
+    {"windows-1255"  ,kCFStringEncodingWindowsHebrew    ,YES},
+    {"windows-1256"  ,kCFStringEncodingWindowsArabic    ,YES},
+    {"windows-1257"  ,kCFStringEncodingWindowsBalticRim ,YES},
+    {"windows-1258"  ,kCFStringEncodingWindowsVietnamese,YES},
 #else
-    {@"iso-8859-3"   ,NSISOLatin3StringEncoding                 ,NO},
-    {@"iso-8859-4"   ,NSISOLatin4StringEncoding                 ,NO},
-    {@"iso-8859-5"   ,NSISOCyrillicStringEncoding               ,NO},
-    {@"iso-8859-6"   ,NSISOArabicStringEncoding                 ,NO},
-    {@"iso-8859-7"   ,NSISOGreekStringEncoding                  ,NO},
-    {@"iso-8859-8"   ,NSISOHebrewStringEncoding                 ,NO},
-    {@"iso-8859-9"   ,NSISOLatin5StringEncoding                 ,NO},
-    {@"iso-8859-10"  ,NSISOLatin6StringEncoding                 ,NO},
-    {@"iso-8859-11"  ,NSISOThaiStringEncoding                   ,NO},
-    {@"iso-8859-13"  ,NSISOLatin7StringEncoding                 ,NO},
-    {@"iso-8859-14"  ,NSISOLatin8StringEncoding                 ,NO},
-    {@"iso-8859-15"  ,NSISOLatin9StringEncoding                 ,NO},
-    {@"koi8-r"       ,NSKOI8RStringEncoding                     ,NO},
-    {@"big5"         ,NSBIG5StringEncoding                      ,NO},
-    {@"gb2312"       ,NSGB2312StringEncoding                    ,NO},
-    {@"utf-7"        ,NSUTF7StringEncoding                      ,NO},
-    {@"unicode-1-1-utf-7", NSUTF7StringEncoding                 ,NO},  // To prever a bug (sort of) in MS Hotmail
+    {"iso-8859-3"   ,NSISOLatin3StringEncoding                 ,NO},
+    {"iso-8859-4"   ,NSISOLatin4StringEncoding                 ,NO},
+    {"iso-8859-5"   ,NSISOCyrillicStringEncoding               ,NO},
+    {"iso-8859-6"   ,NSISOArabicStringEncoding                 ,NO},
+    {"iso-8859-7"   ,NSISOGreekStringEncoding                  ,NO},
+    {"iso-8859-8"   ,NSISOHebrewStringEncoding                 ,NO},
+    {"iso-8859-9"   ,NSISOLatin5StringEncoding                 ,NO},
+    {"iso-8859-10"  ,NSISOLatin6StringEncoding                 ,NO},
+    {"iso-8859-11"  ,NSISOThaiStringEncoding                   ,NO},
+    {"iso-8859-13"  ,NSISOLatin7StringEncoding                 ,NO},
+    {"iso-8859-14"  ,NSISOLatin8StringEncoding                 ,NO},
+    {"iso-8859-15"  ,NSISOLatin9StringEncoding                 ,NO},
+    {"koi8-r"       ,NSKOI8RStringEncoding                     ,NO},
+    {"big5"         ,NSBIG5StringEncoding                      ,NO},
+    {"gb2312"       ,NSGB2312StringEncoding                    ,NO},
+    {"utf-7"        ,NSUTF7StringEncoding                      ,NO},
+    {"unicode-1-1-utf-7", NSUTF7StringEncoding                 ,NO},  // To prever a bug (sort of) in MS Hotmail
 #endif
-    {@"windows-1250" ,NSWindowsCP1250StringEncoding             ,NO},
-    {@"windows-1251" ,NSWindowsCP1251StringEncoding             ,NO},
-    {@"cyrillic (windows-1251)", NSWindowsCP1251StringEncoding  ,NO},  // To prevent a bug in MS Hotmail
-    {@"windows-1252" ,NSWindowsCP1252StringEncoding             ,NO},
-    {@"windows-1253" ,NSWindowsCP1253StringEncoding             ,NO},
-    {@"windows-1254" ,NSWindowsCP1254StringEncoding             ,NO},
-    {@"iso-2022-jp"  ,NSISO2022JPStringEncoding                 ,NO},
-    {@"euc-jp"       ,NSJapaneseEUCStringEncoding               ,NO},
+    {"windows-1250" ,NSWindowsCP1250StringEncoding             ,NO},
+    {"windows-1251" ,NSWindowsCP1251StringEncoding             ,NO},
+    {"cyrillic (windows-1251)", NSWindowsCP1251StringEncoding  ,NO},  // To prevent a bug in MS Hotmail
+    {"windows-1252" ,NSWindowsCP1252StringEncoding             ,NO},
+    {"windows-1253" ,NSWindowsCP1253StringEncoding             ,NO},
+    {"windows-1254" ,NSWindowsCP1254StringEncoding             ,NO},
+    {"iso-2022-jp"  ,NSISO2022JPStringEncoding                 ,NO},
+    {"euc-jp"       ,NSJapaneseEUCStringEncoding               ,NO},
   };
   
-  NSString *name;
-  int i;
+  NSInteger i;
 
-  name = [[NSString stringWithCString: [theCharset bytes] length: [theCharset length]] lowercaseString];
+	NSString *name = [[NSString alloc] initWithData:theCharset encoding:NSUTF8StringEncoding];
+	name = [name lowercaseString];
   
   for (i = 0; i < sizeof(encodings)/sizeof(encodings[0]); i++)
     {
-      if ([name isEqualToString: encodings[i].name])
+      if ([name isEqualToString:[NSString stringWithUTF8String:encodings[i].name]])
 	{
 	  // Under OS X, we use CoreFoundation if necessary to convert the encoding
 	  // to a NSString encoding.
@@ -282,12 +264,12 @@
 //
 //
 //
-+ (int) encodingForPart: (CWPart *) thePart
++ (NSInteger) encodingForPart: (CWPart *) thePart
 {
-  int encoding;
+  NSInteger encoding = -1;
 
   // We get the encoding we are gonna use. We always favor the default encoding.
-  encoding = -1;
+  
   
   if ([thePart defaultCharset])
     {
@@ -317,7 +299,7 @@
 + (NSString *) stringWithData: (NSData *) theData
                       charset: (NSData *) theCharset
 {
-  int encoding;
+  NSInteger encoding;
 
   if (theData == nil)
     {
@@ -335,7 +317,7 @@
       char *o_bytes;
 
       size_t i_length, o_length;
-      int total_length, ret;
+      NSInteger total_length, ret;
       iconv_t conv;
       
       // Instead of calling cString directly on theCharset, we first try
@@ -349,10 +331,10 @@
       
       conv = iconv_open("UTF-8", from_code);
       
-      if ((int)conv < 0)
+      if ((NSInteger)conv < 0)
 	{
 	  // Let's assume we got US-ASCII here.
-	  return AUTORELEASE([[NSString alloc] initWithData: theData  encoding: NSASCIIStringEncoding]);
+	  return [[NSString alloc] initWithData: theData  encoding: NSASCIIStringEncoding];
 	}
       
       i_bytes = [theData bytes];
@@ -392,27 +374,27 @@
 				  encoding: NSUTF8StringEncoding];
       iconv_close(conv);
 
-      return AUTORELEASE(aString);
+      return aString;
 #else
       return nil;
 #endif
     }
   
-  return AUTORELEASE([[NSString alloc] initWithData: theData  encoding: encoding]);
+  return [[NSString alloc] initWithData: theData  encoding: encoding];
 }
 
 
 //
 //
 //
-#warning return Charset instead?
+// #warning return Charset instead?
 - (NSString *) charset
 {
   NSMutableArray *aMutableArray;
   NSString *aString;
   CWCharset *aCharset;
 
-  unsigned int i, j;
+  NSUInteger i, j;
 
   aMutableArray = [[NSMutableArray alloc] initWithCapacity: 21];
 
@@ -486,198 +468,8 @@
 	}
     }
 
-  RELEASE(aMutableArray);
-  
   return aString;
 }
-
-
-//
-//
-//
-- (NSString *) modifiedUTF7String
-{
-#ifndef MACOSX
-  NSMutableData *aMutableData, *modifiedData;
-  NSString *aString;
-
-  const char *b;
-  BOOL escaped;
-  unichar ch;
-  int i, len;
-
-  //
-  // We UTF-7 encode _only_ the non-ASCII parts.
-  //
-  aMutableData = [[NSMutableData alloc] init];
-  AUTORELEASE(aMutableData);
-  len = [self length];
-  
-  for (i = 0; i < len; i++)
-    {
-      ch = [self characterAtIndex: i];
-      
-      if (IS_PRINTABLE(ch))
-	{
-	  [aMutableData appendCFormat: @"%c", ch];
-	}
-      else
-	{
-	  int j;
-
-	  j = i+1;
-	  // We got a non-ASCII character, let's get the substring and encode it using UTF-7.
-	  while (j < len && !IS_PRINTABLE([self characterAtIndex: j]))
-	    {
-	      j++;
-	    }
-	  
-	  // Get the substring.
-	  [aMutableData appendData: [[self substringWithRange: NSMakeRange(i,j-i)] dataUsingEncoding: NSUTF7StringEncoding]];
-	  i = j-1;
-	}
-    }
-
-  b = [aMutableData bytes];
-  len = [aMutableData length];
-  escaped = NO;
-
-  //
-  // We replace:
-  //
-  // &   ->  &-
-  // +   ->  &
-  // +-  ->  +
-  // /   ->  ,
-  //
-  // in order to produce our modified UTF-7 string.
-  //
-  modifiedData = [[NSMutableData alloc] init];
-  AUTORELEASE(modifiedData);
-
-  for (i = 0; i < len; i++, b++)
-    {
-      if (!escaped && *b == '&')
-	{
-	  [modifiedData appendCString: "&-"];
-	}
-      else if (!escaped && *b == '+')
-	{
-	  if (*(b+1) == '-')
-	    {
-	      [modifiedData appendCString: "+"];
-	    }
-	  else
-	    {
-	      [modifiedData appendCString: "&"];
-
-	      // We enter the escaped mode.
-	      escaped = YES;
-	    }
-	}
-      else if (escaped && *b == '/')
-	{
-	  [modifiedData appendCString: ","];
-	}
-      else if (escaped && *b == '-')
-	{
-	  [modifiedData appendCString: "-"];
-
-	  // We leave the escaped mode.
-	  escaped = NO;
-	}
-      else
-	{
-	  [modifiedData appendCFormat: @"%c", *b];
-	}
-    }
-  
-  // If we're still in the escaped mode we haven't added our trailing -,
-  // let's add it right now.
-  if (escaped)
-    {
-      [modifiedData appendCString: "-"];
-    }
-
-  aString = AUTORELEASE([[NSString alloc] initWithData: modifiedData  encoding: NSASCIIStringEncoding]);
-
-  return (aString != nil ? aString : self);
-#else
-  return self;
-#endif
-}
-
-
-//
-//
-//
-- (NSString *) stringFromModifiedUTF7
-{
-#ifndef MACOSX
-  NSMutableData *aMutableData;
-
-  BOOL escaped;
-  unichar ch;
-  int i, len;
-
-  aMutableData = [[NSMutableData alloc] init];
-  AUTORELEASE(aMutableData);
-
-  len = [self length];
-  escaped = NO;
-
-  //
-  // We replace:
-  //
-  // &   ->  +
-  // &-  ->  &
-  // ,   ->  /
-  //
-  // If we are in escaped mode. That is, between a &....-
-  //
-  for (i = 0; i < len; i++)
-    {
-      ch = [self characterAtIndex: i];
-      
-      if (!escaped && ch == '&')
-	{
-	  if ( (i+1) < len && [self characterAtIndex: (i+1)] != '-' )
-	    {
-	      [aMutableData appendCString: "+"];
-	      
-	      // We enter the escaped mode.
-	      escaped = YES;
-	    }
-	  else
-	    {
-	      // We replace &- by &
-	      [aMutableData appendCString: "&"];
-	      i++;
-	    }
-	}
-      else if (escaped && ch == ',')
-	{
-	  [aMutableData appendCString: "/"];
-	}
-      else if (escaped && ch == '-')
-	{
-	  [aMutableData appendCString: "-"];
-
-	  // We leave the escaped mode.
-	  escaped = NO;
-	}
-      else
-	{
-	  [aMutableData appendCFormat: @"%c", ch];
-	}
-    }
-
-  return AUTORELEASE([[NSString alloc] initWithData: aMutableData  encoding: NSUTF7StringEncoding]);
-#else
-  return nil;
-#endif
-}
-
 
 //
 //
@@ -704,7 +496,7 @@
                                          withCharacter: (unichar) theReplacement
 {
   NSMutableString *aMutableString;
-  int len, i;
+  NSInteger len, i;
   unichar c;
 
   if (!theTarget || !theReplacement || theTarget == theReplacement)
@@ -722,11 +514,11 @@
       
       if (c == theTarget)
 	{
-	  [aMutableString appendFormat: @"%c", theReplacement];
+	  [aMutableString appendFormat: @"%C", theReplacement];
 	}
       else
 	{
-	  [aMutableString appendFormat: @"%c", c];
+	  [aMutableString appendFormat: @"%C", c];
 	}
     }
 
@@ -739,7 +531,7 @@
 //
 - (NSString *) stringByDeletingLastPathComponentWithSeparator: (unsigned char) theSeparator
 {
-  int i, c;
+  NSInteger i, c;
   
   c = [self length];
 
@@ -773,7 +565,7 @@
 //
 - (BOOL) is7bitSafe
 {
-  int i, len;
+  NSInteger i, len;
   
   // We search for a non-ASCII character.
   len = [self length];
@@ -797,7 +589,7 @@
 {
   CWInternetAddress *anInternetAddress;
   NSMutableString *aMutableString;
-  int i, count;
+  NSInteger i, count;
   
   aMutableString = [[NSMutableString alloc] init];
   count = [theRecipients count];
@@ -812,7 +604,7 @@
 	}
     }
   
-  return AUTORELEASE(aMutableString); 
+  return aMutableString;
 }
 
 @end

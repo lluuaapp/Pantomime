@@ -23,7 +23,7 @@
 #ifndef _Pantomime_H_CWPOP3Folder
 #define _Pantomime_H_CWPOP3Folder
 
-#include <Pantomime/CWFolder.h>
+#include "CWFolder.h"
 
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSString.h>
@@ -36,7 +36,7 @@
 @interface CWPOP3Folder : CWFolder
 { 
   BOOL _leave_on_server;
-  unsigned int _retain_period;
+  NSUInteger _retain_period;
 }
 
 /*!
@@ -53,8 +53,8 @@
   @param theNumberOfLines The number of lines to fetch. Specifying 0
                           will only fetch the headers.
 */
-- (void) prefetchMessageAtIndex: (int) theIndex
-                  numberOfLines: (unsigned int) theNumberOfLines;
+- (void) prefetchMessageAtIndex: (NSInteger) theIndex
+                  numberOfLines: (NSUInteger) theNumberOfLines;
 
 /*!
   @method prefetch
@@ -90,7 +90,7 @@
   @result The retain period. A value of 0 means that the messages will always
           be retained.
 */
-- (unsigned int) retainPeriod;
+- (NSUInteger) retainPeriod;
 
 /*!
   @method setRetainPeriod:
@@ -99,7 +99,7 @@
 	      to work, the receiver must have a cache (instance of CWPOP3CacheManager).
   @param theRetainPeriod The retain period to use, in number of days.
 */
-- (void) setRetainPeriod: (unsigned int) theRetainPeriod;
+- (void) setRetainPeriod: (NSUInteger) theRetainPeriod;
 
 @end
 

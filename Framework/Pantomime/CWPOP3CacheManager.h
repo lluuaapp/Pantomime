@@ -25,7 +25,7 @@
 
 #import <Foundation/NSMapTable.h>
 
-#include <Pantomime/CWCacheManager.h>
+#include "CWCacheManager.h"
 
 @class CWPOP3CacheObject;
 @class NSDate;
@@ -42,8 +42,8 @@
 {
   @private
     NSMapTable *_table;
-    unsigned int _count;
-    int _fd;
+    NSUInteger _count;
+    NSInteger _fd;
 }
 
 /*!

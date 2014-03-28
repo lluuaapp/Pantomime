@@ -20,9 +20,6 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWConstants
-#define _Pantomime_H_CWConstants
-
 @class NSString;
 
 //
@@ -34,34 +31,8 @@
 // Useful macros that we must define ourself on OS X.
 //
 #ifdef MACOSX 
-#define RETAIN(object)          [object retain]
-#define RELEASE(object)         [object release]
-#define AUTORELEASE(object)     [object autorelease]
-#define TEST_RELEASE(object)    ({ if (object) [object release]; })
-#define ASSIGN(object,value)    ({\
-id __value = (id)(value); \
-id __object = (id)(object); \
-if (__value != __object) \
-  { \
-    if (__value != nil) \
-      { \
-        [__value retain]; \
-      } \
-    object = __value; \
-    if (__object != nil) \
-      { \
-        [__object release]; \
-      } \
-  } \
-})
-#define DESTROY(object) ({ \
-  if (object) \
-    { \
-      id __o = object; \
-      object = nil; \
-      [__o release]; \
-    } \
-})
+#define ASSIGN(object,value)    object = value
+#define DESTROY(object) object = nil
 
 #define NSLocalizedString(key, comment) \
   [[NSBundle mainBundle] localizedStringForKey:(key) value:@"" table:nil]
@@ -72,9 +43,7 @@ if (__value != __object) \
 //
 // We must define NSObject: -subclassResponsibility: on OS X.
 //
-#ifdef MACOSX
-#include <Pantomime/CWMacOSXGlue.h>
-#endif
+#import "CWMacOSXGlue.h"
 
 //
 // Some macros, to minimize the code.
@@ -85,11 +54,11 @@ BOOL aBOOL; \
 \
 aBOOL = NO; \
 \
-if (del && [del respondsToSelector: sel]) \
+if (del && [del respondsToSelector:sel]) \
 { \
-  [del performSelector: sel \
-       withObject: [NSNotification notificationWithName: name \
-			    	   object: self]]; \
+  (void)[del performSelector:sel \
+				  withObject:[NSNotification notificationWithName:name \
+														   object:self]]; \
   aBOOL = YES; \
 } \
 \
@@ -99,19 +68,19 @@ aBOOL; \
 #define PERFORM_SELECTOR_2(del, sel, name, obj, key) \
 if (del && [del respondsToSelector: sel]) \
 { \
-  [del performSelector: sel \
-       withObject: [NSNotification notificationWithName: name \
-			   	   object: self \
-				   userInfo: [NSDictionary dictionaryWithObject: obj forKey: key]]]; \
+  (void)[del performSelector:sel \
+		          withObject:[NSNotification notificationWithName:name \
+														   object:self \
+														 userInfo:[NSDictionary dictionaryWithObjectsAndKeys:obj, key, nil]]]; \
 }
 
 #define PERFORM_SELECTOR_3(del, sel, name, info) \
 if (del && [del respondsToSelector: sel]) \
 { \
-  [del performSelector: sel \
-       withObject: [NSNotification notificationWithName: name \
-				   object: self \
-				   userInfo: info]]; \
+  (void)[del performSelector:sel \
+                  withObject:[NSNotification notificationWithName:name \
+														   object:self \
+													     userInfo:info]]; \
 }
 
 #define AUTHENTICATION_COMPLETED(del, s) \
@@ -363,5 +332,3 @@ typedef enum
   PantomimeResentCcRecipient = 5,
   PantomimeResentBccRecipient = 6
 } PantomimeRecipientType;
-
-#endif // _Pantomime_H_CWConstants

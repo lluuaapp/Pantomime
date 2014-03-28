@@ -25,7 +25,7 @@
 
 #import <Foundation/NSCoder.h>
 
-#include <Pantomime/CWMessage.h>
+#include "CWMessage.h"
 
 /*!
   @class CWPOP3Message

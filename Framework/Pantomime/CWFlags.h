@@ -20,15 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWFlags
-#define _Pantomime_H_CWFlags
+#import <Foundation/Foundation.h>
 
-#import <Foundation/NSCoder.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
-#import <Foundation/NSValue.h>
-
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 /*!
   @class CWFlags
@@ -136,5 +130,3 @@
 - (NSString *) maildirString;
 
 @end
-
-#endif // _Pantomime_H_CWFlags

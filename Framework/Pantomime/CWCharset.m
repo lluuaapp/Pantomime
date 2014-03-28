@@ -20,33 +20,30 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWCharset.h>
+#import "CWCharset.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWISO8859_1.h>
-#include <Pantomime/CWISO8859_2.h>
-#include <Pantomime/CWISO8859_3.h>
-#include <Pantomime/CWISO8859_4.h>
-#include <Pantomime/CWISO8859_5.h>
-#include <Pantomime/CWISO8859_6.h>
-#include <Pantomime/CWISO8859_7.h>
-#include <Pantomime/CWISO8859_8.h>
-#include <Pantomime/CWISO8859_9.h>
-#include <Pantomime/CWISO8859_10.h>
-#include <Pantomime/CWISO8859_11.h>
-#include <Pantomime/CWISO8859_13.h>
-#include <Pantomime/CWISO8859_14.h>
-#include <Pantomime/CWISO8859_15.h>
-#include <Pantomime/CWKOI8_R.h>
-#include <Pantomime/CWKOI8_U.h>
-#include <Pantomime/CWWINDOWS_1250.h>
-#include <Pantomime/CWWINDOWS_1251.h>
-#include <Pantomime/CWWINDOWS_1252.h>
-#include <Pantomime/CWWINDOWS_1253.h>
-#include <Pantomime/CWWINDOWS_1254.h>
-
-#include <Foundation/NSBundle.h>
-#include <Foundation/NSDictionary.h>
+#import "CWConstants.h"
+#import "CWISO8859_1.h"
+#import "CWISO8859_2.h"
+#import "CWISO8859_3.h"
+#import "CWISO8859_4.h"
+#import "CWISO8859_5.h"
+#import "CWISO8859_6.h"
+#import "CWISO8859_7.h"
+#import "CWISO8859_8.h"
+#import "CWISO8859_9.h"
+#import "CWISO8859_10.h"
+#import "CWISO8859_11.h"
+#import "CWISO8859_13.h"
+#import "CWISO8859_14.h"
+#import "CWISO8859_15.h"
+#import "CWKOI8_R.h"
+#import "CWKOI8_U.h"
+#import "CWWINDOWS_1250.h"
+#import "CWWINDOWS_1251.h"
+#import "CWWINDOWS_1252.h"
+#import "CWWINDOWS_1253.h"
+#import "CWWINDOWS_1254.h"
 
 static NSMutableDictionary *charset_name_description = nil;
 static NSMutableDictionary *charset_instance_cache = nil;
@@ -74,7 +71,7 @@ static NSMutableDictionary *charset_instance_cache = nil;
 //
 //
 - (id) initWithCodeCharTable: (const struct charset_code *) c
-		      length: (int) n
+		      length: (NSInteger) n
 {
   self = [super init];
   
@@ -84,7 +81,7 @@ static NSMutableDictionary *charset_instance_cache = nil;
   
   if (n > 0 && _codes[0].code == 0x20)
     {
-      int i = 1;
+      NSInteger i = 1;
       for (_identity_map=0x20;
 	   i < _num_codes && _codes[i].code == _identity_map + 1 && _codes[i].value == _identity_map + 1;
 	   _identity_map++,i++) ;
@@ -97,9 +94,9 @@ static NSMutableDictionary *charset_instance_cache = nil;
 //
 // TODO: what should this return for eg. \t and \n?
 //
-- (int) codeForCharacter: (unichar) theCharacter
+- (NSInteger) codeForCharacter: (unichar) theCharacter
 {
-  int i;
+  NSInteger i;
 
   if (theCharacter <= _identity_map)
     {
@@ -305,7 +302,6 @@ static NSMutableDictionary *charset_instance_cache = nil;
       
       [charset_instance_cache setObject: aCharset
 			      forKey: [theName lowercaseString]];
-      RELEASE(aCharset);
 
       return aCharset;
     }

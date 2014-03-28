@@ -20,40 +20,26 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWMIMEUtility.h>
+#import "CWMIMEUtility.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWMessage.h>
-#include <Pantomime/CWMIMEMultipart.h>
-#include <Pantomime/NSString+Extensions.h>
-#include <Pantomime/NSData+Extensions.h>
-#include <Pantomime/CWPart.h>
-#include <Pantomime/CWMD5.h>
-#include <Pantomime/CWUUFile.h>
-
-#include <Foundation/NSAutoreleasePool.h>
-#include <Foundation/NSBundle.h>
-#include <Foundation/NSCharacterSet.h>
-#include <Foundation/NSFileManager.h>
-#include <Foundation/NSHost.h>
-#include <Foundation/NSScanner.h>
-#include <Foundation/NSValue.h>
-
-#include <ctype.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#import "CWConstants.h"
+#import "CWMessage.h"
+#import "CWMIMEMultipart.h"
+#import "NSString+CWExtensions.h"
+#import "NSData+CWExtensions.h"
+#import "CWPart.h"
+#import "CWMD5.h"
+#import "CWUUFile.h"
 
 //
 // C functions
 //
 char ent(char **ref);
-char *striphtml(char *s, int encoding);
+char *striphtml(char *s, NSInteger encoding);
 NSString *unique_id();
 
 static const char *hexDigit = "0123456789ABCDEF";
-static int seed_count = 1;
+static NSInteger seed_count = 1;
 
 @implementation CWMIMEUtility
 
@@ -73,7 +59,7 @@ static int seed_count = 1;
   NSData *charset, *encoded_text;
   NSString *aString;
   
-  int i, length, start, i_charset, i_encoding, end; 
+  NSInteger i, length, start, i_charset, i_encoding, end; 
   const char *bytes;
  
   BOOL ignore_span;
@@ -88,7 +74,7 @@ static int seed_count = 1;
   // We check for the ISO-2022-JP announcer sequence
   if ([theData hasCPrefix: "\e$B"])
     {
-      return AUTORELEASE([[NSString alloc] initWithData: theData  encoding: NSISO2022JPStringEncoding]);
+      return [[NSString alloc] initWithData: theData  encoding: NSISO2022JPStringEncoding];
     }
 
   bytes = [theData bytes];
@@ -119,16 +105,15 @@ static int seed_count = 1;
 	    {  
 	      aString = [NSString stringWithData: [NSData dataWithBytes: bytes+start  length: i-start]
 				  charset: [theCharset dataUsingEncoding: NSASCIIStringEncoding]];
-	      RETAIN(aString);
 	    }
 	  
 	  if (!aString)
 	    {
-	      aString = [[NSString alloc] initWithCString: bytes+start  length: i-start];
+	      aString = [[NSString alloc] initWithBytes:bytes+start length:i-start encoding:NSUTF8StringEncoding];
 	    }
 
 	  [aMutableString appendString: aString];
-	  DESTROY(aString);
+	  aString = nil;
 	}
       
       start = i;
@@ -228,19 +213,18 @@ static int seed_count = 1;
       	{  
 	  aString = [NSString stringWithData: [NSData dataWithBytes: bytes+start  length: i-start]
 			      charset: [theCharset dataUsingEncoding: NSASCIIStringEncoding]];
-	  RETAIN(aString);
       	}
       
       if (!aString)
 	{
-	  aString = [[NSString alloc] initWithCString: bytes+start  length: i-start];
+        aString = [[NSString alloc] initWithBytes:bytes+start length:i-start encoding:NSUTF8StringEncoding];
       	}
       
       [aMutableString appendString: aString];
-      DESTROY(aString);
+        aString = nil;
     }
   
-  return AUTORELEASE(aMutableString);
+  return aMutableString;
 }
 
 
@@ -255,7 +239,7 @@ static int seed_count = 1;
   [aMutableData appendBytes: "=_"  length: 2];
   [aMutableData appendCFormat: @"%@", unique_id()];
 
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 
@@ -278,7 +262,7 @@ static int seed_count = 1;
   gethostname(s, sizeof(s)-1);
   [aMutableData appendCFormat: @"@%s", s];
 
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
 
 
@@ -328,9 +312,9 @@ static int seed_count = 1;
 //
 // FIXME: We should verify that the length doesn't exceed 75 chars.
 //
-#warning remove/combine or leave and document
+// #warning remove/combine or leave and document
 + (NSData *) encodeWordUsingBase64: (NSString *) theWord
-		      prefixLength: (int) thePrefixLength
+		      prefixLength: (NSInteger) thePrefixLength
 {
   // Initial verification
   if (!theWord || [theWord length] == 0)
@@ -355,7 +339,7 @@ static int seed_count = 1;
 					       encoding: PantomimeEncodingBase64]];
       [aMutableData appendCString: "?="];
 
-      return AUTORELEASE(aMutableData);
+      return aMutableData;
     }
 
   // Never reached.
@@ -374,9 +358,9 @@ static int seed_count = 1;
 // The string returned will NOT be more than 75 characters long
 // for each folded part of the original string.
 //
-#warning remove/combine or leave and document
+// #warning remove/combine or leave and document
 + (NSData *) encodeWordUsingQuotedPrintable: (NSString *) theWord
-			       prefixLength: (int) thePrefixLength
+			       prefixLength: (NSInteger) thePrefixLength
 {  
   NSMutableString *aMutableString;
   NSMutableArray *aMutableArray;
@@ -384,7 +368,7 @@ static int seed_count = 1;
   NSMutableData *aMutableData;
   NSScanner *aScanner;
   
-  int i, count, previousLocation, currentLocation;
+  NSInteger i, count, previousLocation = 0, currentLocation = 0;
   BOOL mustUseEncoding;
 
   if (!theWord || [theWord length] == 0 )
@@ -405,17 +389,14 @@ static int seed_count = 1;
   aMutableString = [[NSMutableString alloc] init];
   
   aMutableArray = [[NSMutableArray alloc] init];
-  AUTORELEASE(aMutableArray);
   
   // We initialize our scanner with the content of our word
   aScanner = [[NSScanner alloc] initWithString: theWord];
-  
-  currentLocation = previousLocation = 0;
-  
+    
   while ([aScanner scanUpToCharactersFromSet: [NSCharacterSet whitespaceCharacterSet]  intoString: NULL])
     {
       NSString *aString;
-      int length;
+      NSInteger length;
       
       currentLocation = [aScanner scanLocation]; 
 	  
@@ -454,7 +435,6 @@ static int seed_count = 1;
 	{
 	  [aMutableArray addObject: aMutableString];
 
-	  RELEASE(aMutableString);
 	  aMutableString = [[NSMutableString alloc] init];
 	}
       
@@ -464,9 +444,6 @@ static int seed_count = 1;
   
   // We add our last string to the array.
   [aMutableArray addObject: aMutableString];
-  RELEASE(aMutableString);
-  
-  RELEASE(aScanner);
       
   aMutableData = [[NSMutableData alloc] init];
   
@@ -501,7 +478,7 @@ static int seed_count = 1;
 	}
     }
 
-  return AUTORELEASE(aMutableData);
+  return aMutableData;
 }
   
 
@@ -510,7 +487,7 @@ static int seed_count = 1;
 //
 + (CWMessage *) compositeMessageContentFromRawSource: (NSData *) theData
 {
-  return AUTORELEASE([[CWMessage alloc] initWithData: theData]);
+  return [[CWMessage alloc] initWithData: theData];
 }
 
 
@@ -525,7 +502,7 @@ static int seed_count = 1;
   NSMutableData *aMutableData;
   NSArray *allParts;
   NSRange aRange;
-  int i, count;
+  NSInteger i, count;
   
   aMimeMultipart = [[CWMIMEMultipart alloc] init];
 
@@ -552,7 +529,6 @@ static int seed_count = 1;
   // of the actual body part.
   allParts = [theData componentsSeparatedByCString: [aMutableData bytes]];
   count = [allParts count];
-  RELEASE(aMutableData);
 
   for (i = 0; i < count; i++)
     {
@@ -579,11 +555,10 @@ static int seed_count = 1;
 	  aPart = [[CWPart alloc] initWithData: aData];
 	  [aPart setSize: [aData length]];
 	  [aMimeMultipart addPart: aPart];
-	  RELEASE(aPart);
 	}
     }
 
-  return AUTORELEASE(aMimeMultipart);
+  return aMimeMultipart;
 }
 
 
@@ -612,62 +587,57 @@ static int seed_count = 1;
 + (void) setContentFromRawSource: (NSData *) theData
                           inPart: (CWPart *) thePart
 {
-  NSAutoreleasePool *pool;
- 
-  // We create a temporary autorelease pool since this method can be
-  // memory consuming on our default autorelease pool.
-  pool = [[NSAutoreleasePool alloc] init];
-
-  //
-  // Composite types (message/multipart).
-  //
-  if ([thePart isMIMEType: @"message"  subType: @"rfc822"])
+    @autoreleasepool
     {
-      NSData *aData;
-
-      aData = theData;
-
-      // We verify the Content-Transfer-Encoding, this part could be base64 encoded.
-      if ([thePart contentTransferEncoding] == PantomimeEncodingBase64)
-	{
-	  NSMutableData *aMutableData;
-
-	  aData = [[theData dataByRemovingLineFeedCharacters] decodeBase64];
-	  
-	  aMutableData = [NSMutableData dataWithData: aData];
-	  [aMutableData replaceCRLFWithLF];
-	  aData = aMutableData;
-	}
-
-      [thePart setContent: [CWMIMEUtility compositeMessageContentFromRawSource: aData]];
+        //
+        // Composite types (message/multipart).
+        //
+        if ([thePart isMIMEType: @"message"  subType: @"rfc822"])
+        {
+            NSData *aData;
+            
+            aData = theData;
+            
+            // We verify the Content-Transfer-Encoding, this part could be base64 encoded.
+            if ([thePart contentTransferEncoding] == PantomimeEncodingBase64)
+            {
+                NSMutableData *aMutableData;
+                
+                aData = [[theData dataByRemovingLineFeedCharacters] decodeBase64];
+                
+                aMutableData = [NSMutableData dataWithData: aData];
+                [aMutableData replaceCRLFWithLF];
+                aData = aMutableData;
+            }
+            
+            [thePart setContent: [CWMIMEUtility compositeMessageContentFromRawSource: aData]];
+        }
+        else if ([thePart isMIMEType: @"multipart"  subType: @"*"])
+        {
+            [thePart setContent: [CWMIMEUtility compositeMultipartContentFromRawSource: theData
+                                                                              boundary: [thePart boundary]]];
+        }
+        // 
+        // Discrete types (text/application/audio/image/video) or any "unsupported Content-Type:s"
+        //
+        // text/*
+        // image/*
+        // application/*
+        // audio/*
+        // video/*
+        //
+        // We also treat those composite type as discrete types:
+        //
+        // #warning test extensively those
+        // message/delivery-status
+        // message/disposition-notification
+        //
+        else
+        {
+            [thePart setContent: [CWMIMEUtility discreteContentFromRawSource: theData
+                                                                    encoding: [thePart contentTransferEncoding]]];
+        }
     }
-  else if ([thePart isMIMEType: @"multipart"  subType: @"*"])
-    {
-      [thePart setContent: [CWMIMEUtility compositeMultipartContentFromRawSource: theData
-					  boundary: [thePart boundary]]];
-    }
-  // 
-  // Discrete types (text/application/audio/image/video) or any "unsupported Content-Type:s"
-  //
-  // text/*
-  // image/*
-  // application/*
-  // audio/*
-  // video/*
-  //
-  // We also treat those composite type as discrete types:
-  //
-#warning test extensively those
-  // message/delivery-status
-  // message/disposition-notification
-  //
-  else
-    {
-      [thePart setContent: [CWMIMEUtility discreteContentFromRawSource: theData
-					  encoding: [thePart contentTransferEncoding]]];
-    }
-  
-  RELEASE(pool);
 }
 
 
@@ -709,7 +679,7 @@ static int seed_count = 1;
 // This C function has been written by Abhijit Menon-Sen <ams@wiw.org>
 // This code is in the public domain.
 //
-char *striphtml(char *s, int encoding)
+char *striphtml(char *s, NSInteger encoding)
 {
   char c, *t, *text;
 
@@ -753,7 +723,7 @@ char *striphtml(char *s, int encoding)
 	  NSString *aString;
 
 	  c = ent(&s);
-	  aString = AUTORELEASE([[NSString alloc] initWithBytes: &c  length: 1  encoding: NSISOLatin1StringEncoding]);
+	  aString = [[NSString alloc] initWithBytes: &c  length: 1  encoding: NSISOLatin1StringEncoding];
 
 	  if ([aString length])
 	    {
@@ -764,7 +734,7 @@ char *striphtml(char *s, int encoding)
 	      if (aData)
 		{
 		  char *bytes;
-		  int len;
+		  NSInteger len;
 		  
 		  bytes = (char *)[aData bytes];
 		  len = [aData length];
@@ -783,7 +753,7 @@ char *striphtml(char *s, int encoding)
         }
     }
 
-  *t++ = '\0';
+  *t = '\0';
 
   return text;
 }
@@ -795,7 +765,7 @@ char *striphtml(char *s, int encoding)
 //
 char ent(char **ref)
 {
-  int i;
+  NSInteger i;
   char c = ' ', *s = *ref, *t = s;
   
   struct {
@@ -932,7 +902,7 @@ NSString *unique_id()
   
   char random_data[9];
   time_t curtime;
-  int i, pid;
+  NSInteger i, pid;
   
   pid = getpid();
   time(&curtime);
@@ -947,8 +917,6 @@ NSString *unique_id()
   aMutableData = [[NSMutableData alloc] init];
   [aMutableData appendCFormat: @"%d.%d%s", pid, curtime, random_data];
   aMD5 = [[CWMD5 alloc] initWithData: aMutableData];
-  RELEASE(aMutableData);
-  AUTORELEASE(aMD5);
   
   [aMD5 computeDigest];
   

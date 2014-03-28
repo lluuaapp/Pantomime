@@ -20,11 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWContainer
-#define _Pantomime_H_CWContainer
-
-#import <Foundation/NSEnumerator.h>
-#import <Foundation/NSObject.h>
+#import <Foundation/Foundation.h>
 
 @class CWMessage;
 
@@ -66,7 +62,7 @@
   @param theIndex The index of the child, which is 0 based.
   @result The CWContainer instance.
 */
-- (CWContainer *) childAtIndex: (unsigned int) theIndex;
+- (CWContainer *) childAtIndex: (NSUInteger) theIndex;
 
 /*!
   @method count
@@ -74,7 +70,7 @@
               the receiver.
   @result The number of children.
 */
-- (unsigned int) count;
+- (NSUInteger) count;
 
 /*!
   @method setNext:
@@ -92,5 +88,3 @@
 - (NSEnumerator *) childrenEnumerator;
 
 @end
-
-#endif // _Pantomime_H_CWContainer

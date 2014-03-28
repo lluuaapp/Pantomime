@@ -20,11 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWCacheManager.h>
-#include <Pantomime/CWConstants.h>
+#import "CWCacheManager.h"
+#import "CWConstants.h"
 
-#include <Foundation/NSArchiver.h>
-#include <Foundation/NSException.h>
 
 @implementation CWCacheManager
 
@@ -38,18 +36,6 @@
   
   return self;
 }
-
-
-//
-//
-//
-- (void) dealloc
-{
-  RELEASE(_cache);
-  RELEASE(_path);
-  [super dealloc];
-}
-
 
 //
 // NSCoding protocol

@@ -20,9 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWMIMEMultipart.h>
+#import "CWMIMEMultipart.h"
 
-#include <Pantomime/CWConstants.h>
+#import "CWConstants.h"
 
 //
 //
@@ -35,17 +35,6 @@
   _parts = [[NSMutableArray alloc] init]; 
   return self;
 }
-
-
-//
-//
-//
-- (void) dealloc
-{
-  RELEASE(_parts);
-  [super dealloc];
-}
-
 
 //
 //
@@ -74,7 +63,7 @@
 //
 //
 //
-- (unsigned int) count
+- (NSUInteger) count
 {
   return [_parts count];
 }
@@ -83,7 +72,7 @@
 //
 //
 //
-- (CWPart *) partAtIndex: (unsigned int) theIndex
+- (CWPart *) partAtIndex: (NSUInteger) theIndex
 {
   return [_parts objectAtIndex: theIndex];
 }

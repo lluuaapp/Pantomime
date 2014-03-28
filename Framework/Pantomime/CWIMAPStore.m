@@ -20,33 +20,31 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/CWIMAPStore.h>
+#import "CWIMAPStore.h"
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWFlags.h>
-#include <Pantomime/CWFolderInformation.h>
-#include <Pantomime/CWIMAPCacheManager.h>
-#include <Pantomime/CWIMAPFolder.h>
-#include <Pantomime/CWIMAPMessage.h>
-#include <Pantomime/CWMD5.h>
-#include <Pantomime/CWMIMEUtility.h>
-#include <Pantomime/NSData+Extensions.h>
-#include <Pantomime/NSScanner+Extensions.h>
-#include <Pantomime/NSString+Extensions.h>
-#include <Pantomime/CWTCPConnection.h>
-#include <Pantomime/CWURLName.h>
+#import "CWConstants.h"
+#import "CWFlags.h"
+#import "CWFolderInformation.h"
+#import "CWIMAPCacheManager.h"
+#import "CWIMAPFolder.h"
+#import "CWIMAPMessage.h"
+#import "CWMD5.h"
+#import "CWMIMEUtility.h"
+#import "NSData+CWExtensions.h"
+#import "NSScanner+CWExtensions.h"
+#import "NSString+CWExtensions.h"
+#import "CWTCPConnection.h"
+#import "CWURLName.h"
+#import "CWCacheRecord.h"
 
-#include <Foundation/NSAutoreleasePool.h>
-#include <Foundation/NSBundle.h>
-#include <Foundation/NSCharacterSet.h>
-#include <Foundation/NSException.h>
-#include <Foundation/NSNotification.h>
-#include <Foundation/NSPathUtilities.h>
-#include <Foundation/NSScanner.h>
-#include <Foundation/NSValue.h>
 
-#include <ctype.h>
-#include <stdio.h>
+#if __LP64__
+#define CWNSIntegerFormat "ld"
+#define CWNSUIntegerFormat "lu"
+#else
+#define CWNSIntegerFormat "d"
+#define CWNSUIntegerFormat "u"
+#endif
 
 //
 // Some static variables used to enhance the performance.
@@ -61,7 +59,7 @@ static NSData *CRLF;
 //
 // "0" means no literal.
 //
-static inline int has_literal(char *buf, int c)
+static inline NSInteger has_literal(char *buf, NSInteger c)
 {
   char *s;
 
@@ -71,7 +69,7 @@ static inline int has_literal(char *buf, int c)
 
   if (*s == '}')
     {
-      int value, d;
+      NSInteger value, d;
 
       value = 0;
       d = 1;
@@ -102,7 +100,7 @@ static inline int has_literal(char *buf, int c)
     IMAPCommand command;
     NSString *arguments;
     NSData *tag;
-    int literal;
+    NSInteger literal;
 }
 - (id) initWithCommand: (IMAPCommand) theCommand
 	     arguments: (NSString *) theArguments
@@ -137,17 +135,9 @@ static inline int has_literal(char *buf, int c)
   return self;
 }
 
-- (void) dealloc
-{
-  RELEASE(arguments);
-  RELEASE(info);
-  RELEASE(tag);
-  [super dealloc];
-}
-
 - (NSString *) description
 {
-  return [NSString stringWithFormat: @"%d %@", command, arguments];
+  return [NSString stringWithFormat: @"%ld %@", (long)command, arguments];
 }
 @end
 
@@ -159,7 +149,7 @@ static inline int has_literal(char *buf, int c)
 - (NSString *) _folderNameFromString: (NSString *) theString;
 - (void) _parseFlags: (NSString *) aString
              message: (CWIMAPMessage *) theMessage
-	      record: (cache_record *) theRecord;
+	      record: (CWCacheRecord *) theRecord;
 - (void) _renameFolder;
 - (NSArray *) _uniqueIdentifiersFromData: (NSData *) theData;
 - (void) _parseAUTHENTICATE_CRAM_MD5;
@@ -169,7 +159,7 @@ static inline int has_literal(char *buf, int c)
 - (void) _parseCAPABILITY;
 - (void) _parseEXISTS;
 - (void) _parseEXPUNGE;
-- (void) _parseFETCH: (int) theMSN;
+- (void) _parseFETCH: (NSInteger) theMSN;
 - (void) _parseLIST;
 - (void) _parseLSUB;
 - (void) _parseNO;
@@ -201,7 +191,7 @@ static inline int has_literal(char *buf, int c)
 //
 //
 - (id) initWithName: (NSString *) theName
-	       port: (unsigned int) thePort
+	       port: (NSUInteger) thePort
 {
   if (thePort == 0) thePort = 143;
 
@@ -231,21 +221,6 @@ static inline int has_literal(char *buf, int c)
   return [self initWithName: [theURL host]  port: 143];
 }
 
-
-//
-//
-//
-- (void) dealloc
-{
-  //NSLog(@"IMAPStore: -dealloc"); 
-  RELEASE(_folders);
-  RELEASE(_folderStatus);
-  RELEASE(_openFolders);
-  RELEASE(_subscribedFolders);
-  [super dealloc];
-}
-
-
 //
 // When this method is called, we are receiving bytes
 // from the _lastCommand.
@@ -266,413 +241,437 @@ static inline int has_literal(char *buf, int c)
 //
 - (void) updateRead
 {
-  id aData;
- 
-  int i, count;
-  char *buf;
-
-  [super updateRead];
-
-  //NSLog(@"_rbul len == %d |%@|", [_rbuf length], [_rbuf asciiString]);
-
-  if (![_rbuf length]) return;
-
-  while ((aData = split_lines(_rbuf)))
+	id aData;
+	
+	NSInteger i, count;
+	char *buf;
+	
+	[super updateRead];
+	
+	// NSLog(@"_rbuf len == %lu |%@|", [_rbuf length], [_rbuf asciiString]);
+	
+	if (![_rbuf length]) return;
+	
+	while ((aData = split_lines(_rbuf)))
     {
-      //NSLog(@"aLine = |%@|", [aData asciiString]);
-      buf = (char *)[aData bytes];
-      count = [aData length];
-
-      // If we are reading a literal, do so.
-      if (_currentQueueObject && _currentQueueObject->literal)
-	{
-	  _currentQueueObject->literal -= (count+2);
-	  //NSLog(@"literal = %d, count = %d", _currentQueueObject->literal, count);
-
-	  if (_currentQueueObject->literal < 0)
-	    {
-	      int x;
-
-	      x = -2-_currentQueueObject->literal;
-	      [[_currentQueueObject->info objectForKey: @"NSData"] appendData: [aData subdataToIndex: x]];
-	      [_responsesFromServer addObject: [aData subdataFromIndex: x]];
-	      //NSLog(@"orig = |%@|, chooped = |%@|   |%@|", [aData asciiString], [[aData subdataToIndex: x] asciiString], [[aData subdataFromIndex: x] asciiString]);
-	    }
-	  else
-	    {
-	      [[_currentQueueObject->info objectForKey: @"NSData"] appendData: aData];
-	    }  
-
-	  // We are done reading a literal. Let's read again
-	  // to see if we got a full response.
-	  if (_currentQueueObject->literal <= 0)
-	    {
-	      //NSLog(@"DONE ACCUMULATING LITTERAL!\nread = |%@|", [[_currentQueueObject->info objectForKey: @"NSData"] asciiString]);
-	      //
-	      // Let's see, if we can, what does the next line contain. If we got
-	      // something, we add this to the remaining _responsesFromServer
-	      // and we are ready to parse that response (_responsesFromServer + bytes of literal).
-	      //
-	      // If it's nil, that's because we have nothing to read. In that case, just loop
-	      // and call -updateRead in order to read the rest of the response.
-	      //
-	      // We must also be careful about what we read. Microsoft Exchange sometimes send us
-	      // stuff like this:
-	      //
-	      // * 5 FETCH (BODY[TEXT] {1175}
-	      // <!DOCTYPE HTML ...
-	      // ...
-	      // </HTML> UID 5)
-	      // 0010 OK FETCH completed.
-	      //
-	      // The "</HTML> UID 5)" line will result in a _negative_ literal. Which we
-	      // handle well here and just a couple of lines above this one.
-	      //
-	      if (_currentQueueObject->literal < 0)
+		//NSLog(@"aLine = |%@|", [aData asciiString]);
+		buf = (char *)[aData bytes];
+		count = [aData length];
+		
+		// If we are reading a literal, do so.
+		if (_currentQueueObject && _currentQueueObject->literal)
 		{
-		  _currentQueueObject->literal = 0;
+			_currentQueueObject->literal -= (count+2);
+			//NSLog(@"literal = %d, count = %d", _currentQueueObject->literal, count);
+			
+			if (_currentQueueObject->literal < 0)
+			{
+				NSInteger x;
+				
+				x = -2-_currentQueueObject->literal;
+				[[_currentQueueObject->info objectForKey: @"NSData"] appendData: [aData subdataToIndex: x]];
+				[_responsesFromServer addObject: [aData subdataFromIndex: x]];
+				//NSLog(@"orig = |%@|, chooped = |%@|   |%@|", [aData asciiString], [[aData subdataToIndex: x] asciiString], [[aData subdataFromIndex: x] asciiString]);
+			}
+			else
+			{
+				[[_currentQueueObject->info objectForKey: @"NSData"] appendData: aData];
+			}  
+			
+			// We are done reading a literal. Let's read again
+			// to see if we got a full response.
+			if (_currentQueueObject->literal <= 0)
+			{
+				//NSLog(@"DONE ACCUMULATING LITTERAL!\nread = |%@|", [[_currentQueueObject->info objectForKey: @"NSData"] asciiString]);
+				//
+				// Let's see, if we can, what does the next line contain. If we got
+				// something, we add this to the remaining _responsesFromServer
+				// and we are ready to parse that response (_responsesFromServer + bytes of literal).
+				//
+				// If it's nil, that's because we have nothing to read. In that case, just loop
+				// and call -updateRead in order to read the rest of the response.
+				//
+				// We must also be careful about what we read. Microsoft Exchange sometimes send us
+				// stuff like this:
+				//
+				// * 5 FETCH (BODY[TEXT] {1175}
+				// <!DOCTYPE HTML ...
+				// ...
+				// </HTML> UID 5)
+				// 0010 OK FETCH completed.
+				//
+				// The "</HTML> UID 5)" line will result in a _negative_ literal. Which we
+				// handle well here and just a couple of lines above this one.
+				//
+				if (_currentQueueObject->literal < 0)
+				{
+					_currentQueueObject->literal = 0;
+				}
+				else
+				{
+					// We MUST wait until we are done reading our full
+					// FETCH response. _rbuf could end immediately at the
+					// end of our literal response and we need to call
+					// [super updateRead] to get more bytes from the socket
+					// in order to read the rest (")" or " UID 123)" for example).
+					while (!(aData = split_lines(_rbuf)))
+					{
+						//SLog(@"NOTHING TO READ! WAITING...");
+						[super updateRead];
+					}
+					[_responsesFromServer addObject: aData];
+				}
+				
+				//
+				// Let's rollback in what are processing/read in order to
+				// reparse our initial response. It's if it's FETCH response,
+				// the literal will now be 0 so the parsing of this response
+				// will occur.
+				//
+				aData = [_responsesFromServer objectAtIndex: 0];
+				buf = (char *)[aData bytes];
+				count = [aData length];
+			}
+			else
+			{
+				//NSLog(@"Accumulating... %d remaining...", _currentQueueObject->literal);
+				//
+				// We are still accumulating bytes of the literal. Once we have appended
+				// our CRLF, we just continue the loop since there's no need to try to
+				// parse anything, as we don't have the complete response yet.
+				//
+				[[_currentQueueObject->info objectForKey: @"NSData"] appendData: CRLF];
+				continue;
+			}
 		}
-	      else
+		else 
 		{
-		  // We MUST wait until we are done reading our full
-		  // FETCH response. _rbuf could end immediately at the
-		  // end of our literal response and we need to call
-		  // [super updateRead] to get more bytes from the socket
-		  // in order to read the rest (")" or " UID 123)" for example).
-		  while (!(aData = split_lines(_rbuf)))
-		    {
-		      //SLog(@"NOTHING TO READ! WAITING...");
-		      [super updateRead];
-		    }
-		  [_responsesFromServer addObject: aData];
+			//NSLog(@"aLine = |%@|", [aData asciiString]);
+			[_responsesFromServer addObject: aData];
+			
+			if (_currentQueueObject && (_currentQueueObject->literal = has_literal(buf, count)))
+			{
+				//NSLog(@"literal = %d", _currentQueueObject->literal);
+				[_currentQueueObject->info setObject: [NSMutableData dataWithCapacity: _currentQueueObject->literal]
+				 forKey: @"NSData"];
+			}
 		}
-	      
-	      //
-	      // Let's rollback in what are processing/read in order to
-	      // reparse our initial response. It's if it's FETCH response,
-	      // the literal will now be 0 so the parsing of this response
-	      // will occur.
-	      //
-	      aData = [_responsesFromServer objectAtIndex: 0];
-	      buf = (char *)[aData bytes];
-	      count = [aData length];
-	    }
-	  else
-	    {
-	      //NSLog(@"Accumulating... %d remaining...", _currentQueueObject->literal);
-	      //
-	      // We are still accumulating bytes of the literal. Once we have appended
-	      // our CRLF, we just continue the loop since there's no need to try to
-	      // parse anything, as we don't have the complete response yet.
-	      //
-	      [[_currentQueueObject->info objectForKey: @"NSData"] appendData: CRLF];
-	      continue;
-	    }
-	}
-      else 
-	{
-	  //NSLog(@"aLine = |%@|", [aData asciiString]);
-	  [_responsesFromServer addObject: aData];
-
-	  if (_currentQueueObject && (_currentQueueObject->literal = has_literal(buf, count)))
-	    {
-	      //NSLog(@"literal = %d", _currentQueueObject->literal);
-	      [_currentQueueObject->info setObject: [NSMutableData dataWithCapacity: _currentQueueObject->literal]
-				  forKey: @"NSData"];
-	    }
-	}
-
-      // Now search for the position of the first space in our response.
-      i = 0;
-      while (i < count && *buf != ' ')
-	{
-	  buf++; i++;
-	}
-
-      //NSLog(@"i = %d  count = %d", i, count);
-      
-      //
-      // We got an untagged response or a command continuation request.
-      //
-      if (i == 1)
-	{
-	  int d, j, msn, len;
-	  BOOL b;
-
-	  //
-	  // We verify if we received a command continuation request.
-	  // This response is used in the AUTHENTICATE command or
-	  // in any argument to the command is a literal. In the current
-	  // code, the only command which has a literal argument is
-	  // the APPEND command. We must NOT use "break;" at the very
-	  // end of this block since we could read a line in a mail
-	  // that begins with a '+'.
-	  //
-	  if (*(buf-i) == '+')
-	    {
-	      if (_lastCommand == IMAP_APPEND)
+		
+		// Now search for the position of the first space in our response.
+		i = 0;
+		while (i < count && *buf != ' ')
 		{
-		  [self writeData: [_currentQueueObject->info objectForKey: @"NSData"]];
-		  [self writeData: CRLF];
-		  break;
+			buf++; i++;
 		}
-	      else if (_lastCommand == IMAP_AUTHENTICATE_CRAM_MD5)
+		
+		//NSLog(@"i = %d  count = %d", i, count);
+		
+		//
+		// We got an untagged response or a command continuation request.
+		//
+		if (i == 1)
 		{
-		  [self _parseAUTHENTICATE_CRAM_MD5];
-		  break;
+			NSInteger d, j, msn, len;
+			BOOL b;
+			
+			//
+			// We verify if we received a command continuation request.
+			// This response is used in the AUTHENTICATE command or
+			// in any argument to the command is a literal. In the current
+			// code, the only command which has a literal argument is
+			// the APPEND command. We must NOT use "break;" at the very
+			// end of this block since we could read a line in a mail
+			// that begins with a '+'.
+			//
+			if (*(buf-i) == '+')
+			{
+				if (_lastCommand == IMAP_APPEND)
+				{
+					if (nil != _currentQueueObject)
+						[self writeData: [_currentQueueObject->info objectForKey: @"NSData"]];
+					
+					[self writeData: CRLF];
+					break;
+				}
+				else if (_lastCommand == IMAP_AUTHENTICATE_CRAM_MD5)
+				{
+					[self _parseAUTHENTICATE_CRAM_MD5];
+					break;
+				}
+				else if (_lastCommand == IMAP_AUTHENTICATE_LOGIN)
+				{
+					[self _parseAUTHENTICATE_LOGIN];
+					break;
+				}
+				else if (_lastCommand == IMAP_LOGIN)
+				{
+					//NSLog(@"writing password |%s|", [[_currentQueueObject->info objectForKey: @"Password"] cString]);
+					if (nil != _currentQueueObject)
+						[self writeData: [_currentQueueObject->info objectForKey: @"Password"]];
+					
+					[self writeData: CRLF];
+					break;
+				}
+				else if (_lastCommand == IMAP_IDLE)
+				{
+					// NSLog(@"got + idling");
+					idling = YES;
+					break;
+				}
+			}
+			
+			msn = 0; b = YES; d = 1;
+			j = i+1; buf++;
+			
+			// Let's see if we can read a MSN
+			while (j < count && *buf != ' ')
+			{
+				if (!isdigit(*buf)) b = NO;
+				buf++; j++;
+			}
+			
+			//NSLog(@"j = %d, b = %d", j, b);
+			
+			//
+			// The token following our "*" is all-digit. Let's
+			// decode the MSN and get the kind of response.
+			//
+			// We will also read the untagged responses we get
+			// when SELECT'ing a mailbox ("* 4 EXISTS" for example).
+			//
+			// We parse those results but we ignore the "MSN" since
+			// it bears no relation to an actual MSN.
+			//
+			if (b)
+			{
+				NSInteger k;
+				
+				k = j;
+				
+				// We compute the MSN
+				while (k > i+1)
+				{
+					buf--; k--;
+					//NSLog(@"msn c = %c", *buf);
+					msn += ((*buf-48) * d);
+					d *= 10;
+				}
+				
+				//NSLog(@"Done computing the msn = %d  k = %d", msn, k);
+				
+				// We now get what kind of response we read (FETCH, etc?)
+				buf += (j-i);
+				k = j+1;
+				
+				while (k < count && isalpha(*buf))
+				{
+					//NSLog(@"response after c = %c", *buf);
+					buf++; k++;
+				}
+				
+				//NSLog(@"Done reading response: i = %d  j = %d  k = %d", i, j, k);
+				
+				buf = buf-k+j+1;
+				len = k-j-1;
+			}
+			//
+			// It's NOT all-digit.
+			//
+			else
+			{
+				buf = buf-j+i+1;
+				len = j-i-1;
+			}
+			
+			//NSData *foo;
+			//foo = [NSData dataWithBytes: buf  length: len];
+			//NSLog(@"DONE!!! foo after * = |%@| b = %d, msn = %d", [foo asciiString], b, msn);
+			//NSLog(@"len = %d", len);
+			
+			//
+			// We got an untagged OK response. We handle only the one used in the IMAP authorization
+			// state and ignore the ones required during a SELECT command (like OK [UNSEEN <n>]).
+			//
+			if (len && strncasecmp("OK", buf, 2) == 0 && _lastCommand == IMAP_AUTHORIZATION)
+			{
+				[self _parseOK];
+			}
+			//
+			// We check if we got disconnected from the IMAP server.
+			// If it's the case, we invoke -reconnect.
+			// 
+			else if (len && strncasecmp("BYE", buf, 3) == 0)
+			{
+				[self _parseBYE];
+			}
+			//
+			//
+			//
+			else if (len && strncasecmp("LIST", buf, 4) == 0)
+			{
+				[self _parseLIST];
+			}
+			//
+			//
+			//
+			else if (len && strncasecmp("LSUB", buf, 4) == 0)
+			{
+				[self _parseLSUB];
+			}
+			//
+			// We got a FETCH response and we are done reading all
+			// bytes specified by our literal. We also handle
+			// untagged responses coming AFTER a tagged response,
+			// like that:
+			//
+			// 000c UID FETCH 3071053:3071053 BODY[TEXT]
+			// * 1 FETCH (UID 3071053 BODY[TEXT] {859}
+			// f00 bar zarb
+			// ..
+			// )
+			// 000c OK UID FETCH completed
+			// * 1 FETCH (FLAGS (\Seen))
+			//
+			// Responses like that must be carefully handled since
+			// _currentQueueObject would nil after getting the
+			// tagged response.
+			// 
+			else if (len && strncasecmp("FETCH", buf, 5) == 0 &&
+					 (!_currentQueueObject || (_currentQueueObject && _currentQueueObject->literal == 0)))
+			{
+				if (_lastCommand == IMAP_IDLE)
+				{
+					// NSLog(@"Will ignore * FETCH in idle state");
+				}
+				else
+				{
+					[self _parseFETCH: msn];
+				}
+			}
+			//
+			//
+			//
+			else if (len && strncasecmp("EXISTS", buf, 6) == 0)
+			{
+				if (_lastCommand == IMAP_IDLE)
+				{
+					[self _parseEXISTS];
+				}
+				else
+				{
+					[self _parseEXISTS];
+					[_responsesFromServer removeLastObject];
+				}
+			}
+			//
+			//
+			//
+			else if (len && strncasecmp("RECENT", buf, 6) == 0)
+			{
+				[self _parseRECENT];
+				[_responsesFromServer removeLastObject];
+			}
+			//
+			//
+			//
+			else if (len && strncasecmp("SEARCH", buf, 6) == 0)
+			{
+				switch (_lastCommand)
+				{
+					case IMAP_UID_SEARCH:
+					case IMAP_UID_SEARCH_ANSWERED:
+					case IMAP_UID_SEARCH_FLAGGED:
+					case IMAP_UID_SEARCH_UNSEEN:
+						[self _parseSEARCH_CACHE];
+						break;
+						
+					default:
+						[self _parseSEARCH];
+				}
+			}
+			//
+			//
+			//
+			else if (len && strncasecmp("STATUS", buf, 6) == 0)
+			{
+				[self _parseSTATUS];
+			}
+			//
+			//
+			//
+			else if (len && strncasecmp("EXPUNGE", buf, 7) == 0)
+			{
+				[self _parseEXPUNGE];
+			}
+			//
+			//
+			//
+			else if (len && strncasecmp("CAPABILITY", buf, 10) == 0)
+			{
+				[self _parseCAPABILITY];
+			}
 		}
-	      else if (_lastCommand == IMAP_AUTHENTICATE_LOGIN)
+		//
+		// We got a tagged response
+		//
+		else
 		{
-		  [self _parseAUTHENTICATE_LOGIN];
-		  break;
+			NSInteger j;
+			
+			//NSData *foo;
+			//foo = [NSData dataWithBytes: buf-i  length: i];
+			//NSLog(@"tag = |%@|", [foo asciiString]);
+			
+			j = i+1;
+			buf++;
+			
+			// We read past our tag, in order to find
+			// the type of response (OK/NO/BAD).
+			while (j < count && *buf != ' ')
+			{
+				//NSLog(@"IN OK: %c", *buf);
+				buf++; j++;
+			}
+			
+			//NSLog(@"OK/NO/BAD response = |%@|", [[NSData dataWithBytes: buf-j+i+1  length: j-i-1] asciiString]);
+			buf = buf-j+i+1;
+			
+			// From RFC3501:
+			//
+			// The server completion result response indicates the success or
+			// failure of the operation.  It is tagged with the same tag as the
+			// client command which began the operation.  Thus, if more than one
+			// command is in progress, the tag in a server completion response
+			// identifies the command to which the response applies.  There are
+			// three possible server completion responses: OK (indicating success),
+			// NO (indicating failure), or BAD (indicating a protocol error such as
+			// unrecognized command or command syntax error).
+			//
+			if (strncasecmp("OK", buf, 2) == 0)
+			{
+				[self _parseOK];
+			}
+			//
+			// RFC3501 says:
+			//
+			// The NO response indicates an operational error message from the
+			// server.  When tagged, it indicates unsuccessful completion of the
+			// associated command.  The untagged form indicates a warning; the
+			// command can still complete successfully.  The human-readable text
+			// describes the condition.
+			//
+			else if (strncasecmp("NO", buf, 2) == 0)
+			{
+				[self _parseNO];
+			}
+			else
+			{
+				[self _parseBAD];
+			}
 		}
-	      else if (_lastCommand == IMAP_LOGIN)
-		{
-		  //NSLog(@"writing password |%s|", [[_currentQueueObject->info objectForKey: @"Password"] cString]);
-		  [self writeData: [_currentQueueObject->info objectForKey: @"Password"]];
-		  [self writeData: CRLF];
-		  break;
-		}
-	    }
-
-	  msn = 0; b = YES; d = 1;
-	  j = i+1; buf++;
-
-	  // Let's see if we can read a MSN
-	  while (j < count && *buf != ' ')
-	    {
-	      if (!isdigit(*buf)) b = NO;
-	      buf++; j++;
-	    }
-	  
-	  //NSLog(@"j = %d, b = %d", j, b);
-
-	  //
-	  // The token following our "*" is all-digit. Let's
-	  // decode the MSN and get the kind of response.
-	  //
-	  // We will also read the untagged responses we get
-	  // when SELECT'ing a mailbox ("* 4 EXISTS" for example).
-	  //
-	  // We parse those results but we ignore the "MSN" since
-	  // it bears no relation to an actual MSN.
-	  //
-	  if (b)
-	    {
-	      int k;
-	      
-	      k = j;
-
-	      // We compute the MSN
-	      while (k > i+1)
-		{
-		  buf--; k--;
-		  //NSLog(@"msn c = %c", *buf);
-		  msn += ((*buf-48) * d);
-		  d *= 10;
-		}
-
-	      //NSLog(@"Done computing the msn = %d  k = %d", msn, k);
-
-	      // We now get what kind of response we read (FETCH, etc?)
-	      buf += (j-i);
-	      k = j+1;
-
-	      while (k < count && isalpha(*buf))
-		{
-		  //NSLog(@"response after c = %c", *buf);
-		  buf++; k++;
-		}
-	      
-	      //NSLog(@"Done reading response: i = %d  j = %d  k = %d", i, j, k);
-
-	      buf = buf-k+j+1;
-	      len = k-j-1;
-	    }
-	  //
-	  // It's NOT all-digit.
-	  //
-	  else
-	    {
-	      buf = buf-j+i+1;
-	      len = j-i-1;
-	    }
-	      
-	  //NSData *foo;
-	  //foo = [NSData dataWithBytes: buf  length: len];
-	  //NSLog(@"DONE!!! foo after * = |%@| b = %d, msn = %d", [foo asciiString], b, msn);
-	  //NSLog(@"len = %d", len);
-	  
-	  //
-	  // We got an untagged OK response. We handle only the one used in the IMAP authorization
-	  // state and ignore the ones required during a SELECT command (like OK [UNSEEN <n>]).
-	  //
-	  if (len && strncasecmp("OK", buf, 2) == 0 && _lastCommand == IMAP_AUTHORIZATION)
-	    {
-	      [self _parseOK];
-	    }
-	  //
-	  // We check if we got disconnected from the IMAP server.
-	  // If it's the case, we invoke -reconnect.
-	  // 
-	  else if (len && strncasecmp("BYE", buf, 3) == 0)
-	    {
-	      [self _parseBYE];
-	    }
-	  //
-	  //
-	  //
-	  else if (len && strncasecmp("LIST", buf, 4) == 0)
-	    {
-	      [self _parseLIST];
-	    }
-	  //
-	  //
-	  //
-	  else if (len && strncasecmp("LSUB", buf, 4) == 0)
-	    {
-	      [self _parseLSUB];
-	    }
-	  //
-	  // We got a FETCH response and we are done reading all
-	  // bytes specified by our literal. We also handle
-	  // untagged responses coming AFTER a tagged response,
-	  // like that:
-	  //
-	  // 000c UID FETCH 3071053:3071053 BODY[TEXT]
-	  // * 1 FETCH (UID 3071053 BODY[TEXT] {859}
-	  // f00 bar zarb
-	  // ..
-	  // )
-	  // 000c OK UID FETCH completed
-	  // * 1 FETCH (FLAGS (\Seen))
-	  //
-	  // Responses like that must be carefully handled since
-	  // _currentQueueObject would nil after getting the
-	  // tagged response.
-	  // 
-	  else if (len && strncasecmp("FETCH", buf, 5) == 0 &&
-		   (!_currentQueueObject || (_currentQueueObject && _currentQueueObject->literal == 0)))
-	    {
-	      [self _parseFETCH: msn];
-	    }
-	  //
-	  //
-	  //
-	  else if (len && strncasecmp("EXISTS", buf, 6) == 0)
-	    {
-	      [self _parseEXISTS];
-	      [_responsesFromServer removeLastObject];
-	    }
-	  //
-	  //
-	  //
-	  else if (len && strncasecmp("RECENT", buf, 6) == 0)
-	    {
-	      [self _parseRECENT];
-	      [_responsesFromServer removeLastObject];
-	    }
-	  //
-	  //
-	  //
-	  else if (len && strncasecmp("SEARCH", buf, 6) == 0)
-	    {
-	      switch (_lastCommand)
-		{
-		case IMAP_UID_SEARCH:
-		case IMAP_UID_SEARCH_ANSWERED:
-		case IMAP_UID_SEARCH_FLAGGED:
-		case IMAP_UID_SEARCH_UNSEEN:
-		  [self _parseSEARCH_CACHE];
-		  break;
-		  
-		default:
-		  [self _parseSEARCH];
-		}
-	    }
-	  //
-	  //
-	  //
-	  else if (len && strncasecmp("STATUS", buf, 6) == 0)
-	    {
-	      [self _parseSTATUS];
-	    }
-	  //
-	  //
-	  //
-	  else if (len && strncasecmp("EXPUNGE", buf, 7) == 0)
-	    {
-	      [self _parseEXPUNGE];
-	    }
-	  //
-	  //
-	  //
-	  else if (len && strncasecmp("CAPABILITY", buf, 10) == 0)
-	    {
-	      [self _parseCAPABILITY];
-	    }
-	}
-      //
-      // We got a tagged response
-      //
-      else
-	{
-	  int j;
-
-	  //NSData *foo;
-	  //foo = [NSData dataWithBytes: buf-i  length: i];
-	  //NSLog(@"tag = |%@|", [foo asciiString]);
-
-	  j = i+1;
-	  buf++;
-	  
-	  // We read past our tag, in order to find
-	  // the type of response (OK/NO/BAD).
-	  while (j < count && *buf != ' ')
-	    {
-	      //NSLog(@"IN OK: %c", *buf);
-	      buf++; j++;
-	    }
-
-	  //NSLog(@"OK/NO/BAD response = |%@|", [[NSData dataWithBytes: buf-j+i+1  length: j-i-1] asciiString]);
-	  buf = buf-j+i+1;
-	  
-	  // From RFC3501:
-	  //
-	  // The server completion result response indicates the success or
-	  // failure of the operation.  It is tagged with the same tag as the
-	  // client command which began the operation.  Thus, if more than one
-	  // command is in progress, the tag in a server completion response
-	  // identifies the command to which the response applies.  There are
-	  // three possible server completion responses: OK (indicating success),
-	  // NO (indicating failure), or BAD (indicating a protocol error such as
-	  // unrecognized command or command syntax error).
-	  //
-	  if (strncasecmp("OK", buf, 2) == 0)
-	    {
-	      [self _parseOK];
-	    }
-	  //
-	  // RFC3501 says:
-	  //
-	  // The NO response indicates an operational error message from the
-	  // server.  When tagged, it indicates unsuccessful completion of the
-	  // associated command.  The untagged form indicates a warning; the
-	  // command can still complete successfully.  The human-readable text
-	  // describes the condition.
-	  //
-	  else if (strncasecmp("NO", buf, 2) == 0)
-	    {
-	      [self _parseNO];
-	    }
-	  else
-	    {
-	      [self _parseBAD];
-	    }
-	}
     } // while ((aData = split_lines...
-
-  //NSLog(@"While loop broken!");
+	
+	//NSLog(@"While loop broken!");
 }
 
 
@@ -703,10 +702,11 @@ static inline int has_literal(char *buf, int c)
     }
   
   // We must verify if we must quote the password
-  if ([thePassword rangeOfCharacterFromSet: [NSCharacterSet punctuationCharacterSet]].length ||
-      [thePassword rangeOfCharacterFromSet: [NSCharacterSet whitespaceCharacterSet]].length)
+	if ((nil != thePassword) &&
+		([thePassword rangeOfCharacterFromSet:[NSCharacterSet punctuationCharacterSet]].length ||
+		 [thePassword rangeOfCharacterFromSet:[NSCharacterSet whitespaceCharacterSet]].length))
     {
-      thePassword = [NSString stringWithFormat: @"\"%@\"", thePassword];
+		thePassword = [NSString stringWithFormat: @"\"%@\"", thePassword];
     }
   else if (![thePassword is7bitSafe])
     {
@@ -718,9 +718,9 @@ static inline int has_literal(char *buf, int c)
       //
       aData = [thePassword dataUsingEncoding: NSISOLatin1StringEncoding];
       
-      [self sendCommand: IMAP_LOGIN
-	    info: [NSDictionary dictionaryWithObject: aData  forKey: @"Password"]
-	    arguments: @"LOGIN %@ {%d}", _username, [aData length]];
+        [self sendCommand:IMAP_LOGIN
+                     info:[NSDictionary dictionaryWithObjectsAndKeys:aData, @"Password", nil]
+                arguments:@"LOGIN %@ {%d}", _username, [aData length]];
       return;
     }
   
@@ -735,7 +735,7 @@ static inline int has_literal(char *buf, int c)
 {
   NSMutableArray *aMutableArray;
   NSString *aString;
-  int i, count;;
+  NSInteger i, count;;
 
   aMutableArray = [NSMutableArray array];
   count = [_capabilities count];
@@ -798,7 +798,7 @@ static inline int has_literal(char *buf, int c)
       
       [aFolder setStore: self];
       [aFolder setSelected: NO];
-      return AUTORELEASE(aFolder);
+      return aFolder;
     }
 }
 
@@ -806,7 +806,7 @@ static inline int has_literal(char *buf, int c)
 //
 //
 //
-#warning VERIFY FOR NoSelect
+// #warning VERIFY FOR NoSelect
 - (CWIMAPFolder *) folderForName: (NSString *) theName
 			    mode: (PantomimeFolderMode) theMode
 			prefetch: (BOOL) aBOOL
@@ -824,13 +824,12 @@ static inline int has_literal(char *buf, int c)
   aFolder = [[CWIMAPFolder alloc] initWithName: theName  mode: theMode];
   [aFolder setStore: self];
   [_openFolders setObject: aFolder  forKey: theName];
-  RELEASE(aFolder);
 
-  //NSLog(@"_connection_state.opening_mailbox = %d", _connection_state.opening_mailbox);
+  //NSLog(@"opening_mailbox = %d", opening_mailbox);
 
   // If we are already opening a mailbox, we must interrupt the process
   // and open the preferred one instead.
-  if (_connection_state.opening_mailbox)
+  if (opening_mailbox)
     {
       // Safety measure - in case close (so -removeFolderFromOpenFolders)
       // on the selected folder wasn't called.
@@ -846,15 +845,15 @@ static inline int has_literal(char *buf, int c)
       return _selectedFolder;
     }
 
-  _connection_state.opening_mailbox = YES;
+  opening_mailbox = YES;
 
   if (theMode == PantomimeReadOnlyMode)
     {
-      [self sendCommand: IMAP_EXAMINE  info: nil  arguments: @"EXAMINE \"%@\"", [theName modifiedUTF7String]];
+      [self sendCommand: IMAP_EXAMINE  info: nil  arguments: @"EXAMINE \"%@\"", theName];
     }
   else
     {
-      [self sendCommand: IMAP_SELECT  info: nil  arguments: @"SELECT \"%@\"", [theName modifiedUTF7String]];
+      [self sendCommand: IMAP_SELECT  info: nil  arguments: @"SELECT \"%@\"", theName];
     }
 
   // This folder becomes the selected one. This will have to be improved in the future.
@@ -882,8 +881,6 @@ static inline int has_literal(char *buf, int c)
 
   aFolder = [self folderForName: [theURLName foldername]];
 
-  RELEASE(theURLName);
-  
   return aFolder;
 }
 
@@ -926,7 +923,7 @@ static inline int has_literal(char *buf, int c)
 //
 - (NSDictionary *) folderStatus: (NSArray *) theArray
 {
-  int i;
+  NSInteger i;
 
   [_folderStatus removeAllObjects];
 
@@ -945,7 +942,7 @@ static inline int has_literal(char *buf, int c)
 
       [self sendCommand: IMAP_STATUS
 	    info: [NSDictionary dictionaryWithObject: [theArray objectAtIndex: i]  forKey: @"Name"]
-	    arguments: @"STATUS \"%@\" (MESSAGES UNSEEN)", [[theArray objectAtIndex: i] modifiedUTF7String]];
+	    arguments: @"STATUS \"%@\" (MESSAGES UNSEEN)", [theArray objectAtIndex: i]];
     }
 
   return _folderStatus;
@@ -962,90 +959,91 @@ static inline int has_literal(char *buf, int c)
 //
 - (void) sendCommand: (IMAPCommand) theCommand  info: (NSDictionary *) theInfo  arguments: (NSString *) theFormat, ...
 {
-  if (theCommand == IMAP_EMPTY_QUEUE)
+	if (theCommand == IMAP_EMPTY_QUEUE)
     {
-      if ([_queue count])
-	{
-	  // We dequeue the first inserted command from the queue.
-	  _currentQueueObject = [_queue lastObject];
-	}
-      else
-	{
-	  // The queue is empty, we have nothing more to do...
-	  _currentQueueObject = nil;
-	  return;
-	}
+		if ([_queue count])
+		{
+			// We dequeue the first inserted command from the queue.
+			_currentQueueObject = [_queue lastObject];
+		}
+		else
+		{
+			// The queue is empty, we have nothing more to do...
+			_currentQueueObject = nil;
+			return;
+		}
     }
-  else
+	else
     {
-      CWIMAPQueueObject *aQueueObject;
-      NSString *aString;
-      va_list args;
-      int i, count;
-
-      //NSLog(@"sendCommand invoked, cmd = %i", theCommand);
-      va_start(args, theFormat);
-      
-      aString = [[NSString alloc] initWithFormat: theFormat  arguments: args];
-      
-      //
-      // We must check in the queue if we aren't trying to add a command that is already there.
-      // This could happend if -rawSource is called in IMAPMessage multiple times before
-      // PantomimeMessageFetchCompleted is sent.
-      //
-      // We skip this verification for the IMAP_APPEND command as a messages with the same size
-      // could be quickly appended to the folder and we do NOT want to skip the second one.
-      //
-      count = [_queue count];
-
-      for (i = 0; i < count; i++)
-	{
-	  aQueueObject = [_queue objectAtIndex: i];
-	  if (aQueueObject->command == theCommand && theCommand != IMAP_APPEND && [aQueueObject->arguments isEqualToString: aString])
-	    {
-	      RELEASE(aString);
-	      //NSLog(@"A COMMAND ALREADY EXIST!!!!");
-	      return;
-	    }   
-	}
-
-      aQueueObject = [[CWIMAPQueueObject alloc] initWithCommand: theCommand  arguments: aString  tag: [self nextTag]  info: theInfo];
-      RELEASE(aString);
-      
-      [_queue insertObject: aQueueObject  atIndex: 0];
-      RELEASE(aQueueObject);
-      
-      //NSLog(@"queue size = %d", [_queue count]);
-      
-      // If we had queued commands, we return since we'll eventually
-      // dequeue them one by one. Otherwise, we run it immediately.
-      if ([_queue count] > 1)
-	{
-	  //NSLog(@"QUEUED |%@|", aString);
-	  return;
-	}
-
-      _currentQueueObject = aQueueObject;
+		CWIMAPQueueObject *aQueueObject;
+		NSString *aString;
+		va_list args;
+		NSInteger i, count;
+		
+		//NSLog(@"sendCommand invoked, cmd = %i", theCommand);
+		va_start(args, theFormat);
+		
+		aString = [[NSString alloc] initWithFormat: theFormat  arguments: args];
+		
+		//
+		// We must check in the queue if we aren't trying to add a command that is already there.
+		// This could happend if -rawSource is called in IMAPMessage multiple times before
+		// PantomimeMessageFetchCompleted is sent.
+		//
+		// We skip this verification for the IMAP_APPEND command as a messages with the same size
+		// could be quickly appended to the folder and we do NOT want to skip the second one.
+		//
+		count = [_queue count];
+		
+		for (i = 0; i < count; i++)
+		{
+			aQueueObject = [_queue objectAtIndex: i];
+			if (aQueueObject->command == theCommand && theCommand != IMAP_APPEND && [aQueueObject->arguments isEqualToString: aString])
+			{
+				//NSLog(@"A COMMAND ALREADY EXIST!!!!");
+				return;
+			}   
+		}
+		
+		if ((IMAP_DONE == theCommand) && (IMAP_IDLE == _lastCommand) && (0 < [_queue count]))
+		{
+			// remove the last object if we terminate an idle command
+			aQueueObject = [[CWIMAPQueueObject alloc] initWithCommand:theCommand  arguments:aString  tag:[self lastTag]  info:theInfo];
+			[_queue removeLastObject];
+		}
+		else
+		{
+			aQueueObject = [[CWIMAPQueueObject alloc] initWithCommand: theCommand  arguments: aString  tag: [self nextTag]  info: theInfo];
+		}
+		
+		[_queue insertObject: aQueueObject  atIndex: 0];
+		
+		//NSLog(@"queue size = %d", [_queue count]);
+		
+		// If we had queued commands, we return since we'll eventually
+		// dequeue them one by one. Otherwise, we run it immediately.
+		if ([_queue count] > 1)
+		{
+			//NSLog(@"QUEUED |%@|", aString);
+			return;
+		}
+		
+		_currentQueueObject = aQueueObject;
     }
-     
-  //NSLog(@"Sending |%@|", _currentQueueObject->arguments);
-  _lastCommand = _currentQueueObject->command;
-
-  [self writeData: _currentQueueObject->tag];
-  [self writeData: [NSData dataWithBytes: " "  length: 1]];
-  [self writeData: [_currentQueueObject->arguments dataUsingEncoding: defaultCStringEncoding]];
-  [self writeData: CRLF];
-
-  POST_NOTIFICATION(@"PantomimeCommandSent", self, _currentQueueObject->info);
-  PERFORM_SELECTOR_2(_delegate, @selector(commandSent:), @"PantomimeCommandSent", [NSNumber numberWithInt: _lastCommand], @"Command");
-}
-
-//
-// 
-//
-- (NSEnumerator *) openFoldersEnumerator
-{
-  return [_openFolders objectEnumerator];
+	
+	// NSLog(@"Sending |%@|", _currentQueueObject->arguments);
+	_lastCommand = _currentQueueObject->command;
+	
+	if (IMAP_DONE != _lastCommand)
+	{
+		[self writeData: _currentQueueObject->tag];
+		[self writeData: [NSData dataWithBytes: " "  length: 1]];
+	}
+	[self writeData: [_currentQueueObject->arguments dataUsingEncoding: defaultCStringEncoding]];
+	[self writeData: CRLF];
+	
+	POST_NOTIFICATION(@"PantomimeCommandSent", self, _currentQueueObject->info);
+	PERFORM_SELECTOR_2(_delegate, @selector(commandSent:), @"PantomimeCommandSent", [NSNumber numberWithInteger:_lastCommand], @"Command");
 }
 
 //
@@ -1066,21 +1064,16 @@ static inline int has_literal(char *buf, int c)
 //
 - (BOOL) folderForNameIsOpen: (NSString *) theName
 {
-  NSEnumerator *anEnumerator;
-  CWIMAPFolder *aFolder;
-  
-  anEnumerator = [self openFoldersEnumerator];
- 
-  while ((aFolder = [anEnumerator nextObject]))
+    for (CWIMAPFolder *aFolder in _openFolders)
     {
-      if ([[aFolder name] compare: theName
-			  options: NSCaseInsensitiveSearch] == NSOrderedSame)
- 	{
- 	  return YES;
- 	}
+        if ([[aFolder name] compare: theName
+                            options: NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            return YES;
+        }
     }
-  
-  return NO;
+    
+    return NO;
 }
 
 
@@ -1100,10 +1093,10 @@ static inline int has_literal(char *buf, int c)
   
   if (o)
     {
-      return [o intValue];
+      return [o integerValue];
     }
 
-  [self sendCommand: IMAP_LIST  info: nil  arguments: @"LIST \"\" \"%@\"", [theName modifiedUTF7String]];
+  [self sendCommand: IMAP_LIST  info: nil  arguments: @"LIST \"\" \"%@\"", theName];
 
   return 0;
 }
@@ -1134,8 +1127,8 @@ static inline int has_literal(char *buf, int c)
 - (NSData *) lastTag
 {
   char str[5];
-  sprintf(str, "%04x", _tag);
-  return [NSData dataWithBytes: str  length: 4];
+  sprintf(str, "%04lx", (long)_tag);
+  return [NSData dataWithBytes:str  length:4];
 }
 
 
@@ -1146,9 +1139,29 @@ static inline int has_literal(char *buf, int c)
 {
   [self sendCommand: IMAP_SUBSCRIBE
 	info: [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]
-	arguments: @"SUBSCRIBE \"%@\"", [theName modifiedUTF7String]];
+	arguments: @"SUBSCRIBE \"%@\"", theName];
 }
 
+
+- (void) startIDLE
+{
+	if (NO == idling)
+	{
+		[self sendCommand:IMAP_IDLE
+					 info:nil
+				arguments:@"IDLE"];
+	}
+}
+- (void) stopIDLE
+{
+	if (idling)
+	{
+		idling = NO;
+		[self sendCommand:IMAP_DONE
+					 info:nil
+				arguments:@"DONE"];
+	}
+}
 
 //
 //
@@ -1157,7 +1170,7 @@ static inline int has_literal(char *buf, int c)
 {
   [self sendCommand: IMAP_UNSUBSCRIBE
 	info: [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]
-	arguments: @"UNSUBSCRIBE \"%@\"", [theName modifiedUTF7String]];
+	arguments: @"UNSUBSCRIBE \"%@\"", theName];
 }
 
 
@@ -1182,7 +1195,7 @@ static inline int has_literal(char *buf, int c)
 {
   [self sendCommand: IMAP_CREATE
 	info: [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]
-	arguments: @"CREATE \"%@\"", [theName modifiedUTF7String]];
+	arguments: @"CREATE \"%@\"", theName];
 }
 
 
@@ -1195,7 +1208,7 @@ static inline int has_literal(char *buf, int c)
 {
   [self sendCommand: IMAP_DELETE
 	info: [NSDictionary dictionaryWithObject: theName  forKey: @"Name"]
-	arguments: @"DELETE \"%@\"", [theName modifiedUTF7String]];
+	arguments: @"DELETE \"%@\"", theName];
 }
 
 
@@ -1228,7 +1241,7 @@ static inline int has_literal(char *buf, int c)
 
   [self sendCommand: IMAP_RENAME
 	info: info
-	arguments: @"RENAME \"%@\" \"%@\"", [theName modifiedUTF7String], [theNewName modifiedUTF7String]];
+	arguments: @"RENAME \"%@\" \"%@\"", theName, theNewName];
 }
 
 
@@ -1244,12 +1257,12 @@ static inline int has_literal(char *buf, int c)
 //
 //
 //
-- (int) reconnect
+- (NSInteger) reconnect
 {
   //NSLog(@"CWIMAPStore: -reconnect");
   
-  [_connection_state.previous_queue addObjectsFromArray: _queue];
-  _connection_state.reconnecting = YES;
+  [previous_queue addObjectsFromArray: _queue];
+  reconnecting = YES;
   
   // We flush our read/write buffers.
   [_rbuf setLength: 0];
@@ -1264,7 +1277,6 @@ static inline int has_literal(char *buf, int c)
   [_queue removeAllObjects];
   _lastCommand = IMAP_AUTHORIZATION;
   _currentQueueObject = nil;
-  _counter = 0;
 
   [super close];
   [super connectInBackgroundAndNotify];
@@ -1297,14 +1309,14 @@ static inline int has_literal(char *buf, int c)
 //
 - (NSString *) _folderNameFromString: (NSString *) theString
 {
-  NSString *aString, *decodedString;
+  NSString *aString;
   NSRange aRange;
 
   aRange = [theString rangeOfString: @"\""];
 
   if (aRange.length)
     {
-      int mark;
+      NSInteger mark;
 
       mark = aRange.location + 1;
       
@@ -1342,9 +1354,8 @@ static inline int has_literal(char *buf, int c)
     }
     
   aString = [aString stringFromQuotedString];
-  decodedString = [aString stringFromModifiedUTF7];
   
-  return (decodedString != nil ? decodedString : aString);
+  return aString;
 }
 
 
@@ -1354,7 +1365,7 @@ static inline int has_literal(char *buf, int c)
 //
 - (void) _parseFlags: (NSString *) theString
 	     message: (CWIMAPMessage *) theMessage
-	      record: (cache_record *) theRecord
+	      record: (CWCacheRecord *) theRecord
 {
   CWFlags *theFlags;
   NSRange aRange;
@@ -1416,8 +1427,7 @@ static inline int has_literal(char *buf, int c)
     }
 
   [[theMessage flags] replaceWithFlags: theFlags];
-  theRecord->flags = theFlags->flags;
-  RELEASE(theFlags);
+  theRecord.flags = theFlags->flags;
   
   //
   // If our previous command is NOT the FETCH command, we must inform our
@@ -1429,7 +1439,7 @@ static inline int has_literal(char *buf, int c)
       _lastCommand != IMAP_UID_FETCH_HEADER_FIELDS_NOT && _lastCommand != IMAP_UID_FETCH_RFC822)
     {
       POST_NOTIFICATION(PantomimeMessageChanged, self, [NSDictionary dictionaryWithObject: theMessage  forKey: @"Message"]);
-      PERFORM_SELECTOR_1(_delegate, @selector(messageChanged:), PantomimeMessageChanged);
+      (void)PERFORM_SELECTOR_1(_delegate, @selector(messageChanged:), PantomimeMessageChanged);
     }
 }
 
@@ -1451,21 +1461,18 @@ static inline int has_literal(char *buf, int c)
 	
   if (aFolder)
     {
-      RETAIN(aFolder);
       [aFolder setName: aNewName];
       [_openFolders removeObjectForKey: aName];
       [_openFolders setObject: aFolder  forKey: aNewName];
-      RELEASE(aFolder);
     }
   
   // We then do the same thing for our list of folders / suscribed folders
-  aFolderInformation = RETAIN([_folders objectForKey: aName]);
+  aFolderInformation = [_folders objectForKey: aName];
   [_folders removeObjectForKey: aName];
 
   if (aFolderInformation)
     {
       [_folders setObject: aFolderInformation  forKey: aNewName];
-      RELEASE(aFolderInformation);
     }
 
   if ([_subscribedFolders containsObject: aName])
@@ -1489,7 +1496,7 @@ static inline int has_literal(char *buf, int c)
 {
   NSMutableArray *aMutableArray;
   NSScanner *aScanner;
-  unsigned int value;
+  NSUInteger value;
 
   aMutableArray = [NSMutableArray array];
 
@@ -1507,10 +1514,8 @@ static inline int has_literal(char *buf, int c)
   while (![aScanner isAtEnd])
     {
       [aScanner scanUnsignedInt: &value];
-      [aMutableArray addObject: [NSNumber numberWithInt: value]];
+      [aMutableArray addObject: [NSNumber numberWithInteger:value]];
     }
-
-  RELEASE(aScanner);
 
   return aMutableArray;
 }
@@ -1521,33 +1526,32 @@ static inline int has_literal(char *buf, int c)
 //
 - (void) _parseAUTHENTICATE_CRAM_MD5
 {
-  NSData *aData;
-  
-  aData = [_responsesFromServer lastObject];
-
-  //
-  // We first verify if we got our challenge response from the IMAP server.
-  // If so, we use it and send back a response to proceed with the authentication.
-  //
-  if ([aData hasCPrefix: "+"])
+    NSData *aData;
+    
+    aData = [_responsesFromServer lastObject];
+    
+    //
+    // We first verify if we got our challenge response from the IMAP server.
+    // If so, we use it and send back a response to proceed with the authentication.
+    //
+    if ([aData hasCPrefix: "+"])
     {
-      NSString *aString;
-      CWMD5 *aMD5;
-
-      // We trim the "+ " and we keep the challenge phrase
-      aData = [aData subdataFromIndex: 2];
-      
-      //NSLog(@"Challenge phrase = |%@|", [aData asciiString]);
-      aMD5 = [[CWMD5 alloc] initWithData: [aData decodeBase64]];
-      [aMD5 computeDigest];
-      
-      aString = [NSString stringWithFormat: @"%@ %@", _username, [aMD5 hmacAsStringUsingPassword: _password]];
-      aString = [[NSString alloc] initWithData: [[aString dataUsingEncoding: NSASCIIStringEncoding] encodeBase64WithLineLength: 0]
-				  encoding: NSASCIIStringEncoding];
-      RELEASE(aMD5);
-
-      [self writeData: [aString dataUsingEncoding: defaultCStringEncoding]];
-      [self writeData: CRLF];
+        NSString *aString;
+        CWMD5 *aMD5;
+        
+        // We trim the "+ " and we keep the challenge phrase
+        aData = [aData subdataFromIndex: 2];
+        
+        //NSLog(@"Challenge phrase = |%@|", [aData asciiString]);
+        aMD5 = [[CWMD5 alloc] initWithData: [aData decodeBase64]];
+        [aMD5 computeDigest];
+        
+        aString = [NSString stringWithFormat: @"%@ %@", _username, [aMD5 hmacAsStringUsingPassword: _password]];
+        aString = [[NSString alloc] initWithData: [[aString dataUsingEncoding: NSASCIIStringEncoding] encodeBase64WithLineLength: 0]
+                                        encoding: NSASCIIStringEncoding];
+        
+        [self writeData: [aString dataUsingEncoding: defaultCStringEncoding]];
+        [self writeData: CRLF];
     }
 }
 
@@ -1559,32 +1563,33 @@ static inline int has_literal(char *buf, int c)
 //
 - (void) _parseAUTHENTICATE_LOGIN
 {
-  NSData *aData;
-  
-  aData = [_responsesFromServer lastObject];
-  
-  //
-  // We first verify if we got our challenge response from the IMAP server.
-  // If so, we use it and send back a response to proceed with the authentication.
-  // Based on what we sent before, we can either send the username or the password.
-  //
-  if ([aData hasCPrefix: "+"])
+    NSData *aData;
+    
+    aData = [_responsesFromServer lastObject];
+    
+    //
+    // We first verify if we got our challenge response from the IMAP server.
+    // If so, we use it and send back a response to proceed with the authentication.
+    // Based on what we sent before, we can either send the username or the password.
+    //
+    if ([aData hasCPrefix: "+"])
     {
-      NSData *aResponse;
-      
-      // Have we read the initial challenge? If not, we must send the username!
-      if (![_currentQueueObject->info objectForKey: @"Challenge"])
-	{
-	  aResponse =  [[_username dataUsingEncoding: NSASCIIStringEncoding] encodeBase64WithLineLength: 0];
-	  [_currentQueueObject->info setObject: aData  forKey: @"Challenge"];
-	}
-      else
-	{
-	  aResponse = [[_password dataUsingEncoding: NSASCIIStringEncoding] encodeBase64WithLineLength: 0];
-	}
-
-      [self writeData: aResponse];
-      [self writeData: CRLF];
+        NSData *aResponse;
+        
+        // Have we read the initial challenge? If not, we must send the username!
+        if ((nil != _currentQueueObject) &&
+            (nil == [_currentQueueObject->info objectForKey: @"Challenge"]))
+        {
+            aResponse =  [[_username dataUsingEncoding: NSASCIIStringEncoding] encodeBase64WithLineLength: 0];
+            [_currentQueueObject->info setObject: aData  forKey: @"Challenge"];
+        }
+        else
+        {
+            aResponse = [[_password dataUsingEncoding: NSASCIIStringEncoding] encodeBase64WithLineLength: 0];
+        }
+        
+        [self writeData: aResponse];
+        [self writeData: CRLF];
     }
 }
 
@@ -1610,8 +1615,7 @@ static inline int has_literal(char *buf, int c)
       // and remove the command that caused this from the queue.
       [_queue removeLastObject];
       [_responsesFromServer removeAllObjects];
-      [NSException raise: PantomimeProtocolException
-		   format: @"Unable to handle IMAP response (%@).", [aData asciiString]];
+      [NSException raise:PantomimeProtocolException format:@"Unable to handle IMAP response (%@).", [aData asciiString]];
     }
 
   if (![aData hasCPrefix: "*"])
@@ -1658,19 +1662,34 @@ static inline int has_literal(char *buf, int c)
   aString = [[NSString alloc] initWithData: aData  encoding: defaultCStringEncoding];
 
   [_capabilities addObjectsFromArray: [[aString substringFromIndex: 13] componentsSeparatedByString: @" "]];
-  RELEASE(aString);
 
-  if (_connection_state.reconnecting)
+  if (reconnecting)
     {
       [self authenticate: _username  password: _password  mechanism: _mechanism];
     }
   else
     {
       POST_NOTIFICATION(PantomimeServiceInitialized, self, nil);
-      PERFORM_SELECTOR_1(_delegate, @selector(serviceInitialized:),  PantomimeServiceInitialized);
+      (void)PERFORM_SELECTOR_1(_delegate, @selector(serviceInitialized:),  PantomimeServiceInitialized);
     }
 }
 
+
+- (void) scanFromData:(NSData*)inData withFormat:(const char*)inFormat, ...
+{
+    NSParameterAssert(0 < strlen(inFormat));
+    
+    NSUInteger len = [inData length];
+    char *cData = calloc(len + 1, sizeof(char));
+	[inData getBytes:cData length:len];
+
+    va_list args;
+    va_start(args, inFormat);
+    vsscanf(cData, inFormat, args);
+    va_end(args);
+
+    free(cData);
+}
 
 //
 // This method parses an * 23 EXISTS untagged response. (7.3.1)
@@ -1681,30 +1700,37 @@ static inline int has_literal(char *buf, int c)
 //
 - (void) _parseEXISTS
 {
-  NSData *aData;
-  int n;
-  
-  aData = [_responsesFromServer lastObject];
+	NSData *aData;
+	NSInteger n = 0;
+	
+	aData = [_responsesFromServer lastObject];
 
-  sscanf([aData cString], "* %d EXISTS", &n);
-  
-  //NSLog(@"_parseExists: %d", n);
-
-  if (_currentQueueObject->command != IMAP_SELECT &&
-      _selectedFolder && 
-      n > [_selectedFolder->allMessages count])
-    {
-      unsigned int uid;
-      
-      uid = 0;
-      
-      // We prefetch the new messages from the last UID+1
-      if ([_selectedFolder->allMessages lastObject])
+    [self scanFromData:aData withFormat:"* %" CWNSIntegerFormat " EXISTS", &n];
+	
+	// NSLog(@"_parseEXISTS: %ld", n);
+	if (idling &&
+        (nil != _currentQueueObject) &&
+		(IMAP_IDLE == _currentQueueObject->command) &&
+		(n > [_selectedFolder->allMessages count]))
 	{
-	  uid = [[_selectedFolder->allMessages lastObject] UID];
-	} 
-
-      [self sendCommand: IMAP_UID_FETCH_HEADER_FIELDS  info: nil  arguments: @"UID FETCH %u:* (FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (From To Cc Subject Date Message-ID References In-Reply-To)])", (uid+1)];
+		POST_NOTIFICATION(PantomimeFolderNewMessageWhileIDLE, self, [NSDictionary dictionaryWithObject: _selectedFolder  forKey: @"Folder"]);
+		PERFORM_SELECTOR_2(_delegate, @selector(folderNewMessageWhileIDLE:), PantomimeFolderNewMessageWhileIDLE, _selectedFolder, @"Folder");
+	}
+	else if ((nil != _currentQueueObject) &&
+             (_currentQueueObject->command != IMAP_SELECT) &&
+             ([[_selectedFolder allMessages] count] < n))
+    {
+		NSUInteger uid;
+		
+		uid = 0;
+		
+		// We prefetch the new messages from the last UID+1
+		if ([_selectedFolder->allMessages lastObject])
+		{
+			uid = [[_selectedFolder->allMessages lastObject] UID];
+		} 
+		
+		[self sendCommand: IMAP_UID_FETCH_HEADER_FIELDS  info: nil  arguments: @"UID FETCH %u:* (FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (From To Cc Subject Date Message-ID References In-Reply-To)])", (uid+1)];
     }
 }
 
@@ -1716,7 +1742,7 @@ static inline int has_literal(char *buf, int c)
 {
   CWIMAPMessage *aMessage;
   NSData *aData;
-  int i, msn;
+  NSInteger i, msn = 0;
 
   // It looks like some servers send untagged expunge reponses
   // _after_ the selected folder has been closed.
@@ -1727,7 +1753,7 @@ static inline int has_literal(char *buf, int c)
 
   aData = [_responsesFromServer lastObject];
 
-  sscanf([aData cString], "* %d EXPUNGE", &msn);
+    [self scanFromData:aData withFormat:"* %" CWNSIntegerFormat " EXPUNGE", &msn];
 
   //
   // Messages CAN be expunged before we really had time to FETCH them.
@@ -1738,7 +1764,6 @@ static inline int has_literal(char *buf, int c)
   if (msn > [_selectedFolder->allMessages count]) return;
 
   aMessage = [_selectedFolder->allMessages objectAtIndex: (msn-1)];
-  RETAIN(aMessage);
   
   // We do NOT use  [_selectedFolder removeMessage: aMessage] since it'll
   // thread the messages everytime we invoke it. We rather thread messages
@@ -1782,12 +1807,8 @@ static inline int has_literal(char *buf, int c)
 	}
 
       POST_NOTIFICATION(PantomimeMessageExpunged, self, [NSDictionary dictionaryWithObject: aMessage  forKey: @"Message"]);
-      PERFORM_SELECTOR_1(_delegate, @selector(messageExpunged:), PantomimeMessageExpunged);
+      (void)PERFORM_SELECTOR_1(_delegate, @selector(messageExpunged:), PantomimeMessageExpunged);
     }
-
-  RELEASE(aMessage);
-
-  //NSLog(@"Expunged %d", msn);
 }
 
 
@@ -1862,286 +1883,285 @@ static inline int has_literal(char *buf, int c)
 //
 // And we MUST parse the UID correctly.
 //
-- (void) _parseFETCH: (int) theMSN
+- (void) _parseFETCH: (NSInteger) theMSN
 {
-  NSMutableString *aMutableString;
-  NSCharacterSet *aCharacterSet;
-  CWIMAPMessage *aMessage;
-  NSScanner *aScanner;
-
-  NSMutableArray *aMutableArray;
-  NSString *aWord, *aString;
-  NSRange aRange;
-
-  BOOL done, seen_fetch, must_flush_record;
-  int i, j, count, len;
-  cache_record r;
-  
-  //
-  // The folder might have been closed so we must not try to
-  // update it for no good reason.
-  //
-  if (!_selectedFolder) return;
-  
-  count = [_responsesFromServer count]-1;
-   
-  //NSLog(@"RESPONSES FROM SERVER: %d", count);
-  
-  aMutableString = [[NSMutableString alloc] init];
-  aMutableArray = [[NSMutableArray alloc] init];
-
-  //
-  // Note:
-  //
-  // We must be careful here to NOT consider all responses from the server. For example,
-  // UW IMAP might send us:
-  // 1 UID SEARCH ANSWERED
-  // * SEARCH
-  // * 1 FETCH (FLAGS (\Recent \Seen) UID 1)
-  // 1 OK UID SEARCH completed
-  //
-  // In such response, we must NOT consider the "* SEARCH" response.
-  //
-  must_flush_record = seen_fetch = NO;
-
-  for (i = 0; i <= count; i++)
+	NSMutableString *aMutableString;
+	NSCharacterSet *aCharacterSet;
+	CWIMAPMessage *aMessage;
+	NSScanner *aScanner;
+	
+	NSMutableArray *aMutableArray;
+	NSString *aWord, *aString;
+	NSRange aRange;
+	
+	BOOL done, seen_fetch, must_flush_record;
+	NSInteger i, j, count, len;
+	CWCacheRecord *cacheRecord = [[CWCacheRecord alloc] init];
+	
+	//
+	// The folder might have been closed so we must not try to
+	// update it for no good reason.
+	//
+	if (!_selectedFolder) return;
+	
+	count = [_responsesFromServer count]-1;
+	
+	//NSLog(@"RESPONSES FROM SERVER: %d", count);
+	
+	aMutableString = [[NSMutableString alloc] init];
+	aMutableArray = [[NSMutableArray alloc] init];
+	
+	//
+	// Note:
+	//
+	// We must be careful here to NOT consider all responses from the server. For example,
+	// UW IMAP might send us:
+	// 1 UID SEARCH ANSWERED
+	// * SEARCH
+	// * 1 FETCH (FLAGS (\Recent \Seen) UID 1)
+	// 1 OK UID SEARCH completed
+	//
+	// In such response, we must NOT consider the "* SEARCH" response.
+	//
+	must_flush_record = seen_fetch = NO;
+	
+	for (i = 0; i <= count; i++)
     {
-      aString = [[_responsesFromServer objectAtIndex: i] asciiString];
-      //NSLog(@"%i: %@", i, aString);
-      if (!seen_fetch && [aString hasCaseInsensitivePrefix: [NSString stringWithFormat: @"* %d FETCH", theMSN]])
-	{
-	  seen_fetch = YES;
-	}
-
-      if (seen_fetch)
-	{
-	  [aMutableArray addObject: [_responsesFromServer objectAtIndex: i]];
-	  [aMutableString appendString: aString];
-	  if (i < count-1)
-	    {
-	      [aMutableString appendString: @" "];
-	    }
-	}
-    }
-  
-  //NSLog(@"GOT TO PARSE: |%@|", aMutableString);
-
-  aCharacterSet = [NSCharacterSet whitespaceAndNewlineCharacterSet];
-  len = [aMutableString length];
-  aMessage = nil;
-  i = j = 0;
-  
-  aScanner = [[NSScanner alloc] initWithString: aMutableString];
-  [aScanner setScanLocation: i];
-  
-  done = ![aScanner scanUpToCharactersFromSet: aCharacterSet  intoString: NULL];
-
-  //
-  // We tokenize our string into words
-  //
-  while (!done)
-    {
-      j = [aScanner scanLocation];
-      aWord = [[aMutableString substringWithRange: NSMakeRange(i,j-i)] stringByTrimmingWhiteSpaces];
-      
-      //NSLog(@"WORD |%@|", aWord);
-      
-      if ([aWord characterAtIndex: 0] == '(')
-	{
-	  aWord = [aWord substringFromIndex: 1];
-	}
-
-      //
-      // We read the MSN
-      //
-      if ([aWord characterAtIndex: 0] == '*')
-	{
-	  int msn;
-
-	  [aScanner scanInt: &msn];
-	  //NSLog(@"msn = %d", msn);
-
-	  //
-	  // If the MSN is > then the folder's count, that means it's
-	  // a new message.
-	  //
-	  // We can safely assume this since what we have in _selectedFolder->allMessages
-	  // is really the messages in our IMAP folder. That is true since we
-	  // synchronized our cache when opening the folder, in IMAPFolder: -prefetch.
-	  //
-	  if (msn > [_selectedFolder->allMessages count])
-	    {
-	      //NSLog(@"============ NEW MESSAGE ======================");
-	      aMessage = [[CWIMAPMessage alloc] init];
-	      
-	      // We set some initial properties to our message;
-	      [aMessage setInitialized: NO];
-	      [aMessage setFolder: _selectedFolder];
-	      [aMessage setMessageNumber: msn];
-	      [_selectedFolder appendMessage: aMessage];
-	      
-	      // We add the new message to our cache.
-	      if ([_selectedFolder cacheManager])
+		aString = [[_responsesFromServer objectAtIndex: i] asciiString];
+		//NSLog(@"%i: %@", i, aString);
+		if (!seen_fetch && [aString hasCaseInsensitivePrefix: [NSString stringWithFormat: @"* %ld FETCH", (long)theMSN]])
 		{
-		  if (must_flush_record)
-		    {
-		      [[_selectedFolder cacheManager] writeRecord: &r  message: aMessage];
-		    }
-		  
-		  CLEAR_CACHE_RECORD(r);
-		  must_flush_record = YES;
-
-		  //[[_selectedFolder cacheManager] addObject: aMessage];
+			seen_fetch = YES;
 		}
-	      
-	      RELEASE(aMessage);
-	    }
-	  else
-	    {
-	      aMessage = [_selectedFolder->allMessages objectAtIndex: (msn-1)];
-	      [aMessage setMessageNumber: msn];
-	      [aMessage setFolder: _selectedFolder];
-	    }
-	}
-      //
-      // We read our UID
-      //
-      if ([aWord caseInsensitiveCompare: @"UID"] == NSOrderedSame)
-	{
-	  unsigned int uid;
-
-	  [aScanner scanUnsignedInt: &uid];
-	  //NSLog(@"uid %d j = %d, scanLoc = %d", uid, j, [aScanner scanLocation]);
-	  
-	  if ([aMessage UID] == 0)
-	    {
-	      [aMessage setUID: uid];
-	      r.imap_uid = uid;
-	    }
-
-	  j = [aScanner scanLocation];
-	}
-      //
-      // We read our flags. We usually get something like FLAGS (\Seen)
-      //
-      else if ([aWord caseInsensitiveCompare: @"FLAGS"] == NSOrderedSame)
-	{
-	  // We get the substring inside our ( )
-	  aRange = [aMutableString rangeOfString: @")"  options: 0  range: NSMakeRange(j,len-j)]; 
-	  //NSLog(@"Flags = |%@|", [aMutableString substringWithRange: NSMakeRange(j+2, aRange.location-j-2)]);
-	  [self _parseFlags: [aMutableString substringWithRange: NSMakeRange(j+2, aRange.location-j-2)]
-		message: aMessage
-		record: &r];
-
-	  j = aRange.location + 1;
-	  [aScanner setScanLocation: j];
-	}
-      //
-      // We read the RFC822 message size
-      //
-      else if ([aWord caseInsensitiveCompare: @"RFC822.SIZE"] == NSOrderedSame)
-	{
-	  int size;
-
-	  [aScanner scanInt: &size];
-	  //NSLog(@"size = %d", size);
-	  [aMessage setSize: size];
-	  r.size = size;
-
-	  j = [aScanner scanLocation];
-	}
-      //
-      // Note:
-      //
-      // Novell's IMAP server doesn't distinguish a NOT BODY.PEEK from a standard one (ie., no NOT). So we can have:
-      //
-      // 000b UID FETCH 3071053:3071053 BODY.PEEK[HEADER.FIELDS.NOT (From To Cc Subject Date Message-ID References In-Reply-To MIME-Version)]
-      // * 1 FETCH (UID 3071053 BODY[HEADER.FIELDS ("From" "To" "Cc" "Subject" "Date" "Message-ID" "References" "In-Reply-To" "MIME-Version")] {1030}
-      //
-      else if ([aWord caseInsensitiveCompare: @"BODY[HEADER.FIELDS.NOT"] == NSOrderedSame ||
-	       _lastCommand == IMAP_UID_FETCH_HEADER_FIELDS_NOT)
-	{
-	  [[_currentQueueObject->info objectForKey: @"NSData"] replaceCRLFWithLF];
-	  [aMessage addHeadersFromData:  [_currentQueueObject->info objectForKey: @"NSData"] record: NULL];
-	  break;
-	}
-      //
-      // We must not break immediately after parsing this information. It's very important
-      // since servers like Exchange might send us responses like:
-      //
-      // * 1 FETCH (FLAGS (\Seen) RFC822.SIZE 4491 BODY[HEADER.FIELDS (From To Cc Subject Date Message-ID References In-Reply-To Content-Type)] {337} UID 614348)
-      //
-      // If we break right away, we'll skip the size and more importantly, the UID.
-      //
-      else if ([aWord caseInsensitiveCompare: @"BODY[HEADER.FIELDS"] == NSOrderedSame)
-	{
-	  [[_currentQueueObject->info objectForKey: @"NSData"] replaceCRLFWithLF];
-	  [aMessage setHeadersFromData: [_currentQueueObject->info objectForKey: @"NSData"]  record: &r];
-	}
-      //
-      //
-      //
-      else if ([aWord caseInsensitiveCompare: @"BODY[TEXT]"] == NSOrderedSame)
-	{
-	  [[_currentQueueObject->info objectForKey: @"NSData"] replaceCRLFWithLF];
-	  if (![aMessage content])
-	    {
-	      NSData *aData;
-	      
-	      //
-	      // We do an initial check for the message body. If we haven't read a literal,
-	      // [_currentQueueObject->info objectForKey: @"NSData"] returns nil. This can
-	      // happen with messages having a totally emtpy body. For those messages,
-	      // we simply set a default content, being an empty NSData instance.
-	      //
-	      aData = [_currentQueueObject->info objectForKey: @"NSData"];
-	      
-	      if (!aData) aData = [NSData data];
-	      
-	      [CWMIMEUtility setContentFromRawSource: aData  inPart: aMessage];
-	      [aMessage setInitialized: YES];
-
-	      // LUDO
-	      [_currentQueueObject->info setObject: aMessage  forKey: @"Message"];
-
-	      POST_NOTIFICATION(PantomimeMessagePrefetchCompleted, self, [NSDictionary dictionaryWithObject: aMessage  forKey: @"Message"]);
-	      PERFORM_SELECTOR_2(_delegate, @selector(messagePrefetchCompleted:), PantomimeMessagePrefetchCompleted, aMessage, @"Message");
-	    }
-	  break;
-	}
-      //
-      //
-      //
-      else if ([aWord caseInsensitiveCompare: @"RFC822"] == NSOrderedSame)
-	{
-	  [[_currentQueueObject->info objectForKey: @"NSData"] replaceCRLFWithLF];
-	  [aMessage setRawSource: [_currentQueueObject->info objectForKey: @"NSData"]];
-	  POST_NOTIFICATION(PantomimeMessageFetchCompleted, self, [NSDictionary dictionaryWithObject: aMessage  forKey: @"Message"]);
-	  PERFORM_SELECTOR_2(_delegate, @selector(messageFetchCompleted:), PantomimeMessageFetchCompleted, aMessage, @"Message");
-	  break;
-	}
-
-      i = j;
-      done = ![aScanner scanUpToCharactersFromSet: aCharacterSet  intoString: NULL];
-
-      if (done && must_flush_record)
-	{
-	  [[_selectedFolder cacheManager] writeRecord: &r  message: aMessage];
-	}
+		
+		if (seen_fetch)
+		{
+			[aMutableArray addObject: [_responsesFromServer objectAtIndex: i]];
+			[aMutableString appendString: aString];
+			if (i < count-1)
+			{
+				[aMutableString appendString: @" "];
+			}
+		}
     }
- 
-
-  RELEASE(aScanner);
-  RELEASE(aMutableString);
-
-  //
-  // It is important that we remove the responses we have processed. This is particularly
-  // useful if we are caching an IMAP mailbox. We could receive thousands of untagged
-  // FETCH responses and we don't want to go over them again and again everytime
-  // this method is invoked.
-  //
-  [_responsesFromServer removeObjectsInArray: aMutableArray];
-  RELEASE(aMutableArray);
+	
+	//NSLog(@"GOT TO PARSE: |%@|", aMutableString);
+	
+	aCharacterSet = [NSCharacterSet whitespaceAndNewlineCharacterSet];
+	len = [aMutableString length];
+	aMessage = nil;
+	i = 0;
+	
+	aScanner = [[NSScanner alloc] initWithString: aMutableString];
+	[aScanner setScanLocation: i];
+	
+	done = ![aScanner scanUpToCharactersFromSet: aCharacterSet  intoString: NULL];
+	
+	//
+	// We tokenize our string into words
+	//
+	while (!done)
+    {
+		j = [aScanner scanLocation];
+		aWord = [[aMutableString substringWithRange: NSMakeRange(i,j-i)] stringByTrimmingWhiteSpaces];
+		
+		//NSLog(@"WORD |%@|", aWord);
+		
+		if ([aWord characterAtIndex: 0] == '(')
+		{
+			aWord = [aWord substringFromIndex: 1];
+		}
+		
+		//
+		// We read the MSN
+		//
+		if ([aWord characterAtIndex: 0] == '*')
+		{
+			NSInteger msn;
+			
+			[aScanner scanInteger:&msn];
+			//NSLog(@"msn = %d", msn);
+			
+			//
+			// If the MSN is > then the folder's count, that means it's
+			// a new message.
+			//
+			// We can safely assume this since what we have in _selectedFolder->allMessages
+			// is really the messages in our IMAP folder. That is true since we
+			// synchronized our cache when opening the folder, in IMAPFolder: -prefetch.
+			//
+			if (msn > [_selectedFolder->allMessages count])
+			{
+				//NSLog(@"============ NEW MESSAGE ======================");
+				aMessage = [[CWIMAPMessage alloc] init];
+				
+				// We set some initial properties to our message;
+				[aMessage setInitialized: NO];
+				[aMessage setFolder: _selectedFolder];
+				[aMessage setMessageNumber: msn];
+				[_selectedFolder appendMessage: aMessage];
+				
+				// We add the new message to our cache.
+				if ([_selectedFolder cacheManager])
+				{
+					if (must_flush_record)
+					{
+						[[_selectedFolder cacheManager] writeRecord:cacheRecord  message:aMessage];
+					}
+					
+					CLEAR_CACHE_RECORD(cacheRecord);
+					must_flush_record = YES;
+					
+					//[[_selectedFolder cacheManager] addObject: aMessage];
+				}
+			}
+			else
+			{
+				aMessage = [_selectedFolder->allMessages objectAtIndex: (msn-1)];
+				[aMessage setMessageNumber: msn];
+				[aMessage setFolder: _selectedFolder];
+			}
+		}
+		//
+		// We read our UID
+		//
+		if ([aWord caseInsensitiveCompare: @"UID"] == NSOrderedSame)
+		{
+			NSUInteger uid;
+			
+			[aScanner scanUnsignedInt: &uid];
+			//NSLog(@"uid %d j = %d, scanLoc = %d", uid, j, [aScanner scanLocation]);
+			
+			if ([aMessage UID] == 0)
+			{
+				[aMessage setUID: uid];
+				cacheRecord.imap_uid = uid;
+			}
+			
+			j = [aScanner scanLocation];
+		}
+		//
+		// We read our flags. We usually get something like FLAGS (\Seen)
+		//
+		else if ([aWord caseInsensitiveCompare: @"FLAGS"] == NSOrderedSame)
+		{
+			// We get the substring inside our ( )
+			aRange = [aMutableString rangeOfString: @")"  options: 0  range: NSMakeRange(j,len-j)]; 
+			//NSLog(@"Flags = |%@|", [aMutableString substringWithRange: NSMakeRange(j+2, aRange.location-j-2)]);
+			[self _parseFlags: [aMutableString substringWithRange: NSMakeRange(j+2, aRange.location-j-2)]
+					  message: aMessage
+					   record: cacheRecord];
+			
+			j = aRange.location + 1;
+			[aScanner setScanLocation: j];
+		}
+		//
+		// We read the RFC822 message size
+		//
+		else if ([aWord caseInsensitiveCompare: @"RFC822.SIZE"] == NSOrderedSame)
+		{
+			NSInteger size;
+			
+			[aScanner scanInteger:&size];
+			//NSLog(@"size = %d", size);
+			[aMessage setSize: size];
+			cacheRecord.size = size;
+			
+			j = [aScanner scanLocation];
+		}
+		//
+		// Note:
+		//
+		// Novell's IMAP server doesn't distinguish a NOT BODY.PEEK from a standard one (ie., no NOT). So we can have:
+		//
+		// 000b UID FETCH 3071053:3071053 BODY.PEEK[HEADER.FIELDS.NOT (From To Cc Subject Date Message-ID References In-Reply-To MIME-Version)]
+		// * 1 FETCH (UID 3071053 BODY[HEADER.FIELDS ("From" "To" "Cc" "Subject" "Date" "Message-ID" "References" "In-Reply-To" "MIME-Version")] {1030}
+		//
+		else if ([aWord caseInsensitiveCompare: @"BODY[HEADER.FIELDS.NOT"] == NSOrderedSame ||
+				 _lastCommand == IMAP_UID_FETCH_HEADER_FIELDS_NOT)
+		{
+			[[_currentQueueObject->info objectForKey: @"NSData"] replaceCRLFWithLF];
+			[aMessage addHeadersFromData:  [_currentQueueObject->info objectForKey: @"NSData"] record: NULL];
+			break;
+		}
+		//
+		// We must not break immediately after parsing this information. It's very important
+		// since servers like Exchange might send us responses like:
+		//
+		// * 1 FETCH (FLAGS (\Seen) RFC822.SIZE 4491 BODY[HEADER.FIELDS (From To Cc Subject Date Message-ID References In-Reply-To Content-Type)] {337} UID 614348)
+		//
+		// If we break right away, we'll skip the size and more importantly, the UID.
+		//
+		else if ([aWord caseInsensitiveCompare: @"BODY[HEADER.FIELDS"] == NSOrderedSame)
+		{
+			[[_currentQueueObject->info objectForKey: @"NSData"] replaceCRLFWithLF];
+			[aMessage setHeadersFromData: [_currentQueueObject->info objectForKey: @"NSData"]  record:cacheRecord];
+		}
+		//
+		//
+		//
+		else if ([aWord caseInsensitiveCompare: @"BODY[TEXT]"] == NSOrderedSame)
+		{
+			[[_currentQueueObject->info objectForKey: @"NSData"] replaceCRLFWithLF];
+			if (![aMessage content])
+			{
+				NSData *aData;
+				
+				//
+				// We do an initial check for the message body. If we haven't read a literal,
+				// [_currentQueueObject->info objectForKey: @"NSData"] returns nil. This can
+				// happen with messages having a totally emtpy body. For those messages,
+				// we simply set a default content, being an empty NSData instance.
+				//
+				aData = [_currentQueueObject->info objectForKey: @"NSData"];
+				
+				if (!aData) aData = [NSData data];
+				
+				[CWMIMEUtility setContentFromRawSource: aData  inPart: aMessage];
+				[aMessage setInitialized: YES];
+				
+				// LUDO
+                if (nil != aMessage)
+                {
+                    [_currentQueueObject->info setObject: aMessage  forKey: @"Message"];
+                }
+				
+                NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:aMessage, @"Message", nil];
+				POST_NOTIFICATION(PantomimeMessagePrefetchCompleted, self, userInfo);
+				PERFORM_SELECTOR_2(_delegate, @selector(messagePrefetchCompleted:), PantomimeMessagePrefetchCompleted, aMessage, @"Message");
+			}
+			break;
+		}
+		//
+		//
+		//
+		else if ([aWord caseInsensitiveCompare: @"RFC822"] == NSOrderedSame)
+		{
+			[[_currentQueueObject->info objectForKey: @"NSData"] replaceCRLFWithLF];
+			[aMessage setRawSource: [_currentQueueObject->info objectForKey: @"NSData"]];
+            NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:aMessage, @"Message", nil];
+			POST_NOTIFICATION(PantomimeMessageFetchCompleted, self, userInfo);
+			PERFORM_SELECTOR_2(_delegate, @selector(messageFetchCompleted:), PantomimeMessageFetchCompleted, aMessage, @"Message");
+			break;
+		}
+		
+		i = j;
+		done = ![aScanner scanUpToCharactersFromSet: aCharacterSet  intoString: NULL];
+		
+		if (done && must_flush_record)
+		{
+			[[_selectedFolder cacheManager] writeRecord:cacheRecord  message: aMessage];
+		}
+    }
+	
+	
+	//
+	// It is important that we remove the responses we have processed. This is particularly
+	// useful if we are caching an IMAP mailbox. We could receive thousands of untagged
+	// FETCH responses and we don't want to go over them again and again everytime
+	// this method is invoked.
+	//
+	[_responsesFromServer removeObjectsInArray: aMutableArray];
 }
 
 
@@ -2180,7 +2200,7 @@ static inline int has_literal(char *buf, int c)
 {
   NSString *aFolderName, *aString, *theString;
   NSRange r1, r2;
-  int flags, len;
+  NSInteger flags, len;
 
   theString = [[_responsesFromServer lastObject] asciiString];
 
@@ -2199,7 +2219,7 @@ static inline int has_literal(char *buf, int c)
   //
   if (!theString)
     {
-      aFolderName = AUTORELEASE([[NSString alloc] initWithData: [_responsesFromServer lastObject]  encoding: NSUTF8StringEncoding]);
+      aFolderName = [[NSString alloc] initWithData: [_responsesFromServer lastObject]  encoding: NSUTF8StringEncoding];
       
       // We get the "previous" line which contains our mailbox attributes
       theString = [[_responsesFromServer objectAtIndex: [_responsesFromServer count]-2] asciiString];
@@ -2269,7 +2289,7 @@ static inline int has_literal(char *buf, int c)
 	}
     }
 
-  [_folders setObject: [NSNumber numberWithInt: flags]  forKey: aFolderName];
+  [_folders setObject: [NSNumber numberWithInteger:flags]  forKey: aFolderName];
 }
 
 
@@ -2279,18 +2299,17 @@ static inline int has_literal(char *buf, int c)
 - (void) _parseLSUB
 {
   NSString *aString, *aFolderName;
-  int len;
+  NSInteger len;
 
   aString = [[NSString alloc] initWithData: [_responsesFromServer lastObject]  encoding: defaultCStringEncoding];
   
   if (!aString)
     {
-      aFolderName = AUTORELEASE([[NSString alloc] initWithData: [_responsesFromServer lastObject]  encoding: NSUTF8StringEncoding]);
+      aFolderName = [[NSString alloc] initWithData: [_responsesFromServer lastObject]  encoding: NSUTF8StringEncoding];
     }
   else
     {
       aFolderName = [self _folderNameFromString: aString];
-      RELEASE(aString);
     }
   
   
@@ -2331,12 +2350,12 @@ static inline int has_literal(char *buf, int c)
 
     case IMAP_CREATE:
       POST_NOTIFICATION(PantomimeFolderCreateFailed, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_1(_delegate, @selector(folderCreateFailed:), PantomimeFolderCreateFailed);
+      (void)PERFORM_SELECTOR_1(_delegate, @selector(folderCreateFailed:), PantomimeFolderCreateFailed);
       break;
 
     case IMAP_DELETE:
       POST_NOTIFICATION(PantomimeFolderDeleteFailed, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_1(_delegate, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
+      (void)PERFORM_SELECTOR_1(_delegate, @selector(folderDeleteFailed:), PantomimeFolderDeleteFailed);
       break;
 
     case IMAP_EXPUNGE:
@@ -2346,11 +2365,11 @@ static inline int has_literal(char *buf, int c)
 
     case IMAP_RENAME:
       POST_NOTIFICATION(PantomimeFolderRenameFailed, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_1(_delegate, @selector(folderRenameFailed:), PantomimeFolderRenameFailed);
+      (void)PERFORM_SELECTOR_1(_delegate, @selector(folderRenameFailed:), PantomimeFolderRenameFailed);
       break;
 
     case IMAP_SELECT:
-      _connection_state.opening_mailbox = NO;
+      opening_mailbox = NO;
       POST_NOTIFICATION(PantomimeFolderOpenFailed, self, [NSDictionary dictionaryWithObject: _selectedFolder  forKey: @"Folder"]);
       PERFORM_SELECTOR_2(_delegate, @selector(folderOpenFailed:), PantomimeFolderOpenFailed, _selectedFolder, @"Folder");
       [_openFolders removeObjectForKey: [_selectedFolder name]];
@@ -2369,7 +2388,7 @@ static inline int has_literal(char *buf, int c)
 
     case IMAP_UID_SEARCH_ALL:
       POST_NOTIFICATION(PantomimeFolderSearchFailed, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_1(_delegate, @selector(folderSearchFailed:), PantomimeFolderSearchFailed);
+      (void)PERFORM_SELECTOR_1(_delegate, @selector(folderSearchFailed:), PantomimeFolderSearchFailed);
       break;
 
     case IMAP_STATUS:
@@ -2399,7 +2418,7 @@ static inline int has_literal(char *buf, int c)
     {
       //NSLog(@"REMOVING QUEUE OBJECT");
       
-      [_currentQueueObject->info setObject: [NSNumber numberWithInt: _lastCommand]  forKey: @"Command"];
+      [_currentQueueObject->info setObject: [NSNumber numberWithInteger:_lastCommand]  forKey: @"Command"];
       POST_NOTIFICATION(@"PantomimeCommandCompleted", self, _currentQueueObject->info);
       PERFORM_SELECTOR_3(_delegate, @selector(commandCompleted:), @"PantomimeCommandCompleted", _currentQueueObject->info);
       
@@ -2427,231 +2446,236 @@ static inline int has_literal(char *buf, int c)
 //
 - (void) _parseOK
 {
-  NSData *aData;
-
-  aData = [_responsesFromServer lastObject];
-  
-  //NSLog(@"IN _parseOK: |%@|", [aData asciiString]);
-
-  switch (_lastCommand)
+	NSData *aData;
+	
+	aData = [_responsesFromServer lastObject];
+	
+	//NSLog(@"IN _parseOK: |%@|", [aData asciiString]);
+	
+	switch (_lastCommand)
     {
-    case IMAP_APPEND:
-      //
-      // No need to do add the newly append messages to our internal messages holder as
-      // we will get an untagged * EXISTS response that will trigger the new FETCH
-      // RFC3501 says:
-      //
-      // If the mailbox is currently selected, the normal new message
-      // actions SHOULD occur.  Specifically, the server SHOULD notify the
-      // client immediately via an untagged EXISTS response.  If the server
-      // does not do so, the client MAY issue a NOOP command (or failing
-      // that, a CHECK command) after one or more APPEND commands.
-      //
-      POST_NOTIFICATION(PantomimeFolderAppendCompleted, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_3(_delegate, @selector(folderAppendCompleted:), PantomimeFolderAppendCompleted, _currentQueueObject->info);
-      break;
-
-    case IMAP_AUTHENTICATE_CRAM_MD5:
-    case IMAP_AUTHENTICATE_LOGIN:
-    case IMAP_LOGIN:
-      if (_connection_state.reconnecting)
-	{
-	  if (_selectedFolder)
-	    {
-	        if ([_selectedFolder mode] == PantomimeReadOnlyMode)
-		  {
-		    [self sendCommand: IMAP_EXAMINE  info: nil  arguments: @"EXAMINE \"%@\"", [[_selectedFolder name] modifiedUTF7String]];
-		  }
-		else
-		  {
-		    [self sendCommand: IMAP_SELECT  info: nil  arguments: @"SELECT \"%@\"", [[_selectedFolder name] modifiedUTF7String]];
-		  }
+		case IMAP_APPEND:
+			//
+			// No need to do add the newly append messages to our internal messages holder as
+			// we will get an untagged * EXISTS response that will trigger the new FETCH
+			// RFC3501 says:
+			//
+			// If the mailbox is currently selected, the normal new message
+			// actions SHOULD occur.  Specifically, the server SHOULD notify the
+			// client immediately via an untagged EXISTS response.  If the server
+			// does not do so, the client MAY issue a NOOP command (or failing
+			// that, a CHECK command) after one or more APPEND commands.
+			//
+			POST_NOTIFICATION(PantomimeFolderAppendCompleted, self, _currentQueueObject->info);
+			PERFORM_SELECTOR_3(_delegate, @selector(folderAppendCompleted:), PantomimeFolderAppendCompleted, _currentQueueObject->info);
+			break;
+			
+		case IMAP_AUTHENTICATE_CRAM_MD5:
+		case IMAP_AUTHENTICATE_LOGIN:
+		case IMAP_LOGIN:
+			if (reconnecting)
+			{
+				if (_selectedFolder)
+				{
+					if ([_selectedFolder mode] == PantomimeReadOnlyMode)
+					{
+						[self sendCommand: IMAP_EXAMINE  info: nil  arguments: @"EXAMINE \"%@\"", [_selectedFolder name]];
+					}
+					else
+					{
+						[self sendCommand: IMAP_SELECT  info: nil  arguments: @"SELECT \"%@\"", [_selectedFolder name]];
+					}
+					
+					if (opening_mailbox) [_selectedFolder prefetch];
+				}
+				else
+				{
+					[self _restoreQueue];
+				}
+			}
+			else
+			{
+				AUTHENTICATION_COMPLETED(_delegate, _mechanism);
+			}
+			break;
+			
+		case IMAP_AUTHORIZATION:
+			if ([aData hasCPrefix: "* OK"])
+			{
+				[self sendCommand: IMAP_CAPABILITY  info: nil  arguments: @"CAPABILITY"];
+			}
+			else
+			{
+				// FIXME
+				// connectionLost? or should we call [self close]?
+			}
+			break;
+			
+		case IMAP_CLOSE:
+			POST_NOTIFICATION(PantomimeFolderCloseCompleted, self, _currentQueueObject->info);
+			PERFORM_SELECTOR_3(_delegate, @selector(folderCloseCompleted:), PantomimeFolderCloseCompleted, _currentQueueObject->info);
+			break;
+			
+		case IMAP_CREATE:
+			[_folders setObject: [NSNumber numberWithInteger:0]  forKey: [_currentQueueObject->info objectForKey: @"Name"]];
+			POST_NOTIFICATION(PantomimeFolderCreateCompleted, self, _currentQueueObject->info);
+			(void)PERFORM_SELECTOR_1(_delegate, @selector(folderCreateCompleted:), PantomimeFolderCreateCompleted);
+			break;
+			
+		case IMAP_DELETE:
+			[_folders removeObjectForKey: [_currentQueueObject->info objectForKey: @"Name"]];
+			POST_NOTIFICATION(PantomimeFolderDeleteCompleted, self, _currentQueueObject->info);
+			(void)PERFORM_SELECTOR_1(_delegate, @selector(folderDeleteCompleted:), PantomimeFolderDeleteCompleted);
+			break;
+			
+		case IMAP_EXPUNGE:
+			//
+			// No need to synchronize our IMAP cache here since, at worst, the
+			// expunged messages will get removed once we reopen the mailbox.
+			//
+			if ([_selectedFolder allContainers])
+			{
+				[_selectedFolder thread];
+			}
+			
+			if ([_selectedFolder cacheManager])
+			{
+				[[_selectedFolder cacheManager] expunge];
+			}
+			POST_NOTIFICATION(PantomimeFolderExpungeCompleted, self, _currentQueueObject->info);      
+			PERFORM_SELECTOR_2(_delegate, @selector(folderExpungeCompleted:), PantomimeFolderExpungeCompleted, _selectedFolder, @"Folder");
+			break;
+			
+		case IMAP_LIST:
+			POST_NOTIFICATION(PantomimeFolderListCompleted, self, [NSDictionary dictionaryWithObject: [_folders keyEnumerator] forKey: @"NSEnumerator"]);
+			PERFORM_SELECTOR_2(_delegate, @selector(folderListCompleted:), PantomimeFolderListCompleted, [_folders keyEnumerator], @"NSEnumerator");
+			break;
+			
+		case IMAP_LOGOUT:
+			// FIXME: What should we do here?
+			[super close];
+			break;
+			
+		case IMAP_LSUB:
+			POST_NOTIFICATION(PantomimeFolderListSubscribedCompleted, self, [NSDictionary dictionaryWithObject: [_subscribedFolders objectEnumerator] forKey: @"NSEnumerator"]);
+			PERFORM_SELECTOR_2(_delegate, @selector(folderListSubscribedCompleted:), PantomimeFolderListSubscribedCompleted, [_subscribedFolders objectEnumerator], @"NSEnumerator");
+			break;
+			
+		case IMAP_RENAME:
+			[self _renameFolder];
+			POST_NOTIFICATION(PantomimeFolderRenameCompleted, self, _currentQueueObject->info);
+			(void)PERFORM_SELECTOR_1(_delegate, @selector(folderRenameCompleted:), PantomimeFolderRenameCompleted);
+			break;
+			
+		case IMAP_SELECT:
+			[self _parseSELECT];
+			break;
+			
+		case IMAP_STARTTLS:
+			[self _parseSTARTTLS];
+			break;
+			
+		case IMAP_SUBSCRIBE:
+			// We must add the folder to our list of subscribed folders.
+			[_subscribedFolders addObject: [_currentQueueObject->info objectForKey: @"Name"]];
+			POST_NOTIFICATION(PantomimeFolderSubscribeCompleted, self, _currentQueueObject->info);
+			PERFORM_SELECTOR_2(_delegate, @selector(folderSubscribeCompleted:), PantomimeFolderSubscribeCompleted, [_currentQueueObject->info objectForKey: @"Name"], @"Name");
+			break;
+			
+		case IMAP_UID_COPY:
+			POST_NOTIFICATION(PantomimeMessagesCopyCompleted, self, _currentQueueObject->info);
+			PERFORM_SELECTOR_3(_delegate, @selector(messagesCopyCompleted:), PantomimeMessagesCopyCompleted, _currentQueueObject->info);
+			break;
+			
+		case IMAP_UID_FETCH_HEADER_FIELDS:
+		{
+			opening_mailbox = NO;
+			
+			if ([_selectedFolder cacheManager])
+			{
+				[[_selectedFolder cacheManager] synchronize];
+			}
+			
+			//NSLog(@"DONE PREFETCHING FOLDER");
+			POST_NOTIFICATION(PantomimeFolderPrefetchCompleted, self, [NSDictionary dictionaryWithObject: _selectedFolder  forKey: @"Folder"]);
+			PERFORM_SELECTOR_2(_delegate, @selector(folderPrefetchCompleted:), PantomimeFolderPrefetchCompleted, _selectedFolder, @"Folder");
+		}
+			break;
+			
+		case IMAP_UID_SEARCH_ALL:
+			//
+			// Before assuming we got a result and initialized everything in _parseSEARCH,
+			// we do a basic check. This is to prevent a rather weird behavior from
+			// UW IMAP Server, like this:
+			//
+			// . UID SEARCH ALL FROM "collaboration-world"
+			// * OK [PARSE] Unexpected characters at end of address: <>, Aix.p4@itii-paca.net...
+			// * SEARCH
+			// 000d OK UID SEARCH completed^
+			//
+			if ([_currentQueueObject->info objectForKey: @"Results"])
+			{
+				NSDictionary *userInfo;
+				
+				userInfo = [NSDictionary dictionaryWithObjectsAndKeys: _selectedFolder, @"Folder", [_currentQueueObject->info objectForKey: @"Results"], @"Results", nil];
+				POST_NOTIFICATION(PantomimeFolderSearchCompleted, self, userInfo);
+				PERFORM_SELECTOR_3(_delegate, @selector(folderSearchCompleted:), PantomimeFolderSearchCompleted, userInfo);
+			}
+			break;
+			
+		case IMAP_UID_STORE:
+		{
+			// Once the STORE has completed, we update the messages.
+			NSArray *theMessages;
+			CWFlags *theFlags;
+			NSInteger i, count;
+			
+			theMessages = [_currentQueueObject->info objectForKey: @"Messages"];
+			theFlags = [_currentQueueObject->info objectForKey: @"Flags"];
+			count = [theMessages count];
+			
+			for (i = 0; i < count; i++)
+			{
+				[[(CWMessage*)[theMessages objectAtIndex: i] flags] replaceWithFlags: theFlags];
+			}
+			
+			POST_NOTIFICATION(PantomimeMessageStoreCompleted, self, _currentQueueObject->info);
+			PERFORM_SELECTOR_3(_delegate, @selector(messageStoreCompleted:), PantomimeMessageStoreCompleted, _currentQueueObject->info);
+		}
+			break;
+			
+		case IMAP_UNSUBSCRIBE:
+			// We must remove the folder from our list of subscribed folders.
+			[_subscribedFolders removeObject: [_currentQueueObject->info objectForKey: @"Name"]];
+			POST_NOTIFICATION(PantomimeFolderUnsubscribeCompleted, self, _currentQueueObject->info);
+			PERFORM_SELECTOR_2(_delegate, @selector(folderUnsubscribeCompleted:), PantomimeFolderUnsubscribeCompleted, [_currentQueueObject->info objectForKey: @"Name"], @"Name");
+			break;
+			
+		case IMAP_IDLE:
+			NSLog(@"IDLE terminated");
+			idling = NO;
+			break;
+			
+		default:
+			break;
+    }
+	
+	//
+	// If the OK response is tagged response, we remove the current
+	// queued object from the queue since it reached completion.
+	//
+	if (![aData hasCPrefix: "*"])// || _lastCommand == IMAP_AUTHORIZATION)
+    {
+		//NSLog(@"REMOVING QUEUE OBJECT");      
+		[_currentQueueObject->info setObject: [NSNumber numberWithInteger:_lastCommand]  forKey: @"Command"];
+		POST_NOTIFICATION(@"PantomimeCommandCompleted", self, _currentQueueObject->info);
+		PERFORM_SELECTOR_3(_delegate, @selector(commandCompleted:), @"PantomimeCommandCompleted", _currentQueueObject->info);
 		
-		if (_connection_state.opening_mailbox) [_selectedFolder prefetch];
-	    }
-	  else
-	    {
-	      [self _restoreQueue];
-	    }
-	}
-      else
-	{
-	  AUTHENTICATION_COMPLETED(_delegate, _mechanism);
-	}
-      break;
-   
-    case IMAP_AUTHORIZATION:
-      if ([aData hasCPrefix: "* OK"])
-	{
-	  [self sendCommand: IMAP_CAPABILITY  info: nil  arguments: @"CAPABILITY"];
-	}
-      else
-	{
-	  // FIXME
-	  // connectionLost? or should we call [self close]?
-	}
-      break;
-      
-    case IMAP_CLOSE:
-      POST_NOTIFICATION(PantomimeFolderCloseCompleted, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_3(_delegate, @selector(folderCloseCompleted:), PantomimeFolderCloseCompleted, _currentQueueObject->info);
-      break;
-
-    case IMAP_CREATE:
-      [_folders setObject: [NSNumber numberWithInt: 0]  forKey: [_currentQueueObject->info objectForKey: @"Name"]];
-      POST_NOTIFICATION(PantomimeFolderCreateCompleted, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_1(_delegate, @selector(folderCreateCompleted:), PantomimeFolderCreateCompleted);
-      break;
-
-    case IMAP_DELETE:
-      [_folders removeObjectForKey: [_currentQueueObject->info objectForKey: @"Name"]];
-      POST_NOTIFICATION(PantomimeFolderDeleteCompleted, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_1(_delegate, @selector(folderDeleteCompleted:), PantomimeFolderDeleteCompleted);
-      break;
-
-    case IMAP_EXPUNGE:
-      //
-      // No need to synchronize our IMAP cache here since, at worst, the
-      // expunged messages will get removed once we reopen the mailbox.
-      //
-      if ([_selectedFolder allContainers])
-	{
-	  [_selectedFolder thread];
-	}
-
-      if ([_selectedFolder cacheManager])
-	{
-	  [[_selectedFolder cacheManager] expunge];
-	}
-      POST_NOTIFICATION(PantomimeFolderExpungeCompleted, self, _currentQueueObject->info);      
-      PERFORM_SELECTOR_2(_delegate, @selector(folderExpungeCompleted:), PantomimeFolderExpungeCompleted, _selectedFolder, @"Folder");
-      break;
-
-    case IMAP_LIST:
-      POST_NOTIFICATION(PantomimeFolderListCompleted, self, [NSDictionary dictionaryWithObject: [_folders keyEnumerator] forKey: @"NSEnumerator"]);
-      PERFORM_SELECTOR_2(_delegate, @selector(folderListCompleted:), PantomimeFolderListCompleted, [_folders keyEnumerator], @"NSEnumerator");
-      break;
-
-    case IMAP_LOGOUT:
-      // FIXME: What should we do here?
-      [super close];
-      break;
-
-    case IMAP_LSUB:
-      POST_NOTIFICATION(PantomimeFolderListSubscribedCompleted, self, [NSDictionary dictionaryWithObject: [_subscribedFolders objectEnumerator] forKey: @"NSEnumerator"]);
-      PERFORM_SELECTOR_2(_delegate, @selector(folderListSubscribedCompleted:), PantomimeFolderListSubscribedCompleted, [_subscribedFolders objectEnumerator], @"NSEnumerator");
-      break;
-
-    case IMAP_RENAME:
-      [self _renameFolder];
-      POST_NOTIFICATION(PantomimeFolderRenameCompleted, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_1(_delegate, @selector(folderRenameCompleted:), PantomimeFolderRenameCompleted);
-      break;
-
-    case IMAP_SELECT:
-      [self _parseSELECT];
-      break;
-
-    case IMAP_STARTTLS:
-      [self _parseSTARTTLS];
-      break;
-
-    case IMAP_SUBSCRIBE:
-      // We must add the folder to our list of subscribed folders.
-      [_subscribedFolders addObject: [_currentQueueObject->info objectForKey: @"Name"]];
-      POST_NOTIFICATION(PantomimeFolderSubscribeCompleted, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_2(_delegate, @selector(folderSubscribeCompleted:), PantomimeFolderSubscribeCompleted, [_currentQueueObject->info objectForKey: @"Name"], @"Name");
-      break;
-
-    case IMAP_UID_COPY:
-      POST_NOTIFICATION(PantomimeMessagesCopyCompleted, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_3(_delegate, @selector(messagesCopyCompleted:), PantomimeMessagesCopyCompleted, _currentQueueObject->info);
-      break;
-
-    case IMAP_UID_FETCH_HEADER_FIELDS:
-      {
-	_connection_state.opening_mailbox = NO;
-
-	if ([_selectedFolder cacheManager])
-	  {
-	    [[_selectedFolder cacheManager] synchronize];
-	  }
-	
-	//NSLog(@"DONE PREFETCHING FOLDER");
-	POST_NOTIFICATION(PantomimeFolderPrefetchCompleted, self, [NSDictionary dictionaryWithObject: _selectedFolder  forKey: @"Folder"]);
-	PERFORM_SELECTOR_2(_delegate, @selector(folderPrefetchCompleted:), PantomimeFolderPrefetchCompleted, _selectedFolder, @"Folder");
-      }
-      break;
-
-    case IMAP_UID_SEARCH_ALL:
-      //
-      // Before assuming we got a result and initialized everything in _parseSEARCH,
-      // we do a basic check. This is to prevent a rather weird behavior from
-      // UW IMAP Server, like this:
-      //
-      // . UID SEARCH ALL FROM "collaboration-world"
-      // * OK [PARSE] Unexpected characters at end of address: <>, Aix.p4@itii-paca.net...
-      // * SEARCH
-      // 000d OK UID SEARCH completed^
-      //
-      if ([_currentQueueObject->info objectForKey: @"Results"])
-	{
-	  NSDictionary *userInfo;
-
-	  userInfo = [NSDictionary dictionaryWithObjectsAndKeys: _selectedFolder, @"Folder", [_currentQueueObject->info objectForKey: @"Results"], @"Results", nil];
-	  POST_NOTIFICATION(PantomimeFolderSearchCompleted, self, userInfo);
-	  PERFORM_SELECTOR_3(_delegate, @selector(folderSearchCompleted:), PantomimeFolderSearchCompleted, userInfo);
-	}
-      break;
-
-    case IMAP_UID_STORE:
-      {
-	// Once the STORE has completed, we update the messages.
-	NSArray *theMessages;
-	CWFlags *theFlags;
-	int i, count;
-	
-	theMessages = [_currentQueueObject->info objectForKey: @"Messages"];
-	theFlags = [_currentQueueObject->info objectForKey: @"Flags"];
-	count = [theMessages count];
-
-	for (i = 0; i < count; i++)
-	  {
-	    [[[theMessages objectAtIndex: i] flags] replaceWithFlags: theFlags];
-	  }
-
-	POST_NOTIFICATION(PantomimeMessageStoreCompleted, self, _currentQueueObject->info);
-	PERFORM_SELECTOR_3(_delegate, @selector(messageStoreCompleted:), PantomimeMessageStoreCompleted, _currentQueueObject->info);
-      }
-      break;
-      
-    case IMAP_UNSUBSCRIBE:
-      // We must remove the folder from our list of subscribed folders.
-      [_subscribedFolders removeObject: [_currentQueueObject->info objectForKey: @"Name"]];
-      POST_NOTIFICATION(PantomimeFolderUnsubscribeCompleted, self, _currentQueueObject->info);
-      PERFORM_SELECTOR_2(_delegate, @selector(folderUnsubscribeCompleted:), PantomimeFolderUnsubscribeCompleted, [_currentQueueObject->info objectForKey: @"Name"], @"Name");
-      break;
-
-    default:
-      break;
+		[_queue removeLastObject];
+		[self sendCommand: IMAP_EMPTY_QUEUE  info: nil  arguments: @""];
     }
-
-  //
-  // If the OK response is tagged response, we remove the current
-  // queued object from the queue since it reached completion.
-  //
-  if (![aData hasCPrefix: "*"])// || _lastCommand == IMAP_AUTHORIZATION)
-    {
-      //NSLog(@"REMOVING QUEUE OBJECT");      
-      [_currentQueueObject->info setObject: [NSNumber numberWithInt: _lastCommand]  forKey: @"Command"];
-      POST_NOTIFICATION(@"PantomimeCommandCompleted", self, _currentQueueObject->info);
-      PERFORM_SELECTOR_3(_delegate, @selector(commandCompleted:), @"PantomimeCommandCompleted", _currentQueueObject->info);
-      
-      [_queue removeLastObject];
-      [self sendCommand: IMAP_EMPTY_QUEUE  info: nil  arguments: @""];
-    }
-
-  [_responsesFromServer removeAllObjects];
+	
+	[_responsesFromServer removeAllObjects];
 }
 
 
@@ -2673,7 +2697,7 @@ static inline int has_literal(char *buf, int c)
   NSMutableArray *aMutableArray;
   CWIMAPMessage *aMessage;
   NSArray *allResults;
-  int i, count;
+  NSInteger i, count;
   
   allResults = [self _uniqueIdentifiersFromData: [_responsesFromServer lastObject]];
   count = [allResults count];
@@ -2683,7 +2707,7 @@ static inline int has_literal(char *buf, int c)
      
   for (i = 0; i < count; i++)
     {
-      aMessage = [[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntValue]];
+      aMessage = [[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]];
       
       if (aMessage)
 	{
@@ -2714,7 +2738,7 @@ static inline int has_literal(char *buf, int c)
 {
   CWIMAPMessage *aMessage;
   NSArray *allResults;
-  int i, count;
+  NSInteger i, count;
   BOOL b;
 
   allResults = [self _uniqueIdentifiersFromData: [_responsesFromServer objectAtIndex: 0]];
@@ -2730,7 +2754,7 @@ static inline int has_literal(char *buf, int c)
       //
       for (i = 0; i < count; i++)
 	{
-	  aMessage = [[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntValue]];
+	  aMessage = [[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]];
 	  
 	  if (aMessage)
 	    {
@@ -2755,7 +2779,7 @@ static inline int has_literal(char *buf, int c)
 	  if ([aMessage folder] == nil)
 	    {
 	      [[_selectedFolder cacheManager] removeMessageWithUID: [aMessage UID]];
-	      NSLog(@"Removed message |%@| UID = %d", [aMessage subject], [aMessage UID]);
+	      NSLog(@"Removed message |%@| UID = %ld", [aMessage subject], (long)[aMessage UID]);
 	      [_selectedFolder->allMessages removeObject: aMessage];
 	      b = YES;
 	    }
@@ -2782,7 +2806,7 @@ static inline int has_literal(char *buf, int c)
       //     
       for (i = 0; i < count; i++)
 	{
-	  [[[[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntValue]] flags] add: PantomimeAnswered];
+	  [[[[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]] flags] add: PantomimeAnswered];
 	}
       [self sendCommand: IMAP_UID_SEARCH_FLAGGED  info: nil  arguments: @"UID SEARCH FLAGGED"];
       break;
@@ -2793,7 +2817,7 @@ static inline int has_literal(char *buf, int c)
       //     
       for (i = 0; i < count; i++)
 	{
-	  [[[[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntValue]] flags] add: PantomimeFlagged];
+	  [[[[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]] flags] add: PantomimeFlagged];
 	}
       [self sendCommand: IMAP_UID_SEARCH_UNSEEN  info: nil  arguments: @"UID SEARCH UNSEEN"];
       break;
@@ -2805,7 +2829,7 @@ static inline int has_literal(char *buf, int c)
       for (i = 0; i < count; i++)
 	{
 	  //NSLog(@"removing for UID %d", [[allResults objectAtIndex: i] unsignedIntValue]);
-	  [[[[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntValue]] flags] remove: PantomimeSeen];
+	  [[[[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]] flags] remove: PantomimeSeen];
 	}
       
       //
@@ -2829,7 +2853,7 @@ static inline int has_literal(char *buf, int c)
 - (void) _parseSELECT
 {
   NSData *aData;
-  int i, count;
+  NSInteger i, count;
 
   // The last object in _responsesFromServer is a tagged OK response.
   // We need to parse it here.
@@ -2859,7 +2883,7 @@ static inline int has_literal(char *buf, int c)
 	}
     }
 
-  if (_connection_state.reconnecting)
+  if (reconnecting)
     {
       [self _restoreQueue];
     }
@@ -2879,7 +2903,7 @@ static inline int has_literal(char *buf, int c)
 {
   [(CWTCPConnection *)_connection startSSL];
   POST_NOTIFICATION(PantomimeServiceInitialized, self, nil);
-  PERFORM_SELECTOR_1(_delegate, @selector(serviceInitialized:),  PantomimeServiceInitialized);
+  (void)PERFORM_SELECTOR_1(_delegate, @selector(serviceInitialized:),  PantomimeServiceInitialized);
 }
 
 //
@@ -2891,41 +2915,40 @@ static inline int has_literal(char *buf, int c)
 //
 - (void) _parseSTATUS
 {
-  CWFolderInformation *aFolderInformation;
-  NSString *aFolderName;
-  NSDictionary *info;
-  NSData *aData;
-
-  NSRange aRange;
-  int messages, unseen;
-
-  aData = [_responsesFromServer lastObject];
-  
-  aRange = [aData rangeOfCString: "("  options: NSBackwardsSearch];
-  aFolderName = [[[aData subdataToIndex: (aRange.location-1)] subdataFromIndex: 9] asciiString];
-  
-  sscanf([[aData subdataFromIndex: aRange.location] cString], "(MESSAGES %d UNSEEN %d)", &messages, &unseen);
-  
-  aFolderInformation = [[CWFolderInformation alloc] init];
-  [aFolderInformation setNbOfMessages: messages];
-  [aFolderInformation setNbOfUnreadMessages: unseen];
-  
-  // Before putting the folder in our dictionary, we unquote it.
-  aFolderName = [aFolderName stringFromQuotedString];
-  [_folderStatus setObject: aFolderInformation  forKey: aFolderName];
-  
-  info = [NSDictionary dictionaryWithObjectsAndKeys: aFolderInformation, @"FolderInformation", aFolderName, @"FolderName", nil];  
-  POST_NOTIFICATION(PantomimeFolderStatusCompleted, self, info);
-
-  if (_delegate && [_delegate respondsToSelector: @selector(folderStatusCompleted:)]) 
+    CWFolderInformation *aFolderInformation;
+    NSString *aFolderName;
+    NSDictionary *info;
+    NSData *aData;
+    
+    NSRange aRange;
+    NSInteger messages = 0;
+    NSInteger unseen = 0;
+    
+    aData = [_responsesFromServer lastObject];
+    
+    aRange = [aData rangeOfCString: "("  options: NSBackwardsSearch];
+    aFolderName = [[[aData subdataToIndex: (aRange.location-1)] subdataFromIndex: 9] asciiString];
+    
+    [self scanFromData:[aData subdataFromIndex:aRange.location] withFormat:"(MESSAGES %" CWNSIntegerFormat " UNSEEN %" CWNSIntegerFormat ")", &messages, &unseen];
+    
+    aFolderInformation = [[CWFolderInformation alloc] init];
+    [aFolderInformation setNbOfMessages:messages];
+    [aFolderInformation setNbOfUnreadMessages:unseen];
+    
+    // Before putting the folder in our dictionary, we unquote it.
+    aFolderName = [aFolderName stringFromQuotedString];
+    [_folderStatus setObject: aFolderInformation  forKey: aFolderName];
+    
+    info = [NSDictionary dictionaryWithObjectsAndKeys: aFolderInformation, @"FolderInformation", aFolderName, @"FolderName", nil];  
+    POST_NOTIFICATION(PantomimeFolderStatusCompleted, self, info);
+    
+    if (_delegate && [_delegate respondsToSelector: @selector(folderStatusCompleted:)]) 
     {
-      [_delegate performSelector: @selector(folderStatusCompleted:)
-		 withObject: [NSNotification notificationWithName: PantomimeFolderStatusCompleted
-					     object: self
-					     userInfo: info]];
+        [_delegate performSelector: @selector(folderStatusCompleted:)
+                        withObject: [NSNotification notificationWithName: PantomimeFolderStatusCompleted
+                                                                  object: self
+                                                                userInfo: info]];
     }
-  
-  RELEASE(aFolderInformation);
 }
 
 
@@ -2934,9 +2957,9 @@ static inline int has_literal(char *buf, int c)
 //
 - (void) _parseUIDVALIDITY: (const char *) theString
 {
-  unsigned int n;
-  sscanf(theString, "* OK [UIDVALIDITY %u]", &n);
-  [_selectedFolder setUIDValidity: n];
+    NSUInteger n = 0;
+	sscanf(theString, "* OK [UIDVALIDITY %" CWNSUIntegerFormat "]", &n);
+    [_selectedFolder setUIDValidity: n];
 }
 
 
@@ -2946,14 +2969,14 @@ static inline int has_literal(char *buf, int c)
 - (void) _restoreQueue
 {
   // We restore our list of pending commands
-  [_queue addObjectsFromArray: _connection_state.previous_queue];
+  [_queue addObjectsFromArray: previous_queue];
   
   // We clean the state
-  [_connection_state.previous_queue removeAllObjects];
-  _connection_state.reconnecting = NO;
+  [previous_queue removeAllObjects];
+  reconnecting = NO;
 
   POST_NOTIFICATION(PantomimeServiceReconnected, self, nil);
-  PERFORM_SELECTOR_1(_delegate, @selector(serviceReconnected:), PantomimeServiceReconnected);
+  (void)PERFORM_SELECTOR_1(_delegate, @selector(serviceReconnected:), PantomimeServiceReconnected);
 }
 
 @end

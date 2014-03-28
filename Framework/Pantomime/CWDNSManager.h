@@ -23,7 +23,7 @@
 #ifndef _Pantomime_H_CWDNSManager
 #define _Pantomime_H_CWDNSManager
 
-#include <Pantomime/CWConnection.h>
+#include "CWConnection.h"
 
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
@@ -49,6 +49,13 @@
   @result The array of addresses encoded as NSData instances.
 */
 - (NSArray *) addressesForName: (NSString *) theName;
+
+/*"!
+ IPv6 compatible version of addressesForName
+ */
+- (NSArray *) availableAddressesForName:(NSString *)theName
+								   port:(unsigned short)thePort
+							 tryConnect:(BOOL)inFlag;
 
 /*!
   @method singleInstance

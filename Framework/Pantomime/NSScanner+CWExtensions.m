@@ -20,19 +20,17 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <Pantomime/NSScanner+Extensions.h>
+#import "NSScanner+CWExtensions.h"
 
-#include <Foundation/NSString.h>
-#include <ctype.h>
 //
 //
 //
 @implementation NSScanner (PantomimeScannerExtensions)
 
-- (BOOL) scanUnsignedInt: (unsigned int *) theValue
+- (BOOL) scanUnsignedInt: (NSUInteger *) theValue
 {
   NSString *s;
-  unsigned int d, v, l1, l2, len;
+  NSUInteger d, v, l1, l2, len;
 
   l1 = l2 = [self scanLocation];
   s = [self string];

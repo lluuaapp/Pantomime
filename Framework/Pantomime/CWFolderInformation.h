@@ -20,10 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWFolderInformation
-#define _Pantomime_H_CWFolderInformation
-
-#import <Foundation/NSObject.h>
+#import <Foundation/Foundation.h>
 
 /*!
   @class CWFolderInformation
@@ -35,58 +32,14 @@
 */      
 @interface CWFolderInformation : NSObject
 {
-  @private
-    unsigned int _nb_of_messages;
-    unsigned int _nb_of_unread_messages;
-    unsigned int _size;
+@private
+    NSUInteger nbOfMessages;
+    NSUInteger nbOfUnreadMessages;
+    NSUInteger size;
 }
 
-/*!
-  @method nbOfMessages
-  @discussion This method is used to get the total number of messages value
-              from this container object.
-  @result The total number of messages.
-*/
-- (unsigned int) nbOfMessages;
-
-/*!
-  @method setNbOfMessages:
-  @discussion This method is used to set the total number of messages
-              of this container object.
-  @param theValue The number of messages.
-*/
-- (void) setNbOfMessages: (unsigned int) theValue;
-
-/*!
-  @method nbOfUnreadMessages
-  @discussion This method is used to get the total number of unread messages value
-              from this container object.
-  @result The total number of unread messages.
-*/
-- (unsigned int) nbOfUnreadMessages;
-
-/*!
-  @method setNbOfUnreadMessages:
-  @discussion This method is used to set the total number of unread messages
-              of this container object.
-  @param theValue The number of unread messages.
-*/
-- (void) setNbOfUnreadMessages: (unsigned int) theValue;
-
-/*!
-  @method size
-  @discussion This method is used to get the total size of this container object.
-  @result The total size.
-*/
-- (unsigned int) size;
-
-/*!
-  @method setSize:
-  @discussion This method is used to set the total size of this container object.
-  @param theSize The total size.
-*/
-- (void) setSize: (unsigned int) theSize;
+@property (nonatomic, assign) NSUInteger nbOfMessages;
+@property (nonatomic, assign) NSUInteger nbOfUnreadMessages;
+@property (nonatomic, assign) NSUInteger size;
 
 @end
-
-#endif // _Pantomime_H_CWFolderInformation

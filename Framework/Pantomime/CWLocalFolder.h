@@ -20,18 +20,9 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWLocalFolder
-#define _Pantomime_H_CWLocalFolder
 
-#include <Pantomime/CWConstants.h>
-#include <Pantomime/CWFolder.h>
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSData.h>
-#import <Foundation/NSDictionary.h>
-#import <Foundation/NSString.h>
-
-#include <stdio.h>
+#import "CWConstants.h"
+#import "CWFolder.h"
 
 /*!
   @class CWLocalFolder
@@ -44,7 +35,7 @@
   NSString *_path;
   
   PantomimeFolderFormat _type;
-  int fd;
+  NSInteger fd;
   FILE *stream;
 }
 
@@ -79,7 +70,7 @@
               of the receiver.
   @result The file descriptor, -1 if none was set.
 */
-- (int) fd;
+- (NSInteger) fd;
 
 /*!
   @method setFD:
@@ -88,7 +79,7 @@
 	      method directly.
   @param theFD The associated file descriptor.
 */
-- (void) setFD: (int) theFD;
+- (void) setFD: (NSInteger) theFD;
 
 /*!
   @method path
@@ -140,4 +131,3 @@
 
 @end
 
-#endif // _Pantomime_H_CWLocalFolder
