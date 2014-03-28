@@ -750,7 +750,7 @@ static NSData *CRLF;
             r.date = [[NSCalendarDate calendarDate] timeIntervalSince1970];
             r.pop3_uid = [aMessage UID];
             
-            [[_folder cacheManager] writeRecord:r];
+            [(CWPOP3CacheManager*)_folder.cacheManager writeRecord:r];
         }
         
         POST_NOTIFICATION(PantomimeMessagePrefetchCompleted, self, [NSDictionary dictionaryWithObject: aMessage  forKey: @"Message"]);

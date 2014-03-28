@@ -788,21 +788,6 @@
   [self subclassResponsibility: _cmd];
 }
 
-
-//
-//
-//
-- (id) cacheManager
-{
-  return _cacheManager;
-}
-
-- (void) setCacheManager: (id) theCacheManager
-{
-  ASSIGN(_cacheManager, theCacheManager);
-}
-
-
 //
 //
 //

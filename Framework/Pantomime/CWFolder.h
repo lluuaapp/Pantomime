@@ -25,6 +25,7 @@
 
 @class CWFlags;
 @class CWMessage;
+@class CWCacheManager;
 
 /*!
   @const PantomimeFolderAppendCompleted
@@ -282,7 +283,6 @@ extern NSString* PantomimeFolderSearchFailed;
   @protected
     NSMutableDictionary *_properties;
 
-    id _cacheManager;
     id _store;
 
     NSMutableArray *_allVisibleMessages;
@@ -300,6 +300,16 @@ extern NSString* PantomimeFolderSearchFailed;
  @result The full name of the folder.
  */
 @property NSString *name;
+
+/*!
+  @method cacheManager
+  @discussion This method returns the associated cache manager for this folder.
+	      For a CWIMAPFolder, a CWIMAPCacheManager instance will be returned.
+              For a CWLocalFolder, a CWLocalFolderCacheManager instance will be returned.
+	      For a CWPOP3Folder, a CWPOP3CacheManager instance will be returned.
+  @result The associated cache manager instance, nil otherwise.
+*/
+@property CWCacheManager *cacheManager;
 
 /*!
   @method initWithName:
@@ -546,25 +556,6 @@ extern NSString* PantomimeFolderSearchFailed;
 - (void) search: (NSString *) theString
            mask: (PantomimeSearchMask) theMask
         options: (PantomimeSearchOption) theOptions;
-
-/*!
-  @method cacheManager
-  @discussion This method returns the associated cache manager for this folder.
-	      For a CWIMAPFolder, a CWIMAPCacheManager instance will be returned.
-              For a CWLocalFolder, a CWLocalFolderCacheManager instance will be returned.
-	      For a CWPOP3Folder, a CWPOP3CacheManager instance will be returned.
-  @result The associated cache manager instance, nil otherwise.
-*/
-- (id) cacheManager;
-
-/*!
-  @method setCacheManager:
-  @discussion This method is used to set the respective cache manager instance
-              for this folder. Instance of CWIMAPCacheManager, CWLocalFolderCacheManager
-	      or CWPOP3CacheManager will generally be used.
-  @param theCacheManager The cache manager instance for this folder.
-*/
-- (void) setCacheManager: (id) theCacheManager;
 
 /*!
   @method mode

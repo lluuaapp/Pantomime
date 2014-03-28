@@ -29,29 +29,16 @@
 	      from its superclass.
 */
 @interface CWIMAPMessage : CWMessage <NSCoding>
-{
-  @private
-    BOOL _headers_were_prefetched;
-    NSUInteger _UID;
-}
 
 /*!
-  @method UID
+  @property uid
   @discussion This method is used to obtain the UID of a message.
               See 2.3.1.1. Unique Identifier (UID) Message Attribute
 	      of RFC 3501 for a detailed description of the UID
 	      attribute of a message.
   @result The UID, 0 if the receiver has no UID.
 */
-- (NSUInteger) UID;
-
-/*!
-  @method setUID:
-  @discussion This method is used to set the UID of the receiver.
-              Normally, you shouldn't invoke this method directly.
-  @param theUID The UID of the message.
-*/
-- (void) setUID: (NSUInteger) theUID;
+@property NSUInteger uid;
 
 /*!
   @method rawSource

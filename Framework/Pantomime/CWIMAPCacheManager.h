@@ -68,4 +68,7 @@
   @param theMessage The message associated to the record <i>theRecord</i>.
 */
 - (void) writeRecord: (CWCacheRecord *) theRecord  message: (id) theMessage;
+
+- (void) expunge;
+
 @end

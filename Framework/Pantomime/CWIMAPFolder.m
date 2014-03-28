@@ -35,9 +35,11 @@
 //
 // Private methods
 //
-@interface CWIMAPFolder (Private)
+@interface CWIMAPFolder ()
+
 - (NSString *) _flagsAsStringFromFlags: (CWFlags *) theFlags;
 - (NSData *) _removeInvalidHeadersFromMessage: (NSData *) theMessage;
+
 @end
 
 
@@ -151,11 +153,11 @@
     {
         if (i == count-1)
         {
-            [aMutableString appendFormat: @"%lu", (unsigned long)[[theMessages objectAtIndex: i] UID]];
+            [aMutableString appendFormat: @"%lu", (unsigned long)[[theMessages objectAtIndex: i] uid]];
         }
         else
         {
-            [aMutableString appendFormat: @"%lu,", (unsigned long)[[theMessages objectAtIndex: i] UID]];
+            [aMutableString appendFormat: @"%lu,", (unsigned long)[[theMessages objectAtIndex: i] uid]];
         }
     }
     
@@ -174,7 +176,7 @@
 - (void) prefetch
 {
   // We first update the messages in our cache, if we need to.
-  if (_cacheManager && [self count])
+  if (self.cacheManager && [self count])
     {
       [_store sendCommand: IMAP_UID_SEARCH  info: nil  arguments: @"UID SEARCH 1:*"];
     }
@@ -215,10 +217,10 @@
       return;
     }
 
-  if (_cacheManager)
+  if (self.cacheManager)
     {
       NSLog(@"Synching cache...");
-      [_cacheManager synchronize];
+      [self.cacheManager synchronize];
       NSLog(@"Done synching cache.");
     }
 
@@ -259,49 +261,23 @@
   [_store sendCommand: IMAP_EXPUNGE  info: nil  arguments: @"EXPUNGE"];
 }
 
-
-//
-//
-//
-- (NSUInteger) UIDValidity
-{
-  return _uid_validity;
-}
-
-
 //
 //
 //
 - (void) setUIDValidity: (NSUInteger) theUIDValidity
 {
-  _uid_validity = theUIDValidity;
- 
-   if (_cacheManager)
+    _uidValidity = theUIDValidity;
+    
+    CWIMAPCacheManager *cManager = (CWIMAPCacheManager*)self.cacheManager;
+    if (cManager)
     {
-      if ([_cacheManager UIDValidity] == 0 || [_cacheManager UIDValidity] != _uid_validity)
-	{
-	  [_cacheManager invalidate];
-	  [_cacheManager setUIDValidity: _uid_validity];
-	}
+        if ((cManager.uidValidity == 0) ||
+            (cManager.uidValidity != _uidValidity))
+        {
+            [cManager invalidate];
+            cManager.uidValidity = _uidValidity;
+        }
     }
-}
-
-
-//
-//
-//
-- (BOOL) selected
-{
-  return _selected;
-}
-
-
-//
-//
-//
-- (void) setSelected: (BOOL) theBOOL
-{
-  _selected = theBOOL;
 }
 
 //
@@ -321,7 +297,7 @@
         // in IMAPStore: -_parseOK:.
         // We do the same below, when the count > 1
         [[aMessage flags] replaceWithFlags: theFlags];
-        aSequenceSet = [NSMutableString stringWithFormat: @"%lu:%lu", (unsigned long)[aMessage UID], (unsigned long)[aMessage UID]];
+        aSequenceSet = [NSMutableString stringWithFormat: @"%lu:%lu", (unsigned long)[aMessage uid], (unsigned long)[aMessage uid]];
     }
     else
     {
@@ -337,11 +313,11 @@
             
             if (aMessage == [theMessages lastObject])
             {
-                [aSequenceSet appendFormat: @"%lu", (unsigned long)[aMessage UID]];
+                [aSequenceSet appendFormat: @"%lu", (unsigned long)[aMessage uid]];
             }
             else
             {
-                [aSequenceSet appendFormat: @"%lu,", (unsigned long)[aMessage UID]];
+                [aSequenceSet appendFormat: @"%lu,", (unsigned long)[aMessage uid]];
             }
         }
     }
@@ -404,14 +380,6 @@
   // We send our SEARCH command. Store->searchResponse will have the result.
   [_store sendCommand: IMAP_UID_SEARCH_ALL  info: [NSDictionary dictionaryWithObject: self  forKey: @"Folder"]  arguments: aString];
 }
-
-@end
-
-
-//
-// Private methods
-// 
-@implementation CWIMAPFolder (Private)
 
 - (NSString *) _flagsAsStringFromFlags: (CWFlags *) theFlags
 {

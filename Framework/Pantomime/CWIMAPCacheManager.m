@@ -151,7 +151,7 @@ static unsigned short version = 1;
             
             aMessage.flags.flags = read_unsigned_int_memory(r);  // FASTER and _RIGHT_ since we can't call -setFlags: on CWIMAPMessage
             [aMessage setReceivedDate: [NSCalendarDate dateWithTimeIntervalSince1970: read_unsigned_int_memory(r+4)]];
-            [aMessage setUID: read_unsigned_int_memory(r+8)];
+            [aMessage setUid: read_unsigned_int_memory(r+8)];
             [aMessage setSize: read_unsigned_int_memory(r+12)];
             tot = 16;
             
@@ -189,7 +189,7 @@ static unsigned short version = 1;
                                  quick: YES];
             
             [_folder->allMessages addObject:aMessage];
-            [_messageTable setValue:aMessage forKey:[NSString stringWithFormat:@"%lu", (unsigned long)[aMessage UID]]];
+            [_messageTable setValue:aMessage forKey:[NSString stringWithFormat:@"%lu", (unsigned long)[aMessage uid]]];
             //[self addObject: aMessage]; // MOVE TO CWFIMAPOLDER
             //[((CWFolder *)_folder)->allMessages replaceObjectAtIndex: i  withObject: aMessage];
             

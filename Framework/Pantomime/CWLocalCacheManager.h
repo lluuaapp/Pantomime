@@ -40,9 +40,10 @@
 
     NSUInteger _modification_date;
     NSUInteger _size;
-    NSUInteger _count;
     NSInteger _fd;
 }
+
+@property (readonly) NSUInteger count;
 
 - (id) initWithPath: (NSString *) thePath  folder: (id) theFolder;
 
@@ -88,5 +89,8 @@
   @param theRecord The record to write.
 */
 - (void) writeRecord: (CWCacheRecord *) theRecord;
+
+- (void) expunge;
+
 @end
 

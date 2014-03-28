@@ -98,7 +98,10 @@
     }
     
   // We sync our cache
-  if (_cacheManager) [_cacheManager expunge];
+  if (self.cacheManager)
+  {
+      [(CWLocalCacheManager*)self.cacheManager expunge];
+  }
   [allMessages removeObjectsInArray: aMutableArray];
   
 // #warning also return when invoking the delegate
@@ -175,7 +178,7 @@
             }	  
         }
         
-        [_cacheManager synchronize];
+        [(CWLocalCacheManager*)self.cacheManager synchronize];
     }
 }
 

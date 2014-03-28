@@ -195,7 +195,7 @@
     {
       NSDate *aDate;
       
-      aDate = [_cacheManager dateForUID: [[allMessages objectAtIndex: i-1] UID]];
+      aDate = [(CWPOP3CacheManager*)self.cacheManager dateForUID: [[allMessages objectAtIndex: i-1] UID]];
       
       if (aDate)
 	{

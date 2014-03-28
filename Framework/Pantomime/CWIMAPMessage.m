@@ -27,17 +27,22 @@
 #import "CWIMAPFolder.h"
 #import "CWIMAPStore.h"
 
-//
-//
-//
-@implementation CWIMAPMessage 
+
+@interface CWIMAPMessage ()
+
+@property BOOL headersWerePrefetched;
+
+@end
+
+@implementation CWIMAPMessage
 
 - (id) init
 {
-  self = [super init];
-  _headers_were_prefetched = NO;
-  _UID = 0;
-  return self;
+    self = [super init];
+    if (self)
+    {
+    }
+    return self;
 }
 
 
@@ -46,9 +51,9 @@
 //
 - (void) encodeWithCoder: (NSCoder *) theCoder
 {
-  // Must also encode Message's superclass
-  [super encodeWithCoder: theCoder];
-  [theCoder encodeObject: [NSNumber numberWithUnsignedInteger:_UID]];
+    // Must also encode Message's superclass
+    [super encodeWithCoder: theCoder];
+    [theCoder encodeObject:[NSNumber numberWithUnsignedInteger:_uid]];
 }
 
 
@@ -57,26 +62,14 @@
 //
 - (id) initWithCoder: (NSCoder *) theCoder
 {
-  // Must also decode Message's superclass
-  self = [super initWithCoder: theCoder];
-  _UID = [[theCoder decodeObject] unsignedIntegerValue];
-  return self;
+    // Must also decode Message's superclass
+    self = [super initWithCoder: theCoder];
+    if (self)
+    {
+        _uid = [[theCoder decodeObject] unsignedIntegerValue];
+    }
+    return self;
 }
-
-
-//
-//
-//
-- (NSUInteger) UID
-{
-  return _UID;
-}
-
-- (void) setUID: (NSUInteger) theUID
-{
-  _UID = theUID;
-}
-
 
 //
 // This method is called to initialize the message if it wasn't.
@@ -104,9 +97,9 @@
         
         aStore = [(CWIMAPFolder *)[self folder] store];
         
-        if (!_headers_were_prefetched)
+        if (!self.headersWerePrefetched)
         {
-            [aStore sendCommand: IMAP_UID_FETCH_HEADER_FIELDS_NOT  info: nil  arguments: @"UID FETCH %u:%u BODY.PEEK[HEADER.FIELDS.NOT (From To Cc Subject Date Message-ID References In-Reply-To)]", _UID, _UID];
+            [aStore sendCommand: IMAP_UID_FETCH_HEADER_FIELDS_NOT  info: nil  arguments: @"UID FETCH %u:%u BODY.PEEK[HEADER.FIELDS.NOT (From To Cc Subject Date Message-ID References In-Reply-To)]", _uid, _uid];
         }
         
         // If we are no longer connected to the IMAP server, we don't send the 2nd command.
@@ -114,7 +107,7 @@
         // the disconnection from the IMAP server).
         if ([aStore isConnected])
         {
-            [aStore sendCommand: IMAP_UID_FETCH_BODY_TEXT  info: nil  arguments: @"UID FETCH %u:%u BODY[TEXT]", _UID, _UID];
+            [aStore sendCommand: IMAP_UID_FETCH_BODY_TEXT  info: nil  arguments: @"UID FETCH %u:%u BODY[TEXT]", _uid, _uid];
         }
         
         // Since we are loading asynchronously our message, it's not yet initialized. It'll be set as an initialized one
@@ -122,7 +115,7 @@
         [super setInitialized: NO];
     }
     
-    _headers_were_prefetched = YES;
+    self.headersWerePrefetched = YES;
 }
 
 
@@ -131,18 +124,18 @@
 //
 - (NSData *) rawSource
 {
-  if (![(CWIMAPFolder *)[self folder] selected])
+    if (![(CWIMAPFolder *)[self folder] selected])
     {
-      [NSException raise:PantomimeProtocolException format:@"Unable to fetch message data from unselected mailbox."];
-      return _rawSource;
+        [NSException raise:PantomimeProtocolException format:@"Unable to fetch message data from unselected mailbox."];
+        return _rawSource;
     }
-
-  if (!_rawSource)
+    
+    if (!_rawSource)
     {
-      [(CWIMAPStore *)[[self folder] store] sendCommand: IMAP_UID_FETCH_RFC822  info: nil  arguments: @"UID FETCH %u:%u RFC822", _UID, _UID];
+        [(CWIMAPStore *)[[self folder] store] sendCommand: IMAP_UID_FETCH_RFC822  info: nil  arguments: @"UID FETCH %u:%u RFC822", _uid, _uid];
     }
-  
-  return _rawSource;
+    
+    return _rawSource;
 }
 
 
@@ -151,8 +144,8 @@
 //
 - (void) setFlags: (CWFlags *) theFlags
 {
-  [[self folder] setFlags: theFlags
-		 messages: [NSArray arrayWithObject: self]];
+    [[self folder] setFlags: theFlags
+                   messages: [NSArray arrayWithObject: self]];
 }
 
 @end

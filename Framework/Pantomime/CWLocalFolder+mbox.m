@@ -240,7 +240,10 @@
         
         // We sync our cache
         //[_cacheManager synchronize];
-        if (_cacheManager) [_cacheManager expunge];
+        if (self.cacheManager)
+        {
+            [(CWLocalCacheManager*)self.cacheManager expunge];
+        }
         
         // Now we re-open our folder and update the 'allMessages' ivar in the Folder superclass
         [self open_mbox];
@@ -517,7 +520,7 @@
                 record.flags = (theFlags ? theFlags.flags : aMessage.flags.flags);
                 record.position = begin;
                 record.size = size;
-                [_cacheManager writeRecord:record];
+                [(CWLocalCacheManager*)self.cacheManager writeRecord:record];
                 CLEAR_CACHE_RECORD(record);
                 //
                 
@@ -571,7 +574,7 @@
     if (_type == PantomimeFormatMbox)
     {
         //NSLog(@"Sync cache.");
-        [_cacheManager synchronize];
+        [(CWLocalCacheManager*)self.cacheManager synchronize];
     }
 }
 

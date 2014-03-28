@@ -387,15 +387,6 @@ static unsigned short version = 1;
     return (fsync(_fd) == 0);
 }
 
-
-//
-//
-//
-- (NSUInteger) count
-{
-  return _count;
-}
-
 //
 //
 //
@@ -472,157 +463,158 @@ static unsigned short version = 1;
 //
 - (void) expunge
 {
-  NSDictionary *attributes;
-  CWLocalMessage *aMessage;
-
-  NSUInteger cache_size, flags, i, len, total_deleted, total_length, type, v;
-  short delta;
-  char *buf;
-
-  //NSLog(@"rewriting cache");
-
-  // We get the current cache size
-  cache_size = lseek(_fd, 0L, SEEK_END);
-
-  if (lseek(_fd, ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox) ? 14L : 10L, SEEK_SET) < 0)
+    NSDictionary *attributes;
+    CWLocalMessage *aMessage;
+    
+    NSUInteger cache_size, flags, i, len, total_deleted, total_length, type, v;
+    short delta;
+    char *buf;
+    
+    //NSLog(@"rewriting cache");
+    
+    // We get the current cache size
+    cache_size = lseek(_fd, 0L, SEEK_END);
+    
+    if (lseek(_fd, ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox) ? 14L : 10L, SEEK_SET) < 0)
     {
-      NSLog(@"fseek failed");
-      abort();
+        NSLog(@"fseek failed");
+        abort();
     }
-
-  total_deleted = total_length = 0;  
-  type = [(CWLocalFolder *)_folder type];
-  
-  //
-  // We alloc a little bit more memory that we really need in
-  // case we have to rewrite the filename for a maildir cache
-  // and the filename length is greater than the previous one.
-  //
-  buf = (char *)malloc(cache_size+[_folder count]*10);
-  _count = [_folder->allMessages count];
-
-  for (i = 0; i < _count; i++)
+    
+    total_deleted = total_length = 0;
+    type = [(CWLocalFolder *)_folder type];
+    
+    //
+    // We alloc a little bit more memory that we really need in
+    // case we have to rewrite the filename for a maildir cache
+    // and the filename length is greater than the previous one.
+    //
+    buf = (char *)malloc(cache_size+[_folder count]*10);
+    _count = [_folder->allMessages count];
+    
+    for (i = 0; i < _count; i++)
     {
-      len = read_unsigned_int(_fd);
-      aMessage = [_folder->allMessages objectAtIndex: i];
-      flags = aMessage.flags.flags;
-      delta = 0;
-
-      if ((flags&PantomimeDeleted) == PantomimeDeleted)
-	{
-	  // We skip over that record
-	  lseek(_fd, len-4, SEEK_CUR);
-	  total_deleted++;
-	  //NSLog(@"Skip %d bytes, index %d!", len, i);
-	}
-      else
-	{	  
-	  //
-	  // For mbox-based caches, we must update the file position of
-	  // our cache entries and also the size of the message in the cache.
-	  //
-	  if (type == PantomimeFormatMbox)
-	    {
-	      // We write the rest of the record into the memory
-	      if (read(_fd, (buf+total_length+4), len-4) < 0) { NSLog(@"read failed"); abort(); }
-
-	      // We update the position in the mailbox file by
-	      // overwriting the current value in memory
-	      v = htonl([aMessage filePosition]);
-	      memcpy((buf+total_length+12), (char *)&v, 4);
-	      //NSLog(@"Wrote file position %d", ntohl(v));
-	      
-	      // We update the size of the message by overwriting
-	      // the current value in memory
-	      v = htonl([aMessage size]);
-	      memcpy((buf+total_length+16), (char *)&v, 4);
-	      //NSLog(@"Wrote message size %d", ntohl(v));
-	    }
-	  //
-	  // For maildir-based caches, we must update the filename of our
-	  // cache entries in case flags were flushed to the disk.
-	  //
-	  else
-	    {
-	      unsigned short c0, c1, old_len, r;
-	      char *filename;
-	      NSInteger s_len;
-
-	      // We read our Flags, Date, and the first two bytes
-	      // of our filename into memory.
-	      if (read(_fd, (buf+total_length+4), 10) < 0) { NSLog(@"read failed"); abort(); }
-
-	      // We read the length of our previous string
-	      c0 = *(buf+total_length+12);
-	      c1 = *(buf+total_length+13);
-	      old_len = ntohs((c1<<8)|c0);
-
-	      //NSLog(@"Previous length = %d  Filename = |%@|", old_len, [aMessage mailFilename]);
-	      filename = (char *)[[aMessage mailFilename] UTF8String];
-	      s_len = strlen(filename);
-	      delta = s_len-old_len;
-	      
-	      //if (delta != 0) NSLog(@"i = %d  delta = %d |%@| s_len = %d", i, delta, [aMessage mailFilename], s_len);
-	      
-	      // We write back our filename
-	      r = htons(s_len);
-	      memcpy((buf+total_length+12), (char *)&r, 2);
-	      memcpy((buf+total_length+14), filename, s_len);
-
-	      // We read the rest in our memory. We first skip or old filename string.
-	      if (lseek(_fd, old_len, SEEK_CUR) < 0) { NSLog(@"lseek failed"); abort(); }
-	      //NSLog(@"must read back into memory %d bytes", len-old_len-14);
-	      if (read(_fd, (buf+total_length+s_len+14), len-old_len-14) < 0) { NSLog(@"read failed"); abort(); }
-	      //NSLog(@"current file pos after full read %d", lseek(_fd, 0L, SEEK_CUR));
-	    }
-
-	  // We write back our record length, adjusting its size if we need
-	  // to, in the case we are handling a maildir-based cache.
-	  len += delta;
-	  v = htonl(len);
-	  memcpy((buf+total_length), (char *)&v, 4);
-
-	  total_length += len;
-	  //NSLog(@"_size = %d  total_length = %d", _size, total_length);
-	}
+        len = read_unsigned_int(_fd);
+        aMessage = [_folder->allMessages objectAtIndex: i];
+        flags = aMessage.flags.flags;
+        delta = 0;
+        
+        if ((flags&PantomimeDeleted) == PantomimeDeleted)
+        {
+            // We skip over that record
+            lseek(_fd, len-4, SEEK_CUR);
+            total_deleted++;
+            //NSLog(@"Skip %d bytes, index %d!", len, i);
+        }
+        else
+        {
+            //
+            // For mbox-based caches, we must update the file position of
+            // our cache entries and also the size of the message in the cache.
+            //
+            if (type == PantomimeFormatMbox)
+            {
+                // We write the rest of the record into the memory
+                if (read(_fd, (buf+total_length+4), len-4) < 0) { NSLog(@"read failed"); abort(); }
+                
+                // We update the position in the mailbox file by
+                // overwriting the current value in memory
+                v = htonl([aMessage filePosition]);
+                memcpy((buf+total_length+12), (char *)&v, 4);
+                //NSLog(@"Wrote file position %d", ntohl(v));
+                
+                // We update the size of the message by overwriting
+                // the current value in memory
+                v = htonl([aMessage size]);
+                memcpy((buf+total_length+16), (char *)&v, 4);
+                //NSLog(@"Wrote message size %d", ntohl(v));
+            }
+            //
+            // For maildir-based caches, we must update the filename of our
+            // cache entries in case flags were flushed to the disk.
+            //
+            else
+            {
+                unsigned short c0, c1, old_len, r;
+                char *filename;
+                NSInteger s_len;
+                
+                // We read our Flags, Date, and the first two bytes
+                // of our filename into memory.
+                if (read(_fd, (buf+total_length+4), 10) < 0) { NSLog(@"read failed"); abort(); }
+                
+                // We read the length of our previous string
+                c0 = *(buf+total_length+12);
+                c1 = *(buf+total_length+13);
+                old_len = ntohs((c1<<8)|c0);
+                
+                //NSLog(@"Previous length = %d  Filename = |%@|", old_len, [aMessage mailFilename]);
+                filename = (char *)[[aMessage mailFilename] UTF8String];
+                s_len = strlen(filename);
+                delta = s_len-old_len;
+                
+                //if (delta != 0) NSLog(@"i = %d  delta = %d |%@| s_len = %d", i, delta, [aMessage mailFilename], s_len);
+                
+                // We write back our filename
+                r = htons(s_len);
+                memcpy((buf+total_length+12), (char *)&r, 2);
+                memcpy((buf+total_length+14), filename, s_len);
+                
+                // We read the rest in our memory. We first skip or old filename string.
+                if (lseek(_fd, old_len, SEEK_CUR) < 0) { NSLog(@"lseek failed"); abort(); }
+                //NSLog(@"must read back into memory %d bytes", len-old_len-14);
+                if (read(_fd, (buf+total_length+s_len+14), len-old_len-14) < 0) { NSLog(@"read failed"); abort(); }
+                //NSLog(@"current file pos after full read %d", lseek(_fd, 0L, SEEK_CUR));
+            }
+            
+            // We write back our record length, adjusting its size if we need
+            // to, in the case we are handling a maildir-based cache.
+            len += delta;
+            v = htonl(len);
+            memcpy((buf+total_length), (char *)&v, 4);
+            
+            total_length += len;
+            //NSLog(@"_size = %d  total_length = %d", _size, total_length);
+        }
     }
-
-  if (lseek(_fd, 0L, SEEK_SET) < 0)
+    
+    if (lseek(_fd, 0L, SEEK_SET) < 0)
     {
-      NSLog(@"fseek failed");
+        NSLog(@"fseek failed");
     }
-
-  // We write our cache version, count, modification date our new size
-  cache_size = total_length+([(CWLocalFolder *)_folder type] == PantomimeFormatMbox ? 14 : 10);
-  _count -= total_deleted;
-
-  write_unsigned_short(_fd, version);
-  write_unsigned_int(_fd, _count);
-
-  if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
-      {
-	attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[(CWLocalFolder *)_folder path] error:NULL];
-	
-	_modification_date = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
-	_size = [[attributes objectForKey: NSFileSize] integerValue];
-	write_unsigned_int(_fd, _modification_date);
-	write_unsigned_int(_fd, _size);
-      }
-  else
+    
+    // We write our cache version, count, modification date our new size
+    cache_size = total_length+([(CWLocalFolder *)_folder type] == PantomimeFormatMbox ? 14 : 10);
+    _count -= total_deleted;
+    
+    write_unsigned_short(_fd, version);
+    write_unsigned_int(_fd, _count);
+    
+    if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
     {
-      attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[NSString stringWithFormat: @"%@/cur", [(CWLocalFolder *)_folder path]] error:NULL];
-      _modification_date = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
-      _size = 0;
-      write_unsigned_int(_fd, _modification_date);
+        attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[(CWLocalFolder *)_folder path] error:NULL];
+        
+        _modification_date = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
+        _size = [[attributes objectForKey: NSFileSize] integerValue];
+        write_unsigned_int(_fd, _modification_date);
+        write_unsigned_int(_fd, _size);
     }
-  
-  // We write our memory cache
-  write(_fd, buf, total_length);
-
-  //ftruncate(_fd, _size);
-  ftruncate(_fd, cache_size);
-  free(buf);
-
-  //NSLog(@"Done!");
+    else
+    {
+        attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[NSString stringWithFormat: @"%@/cur", [(CWLocalFolder *)_folder path]] error:NULL];
+        _modification_date = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
+        _size = 0;
+        write_unsigned_int(_fd, _modification_date);
+    }
+    
+    // We write our memory cache
+    write(_fd, buf, total_length);
+    
+    //ftruncate(_fd, _size);
+    ftruncate(_fd, cache_size);
+    free(buf);
+    
+    //NSLog(@"Done!");
 }
+
 @end

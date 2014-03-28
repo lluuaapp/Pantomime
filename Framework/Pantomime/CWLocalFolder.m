@@ -196,7 +196,7 @@
   // We synchorize our cache one last time
   if (_type == PantomimeFormatMbox || _type == PantomimeFormatMaildir)
     {
-      [_cacheManager synchronize];
+      [self.cacheManager synchronize];
     }
 
   POST_NOTIFICATION(PantomimeFolderCloseCompleted, _store, [NSDictionary dictionaryWithObject: self  forKey: @"Folder"]);
@@ -341,7 +341,7 @@
                                                                time(NULL), 
                                                                getpid(),
                                                                rand(),
-                                                               (unsigned long)[_cacheManager count],
+                                                               (unsigned long)[(CWLocalCacheManager*)self.cacheManager count],
                                                                [[NSHost currentHost] name]],
                          ((id)theFlags ? (id)[theFlags maildirString] : (id)@"2,")];
             

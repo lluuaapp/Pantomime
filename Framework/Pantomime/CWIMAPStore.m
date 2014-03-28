@@ -61,33 +61,33 @@ static NSData *CRLF;
 //
 static inline NSInteger has_literal(char *buf, NSInteger c)
 {
-  char *s;
-
-  if (c == 0 || *buf != '*') return 0;
-
-  s = buf+c-1;
-
-  if (*s == '}')
+    char *s;
+    
+    if (c == 0 || *buf != '*') return 0;
+    
+    s = buf+c-1;
+    
+    if (*s == '}')
     {
-      NSInteger value, d;
-
-      value = 0;
-      d = 1;
-      s--;
-      
-      while (isdigit(*s))
-	{
-	  value += ((*s-48) * d);
-	  d *= 10;
-	  s--;
-	}
-
-      //NSLog(@"LITERAL = %d", value);
-
-      return value;
+        NSInteger value, d;
+        
+        value = 0;
+        d = 1;
+        s--;
+        
+        while (isdigit(*s))
+        {
+            value += ((*s-48) * d);
+            d *= 10;
+            s--;
+        }
+        
+        //NSLog(@"LITERAL = %d", value);
+        
+        return value;
     }
-
-  return 0;
+    
+    return 0;
 }
 
 //
@@ -1728,7 +1728,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 		// We prefetch the new messages from the last UID+1
 		if ([_selectedFolder->allMessages lastObject])
 		{
-			uid = [[_selectedFolder->allMessages lastObject] UID];
+			uid = [[_selectedFolder->allMessages lastObject] uid];
 		} 
 		
 		[self sendCommand: IMAP_UID_FETCH_HEADER_FIELDS  info: nil  arguments: @"UID FETCH %u:* (FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (From To Cc Subject Date Message-ID References In-Reply-To)])", (uid+1)];
@@ -1778,9 +1778,9 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
   [_selectedFolder updateCache];
   
   // We remove its entry in our cache
-  if ([_selectedFolder cacheManager])
+  if (_selectedFolder.cacheManager)
     {
-      [(CWIMAPCacheManager *)[_selectedFolder cacheManager] removeMessageWithUID: [aMessage UID]];
+      [(CWIMAPCacheManager *)(CWIMAPCacheManager*)_selectedFolder.cacheManager removeMessageWithUID: [aMessage uid]];
     }
   
   // We update all MSNs starting from the message that has been expunged.
@@ -1802,9 +1802,9 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 	  [_selectedFolder thread];
 	}
 
-      if ([_selectedFolder cacheManager])
+      if (_selectedFolder.cacheManager)
 	{
-	  [[_selectedFolder cacheManager] expunge];
+	  [(CWIMAPCacheManager*)_selectedFolder.cacheManager expunge];
 	}
 
       POST_NOTIFICATION(PantomimeMessageExpunged, self, [NSDictionary dictionaryWithObject: aMessage  forKey: @"Message"]);
@@ -2003,17 +2003,17 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 				[_selectedFolder appendMessage: aMessage];
 				
 				// We add the new message to our cache.
-				if ([_selectedFolder cacheManager])
+				if (_selectedFolder.cacheManager)
 				{
 					if (must_flush_record)
 					{
-						[[_selectedFolder cacheManager] writeRecord:cacheRecord  message:aMessage];
+						[(CWIMAPCacheManager*)_selectedFolder.cacheManager writeRecord:cacheRecord  message:aMessage];
 					}
 					
 					CLEAR_CACHE_RECORD(cacheRecord);
 					must_flush_record = YES;
 					
-					//[[_selectedFolder cacheManager] addObject: aMessage];
+					//[(CWIMAPCacheManager*)_selectedFolder.cacheManager addObject: aMessage];
 				}
 			}
 			else
@@ -2033,9 +2033,9 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 			[aScanner scanUnsignedInt: &uid];
 			//NSLog(@"uid %d j = %d, scanLoc = %d", uid, j, [aScanner scanLocation]);
 			
-			if ([aMessage UID] == 0)
+			if (aMessage.uid == 0)
 			{
-				[aMessage setUID: uid];
+				aMessage.uid = uid;
 				cacheRecord.imap_uid = uid;
 			}
 			
@@ -2151,7 +2151,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 		
 		if (done && must_flush_record)
 		{
-			[[_selectedFolder cacheManager] writeRecord:cacheRecord  message: aMessage];
+			[(CWIMAPCacheManager*)_selectedFolder.cacheManager writeRecord:cacheRecord  message: aMessage];
 		}
     }
 	
@@ -2539,9 +2539,9 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 				[_selectedFolder thread];
 			}
 			
-			if ([_selectedFolder cacheManager])
+			if (_selectedFolder.cacheManager)
 			{
-				[[_selectedFolder cacheManager] expunge];
+				[(CWIMAPCacheManager*)_selectedFolder.cacheManager expunge];
 			}
 			POST_NOTIFICATION(PantomimeFolderExpungeCompleted, self, _currentQueueObject.info);
 			PERFORM_SELECTOR_2(_delegate, @selector(folderExpungeCompleted:), PantomimeFolderExpungeCompleted, _selectedFolder, @"Folder");
@@ -2592,9 +2592,9 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 		{
 			opening_mailbox = NO;
 			
-			if ([_selectedFolder cacheManager])
+			if (_selectedFolder.cacheManager)
 			{
-				[[_selectedFolder cacheManager] synchronize];
+				[(CWIMAPCacheManager*)_selectedFolder.cacheManager synchronize];
 			}
 			
 			//NSLog(@"DONE PREFETCHING FOLDER");
@@ -2708,7 +2708,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
      
   for (i = 0; i < count; i++)
     {
-      aMessage = [[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]];
+      aMessage = [(CWIMAPCacheManager*)_selectedFolder.cacheManager messageWithUID:[[allResults objectAtIndex: i] unsignedIntegerValue]];
       
       if (aMessage)
 	{
@@ -2755,7 +2755,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
       //
       for (i = 0; i < count; i++)
 	{
-	  aMessage = [[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]];
+	  aMessage = [(CWIMAPCacheManager*)_selectedFolder.cacheManager messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]];
 	  
 	  if (aMessage)
 	    {
@@ -2779,8 +2779,8 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
       
 	  if ([aMessage folder] == nil)
 	    {
-	      [[_selectedFolder cacheManager] removeMessageWithUID: [aMessage UID]];
-	      NSLog(@"Removed message |%@| UID = %ld", [aMessage subject], (long)[aMessage UID]);
+	      [(CWIMAPCacheManager*)_selectedFolder.cacheManager removeMessageWithUID:aMessage.uid];
+	      NSLog(@"Removed message |%@| UID = %ld", [aMessage subject], (long)aMessage.uid);
 	      [_selectedFolder->allMessages removeObject: aMessage];
 	      b = YES;
 	    }
@@ -2792,9 +2792,9 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
       // our cache manager could lead to offset problems as the number of
       // records in our cache would be greater than the amount of entries
       // in our _selectedFolder->allMessages ivar.
-      if (b && [_selectedFolder cacheManager])
+      if (b && _selectedFolder.cacheManager)
 	{
-	  [[_selectedFolder cacheManager] expunge];
+	  [(CWIMAPCacheManager*)_selectedFolder.cacheManager expunge];
 	}
 
       [_selectedFolder updateCache];
@@ -2807,7 +2807,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
       //     
       for (i = 0; i < count; i++)
 	{
-	  [[[[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]] flags] add: PantomimeAnswered];
+	  [[[(CWIMAPCacheManager*)_selectedFolder.cacheManager messageWithUID:[[allResults objectAtIndex:i] unsignedIntegerValue]] flags] add:PantomimeAnswered];
 	}
       [self sendCommand: IMAP_UID_SEARCH_FLAGGED  info: nil  arguments: @"UID SEARCH FLAGGED"];
       break;
@@ -2818,7 +2818,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
       //     
       for (i = 0; i < count; i++)
 	{
-	  [[[[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]] flags] add: PantomimeFlagged];
+	  [[[(CWIMAPCacheManager*)_selectedFolder.cacheManager messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]] flags] add: PantomimeFlagged];
 	}
       [self sendCommand: IMAP_UID_SEARCH_UNSEEN  info: nil  arguments: @"UID SEARCH UNSEEN"];
       break;
@@ -2830,7 +2830,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
       for (i = 0; i < count; i++)
 	{
 	  //NSLog(@"removing for UID %d", [[allResults objectAtIndex: i] unsignedIntValue]);
-	  [[[[_selectedFolder cacheManager] messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]] flags] remove: PantomimeSeen];
+	  [[[(CWIMAPCacheManager*)_selectedFolder.cacheManager messageWithUID: [[allResults objectAtIndex: i] unsignedIntegerValue]] flags] remove: PantomimeSeen];
 	}
       
       //
@@ -2838,7 +2838,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
       // Messages will be fetched starting from that UID + 1.
       //
       //NSLog(@"LAST UID IN CACHE: %u", [[_selectedFolder->allMessages lastObject] UID]);
-      [self sendCommand: IMAP_UID_FETCH_HEADER_FIELDS  info: nil  arguments: @"UID FETCH %u:* (UID FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (From To Cc Subject Date Message-ID References In-Reply-To)])", ([[_selectedFolder->allMessages lastObject] UID]+1)];
+      [self sendCommand: IMAP_UID_FETCH_HEADER_FIELDS  info: nil  arguments: @"UID FETCH %u:* (UID FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (From To Cc Subject Date Message-ID References In-Reply-To)])", ([[_selectedFolder->allMessages lastObject] uid]+1)];
       break;
 
     default:
@@ -2960,7 +2960,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 {
     NSUInteger n = 0;
 	sscanf(theString, "* OK [UIDVALIDITY %" CWNSUIntegerFormat "]", &n);
-    [_selectedFolder setUIDValidity: n];
+    _selectedFolder.uidValidity = n;
 }
 
 

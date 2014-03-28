@@ -31,12 +31,6 @@
 	      calling -folderStatus on a CWFolder instance.
 */      
 @interface CWFolderInformation : NSObject
-{
-@private
-    NSUInteger nbOfMessages;
-    NSUInteger nbOfUnreadMessages;
-    NSUInteger size;
-}
 
 @property (nonatomic, assign) NSUInteger nbOfMessages;
 @property (nonatomic, assign) NSUInteger nbOfUnreadMessages;

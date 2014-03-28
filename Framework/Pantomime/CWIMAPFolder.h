@@ -63,11 +63,23 @@ extern NSString* PantomimeMessageStoreFailed;
 	      operations for copying messages between mailboxes.
 */
 @interface CWIMAPFolder : CWFolder
-{
-  @private
-    NSUInteger _uid_validity;
-    BOOL _selected;
-}
+
+/*!
+  @method UIDValidity
+  @discussion This method is used to obtain the UID validity of an IMAP folder.
+              Refer to "2.3.1.1. Unique Identifier (UID) Message Attribute" of
+	      RFC 3501 for a detailed description of this parameter.
+  @result The UID validity of the folder.
+*/
+@property (nonatomic) NSUInteger uidValidity;
+
+/*!
+  @method selected
+  @discussion This method is used to verify if the folder is in
+              a selected state.
+  @result YES if it is in a selected state, NO otherwise.
+*/
+@property BOOL selected;
 
 /*!
   @method initWithName: mode:
@@ -125,42 +137,5 @@ extern NSString* PantomimeMessageStoreFailed;
 	      This method is fully asynchronous.
 */
 - (void) prefetch;
-
-/*!
-  @method UIDValidity
-  @discussion This method is used to obtain the UID validity of an IMAP folder.
-              Refer to "2.3.1.1. Unique Identifier (UID) Message Attribute" of
-	      RFC 3501 for a detailed description of this parameter.
-  @result The UID validity of the folder.
-*/
-- (NSUInteger) UIDValidity;
-
-/*!
-  @method setUIDValidity:
-  @discussion This method is used to set the UID validity of the receiver.
-              If the receiver has a cache (instance of CWIMAPCacheManager) and
-	      the UID validity of its cache differs from <i>theUIDValidity</i>,
-	      all cache entries are invalidated.
-  @param theUIDValidity The UID validity value.
-*/
-- (void) setUIDValidity: (NSUInteger) theUIDValidity;
-
-/*!
-  @method selected
-  @discussion This method is used to verify if the folder is in
-              a selected state.
-  @result YES if it is in a selected state, NO otherwise.
-*/
-- (BOOL) selected;
-
-/*!
-  @method setSelected:
-  @discussion This method is used to specify if the folder is in
-              a selected state or not. You should never call
-	      this method directly. Instead, call IMAPStore:
-	      -folderForName: select:.
-  @param theBOOL YES if it is in a selected state, NO otherwise.
-*/
-- (void) setSelected: (BOOL) theBOOL;
 
 @end

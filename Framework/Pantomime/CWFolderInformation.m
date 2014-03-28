@@ -27,8 +27,4 @@
 //
 @implementation CWFolderInformation
 
-@synthesize nbOfMessages;
-@synthesize nbOfUnreadMessages;
-@synthesize size;
-
 @end
