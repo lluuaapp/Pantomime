@@ -114,22 +114,22 @@ static unsigned short version = 1;
 //
 - (void) initInRange: (NSRange) theRange
 {
-  CWIMAPMessage *aMessage;
-  unsigned short int len, tot = 0;
-  NSInteger begin, end, i;
-  unsigned char *r, *s;
-
-  if (lseek(_fd, 10L, SEEK_SET) < 0)
+    CWIMAPMessage *aMessage;
+    unsigned short int len, tot = 0;
+    NSUInteger begin, end, i;
+    unsigned char *r, *s;
+    
+    if (lseek(_fd, 10L, SEEK_SET) < 0)
     {
-      NSLog(@"lseek failed in initInRange:");
-      abort();
+        NSLog(@"lseek failed in initInRange:");
+        abort();
     }
-
-  begin = (NSNotFound != theRange.location) ? theRange.location : 0;
-  end = (NSMaxRange(theRange) <= _count ? NSMaxRange(theRange) : _count);
-  
-  //NSLog(@"init from %d to %d, count = %d, size of char %d  UID validity = %d", begin, end, _count, sizeof(char), _uidValidity);
-
+    
+    begin = (NSNotFound != theRange.location) ? theRange.location : 0;
+    end = (NSMaxRange(theRange) <= _count ? NSMaxRange(theRange) : _count);
+    
+    //NSLog(@"init from %d to %d, count = %d, size of char %d  UID validity = %d", begin, end, _count, sizeof(char), _uidValidity);
+    
     @autoreleasepool
     {
         s = (unsigned char *)malloc(65536);
@@ -139,7 +139,7 @@ static unsigned short version = 1;
         for (i = begin; i < end ; i++)
         {
             aMessage = [[CWIMAPMessage alloc] init];
-            [aMessage setMessageNumber: i+1];
+            aMessage.messageNumber = i + 1;
             
             // We parse the record length, date, flags, position in file and the size.
             len = read_unsigned_int(_fd);

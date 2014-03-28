@@ -507,10 +507,10 @@
             //
             // B. For each element in the message's References field:
             //
-            for (j = 0; j < [[aMessage allReferences] count]; j++)
+            for (j = 0; j < [[aMessage references] count]; j++)
             {
                 // We get a Message-ID
-                aReference = [[aMessage allReferences] objectAtIndex: j];
+                aReference = [[aMessage references] objectAtIndex: j];
                 
                 // Find a container object for the given Message-ID
                 aContainer = [idTable valueForKey:aReference];
@@ -539,7 +539,7 @@
                 
                 // Link the References field's Containers together in the order implied by the References header.
                 // The last references
-                if ((j == ([[aMessage allReferences] count] - 1)) &&
+                if ((j == ([[aMessage references] count] - 1)) &&
                     (nil != aContainer) &&
                     aContainer.parent == nil)
                 {
@@ -569,13 +569,13 @@
             
             // If we have no References and no In-Reply-To fields, we simply set a
             // the parent to nil since it can be the message that started the thread.
-            if ([[aMessage allReferences] count] == 0 &&
+            if ([[aMessage references] count] == 0 &&
                 [aMessage headerValueForName: @"In-Reply-To"] == nil)
             {
                 [aContainer setParent: nil];
             }
             // If we have no References but an In-Reply-To field, that becomes our parent.
-            else if ([[aMessage allReferences] count] == 0 &&
+            else if ([[aMessage references] count] == 0 &&
                      [aMessage headerValueForName: @"In-Reply-To"])
             {
                 [aContainer setParent: (CWContainer *)[idTable valueForKey:[aMessage headerValueForName: @"In-Reply-To"]]];
