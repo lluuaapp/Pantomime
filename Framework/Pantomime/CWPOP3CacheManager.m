@@ -49,33 +49,32 @@ static unsigned short version = 1;
 
 - (void) _convertOldCacheFromFile: (NSString *) theFile
 {
-  id o;
-
-  // 'o' will be decoded as a CWPOP3CacheManager instance.
-  o = [NSUnarchiver unarchiveObjectWithFile: theFile];
-
-  if (o)
+    // 'o' will be decoded as a CWPOP3CacheManager instance.
+    CWPOP3CacheManager *o = [NSUnarchiver unarchiveObjectWithFile: theFile];
+    
+    if (o != nil)
     {
-      CWPOP3CacheObject* aCacheObject;      
-      CWCacheRecord *r = [[CWCacheRecord alloc] init];
-      NSInteger i;
-
-      ftruncate(_fd, 0);
-      [self synchronize];
-
-      for (i = 0; i < [[o cache] count]; i++)
-	{
-	  aCacheObject = [[o cache] objectAtIndex: i];
-	  r.date = [[aCacheObject date] timeIntervalSince1970];
-	  r.pop3_uid = [aCacheObject UID];
-	  [self writeRecord:r];
-	}
-
-      [self synchronize];
+        CWPOP3CacheObject* aCacheObject;
+        CWCacheRecord *r = [[CWCacheRecord alloc] init];
+        NSInteger i;
+        
+        ftruncate(_fd, 0);
+        [self synchronize];
+        
+        NSArray *cache = [o obtainCache];
+        for (i = 0; i < [cache count]; i++)
+        {
+            aCacheObject = [cache objectAtIndex: i];
+            r.date = [[aCacheObject date] timeIntervalSince1970];
+            r.pop3_uid = [aCacheObject UID];
+            [self writeRecord:r];
+        }
+        
+        [self synchronize];
     }
-  else
+    else
     {
-      NSLog(@"COULD NOT DECODE THE CACHE :(");
+        NSLog(@"COULD NOT DECODE THE CACHE :(");
     }
 }
 
@@ -174,7 +173,7 @@ static unsigned short version = 1;
 // NSCoding protocol
 // For compatibility - will go away in pre4
 //
-- (void) encodeWithCoder: (NSCoder *) theCoder
+- (void) encodeWithCoder:(NSCoder*)theCoder
 {
     [theCoder encodeObject:_cache];
 }
@@ -186,8 +185,7 @@ static unsigned short version = 1;
     {
         _messageTable = [[NSMutableDictionary alloc] init];
         _fd = -1;
-    
-        [self setCache: [theCoder decodeObject]];
+        _cache = [theCoder decodeObject];
     }
     
     return self;
@@ -198,7 +196,7 @@ static unsigned short version = 1;
 //
 - (NSDate *) dateForUID: (NSString *) theUID
 {
-  return [_messageTable objectForKey:theUID];
+    return [_messageTable objectForKey:theUID];
 }
 
 

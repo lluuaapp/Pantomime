@@ -31,10 +31,17 @@
 */
 @interface CWCacheManager : NSObject <NSCoding>
 {
-  @protected
+@protected
     NSMutableArray *_cache;
-    NSString *_path;
 }
+
+/*!
+ @method path
+ @discussion This method is used to obtain the path where the
+ cache has been loaded for or where it'll be saved to.
+ @result The path.
+ */
+@property NSString *path;
 
 /*!
   @method initWithPath:
@@ -45,22 +52,6 @@
   @result A CWCacheManager subclass instance, nil on error.
 */
 - (id) initWithPath: (NSString *) thePath;
-
-/*!
-  @method path
-  @discussion This method is used to obtain the path where the
-              cache has been loaded for or where it'll be saved to.
-  @result The path.
-*/
-- (NSString *) path;
-
-/*!
-  @method setPath:
-  @discussion This method is used to set the path where the
-              cache will be loaded from or where it'll be saved to.
-  @param thePath The complete path.
-*/
-- (void) setPath: (NSString *) thePath;
 
 /*!
   @method invalidate
@@ -78,7 +69,6 @@
 - (BOOL) synchronize;
 
 // Needed for pre2 -> pre3 for POP3CacheManager
-#if 1
 /*!
   @method cache
   @discussion This method is used to obtain the NSMutableArray
@@ -87,17 +77,7 @@
 	      your own risk.
   @result The instance holding all cache entries.
 */
-- (NSMutableArray *) cache;
-
-/*!
-  @method setCache:
-  @discussion This method is used to add the objects contained
-              in <i>theCache</i> to the receiver's cache. This method
-	      will remove all existing entries before doing so.
-  @param theCache The array holding all entries to add to the cache.
-*/
-- (void) setCache: (NSArray *) theCache;
-#endif
+- (NSArray *) obtainCache;
 
 /*!
   @method count

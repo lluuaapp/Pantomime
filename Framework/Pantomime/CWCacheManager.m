@@ -26,15 +26,15 @@
 
 @implementation CWCacheManager
 
-- (id) initWithPath: (NSString *) thePath
+- (id) initWithPath:(NSString*)thePath
 {
-  if ((self = [super init]))
+    if ((self = [super init]))
     {
-      _cache = [[NSMutableArray alloc] init];
-      ASSIGN(_path, thePath);
+        _cache = [[NSMutableArray alloc] init];
+        _path = thePath;
     }
-  
-  return self;
+    
+    return self;
 }
 
 //
@@ -42,36 +42,21 @@
 //
 - (void) encodeWithCoder: (NSCoder *) theCoder
 {
-  // Do nothing.
+    // Do nothing.
 }
 
 - (id) initWithCoder: (NSCoder *) theCoder
 {
-  // Do nothing.
-  return nil;
+    // Do nothing.
+    return nil;
 }
-
-
-//
-//
-//
-- (NSString *) path
-{
-  return _path;
-}
-
-- (void) setPath: (NSString *) thePath
-{
-  ASSIGN(_path, thePath);
-}
-
 
 //
 //
 //
 - (void) invalidate
 {
-  //[_cache removeAllObjects];
+    //[_cache removeAllObjects];
 }
 
 //
@@ -79,49 +64,28 @@
 //
 - (BOOL) synchronize
 {
-  BOOL b;
-
-  // We do NOT write empty cache files on disk.
-  //if ([_cache count] == 0) return YES;
-
-  NS_DURING
-    {
-      b = [NSArchiver archiveRootObject: self  toFile: _path];
-    }
-  NS_HANDLER
-    {
-      NSLog(@"Failed to synchronize the %@ cache - not written to disk.", _path);
-      b = NO;
-    }
-  NS_ENDHANDLER
+    BOOL result = NO;
     
-  return b;
-}
-
-
-#if 1
-//
-// For compatibility - will go away in pre4
-//
-- (NSMutableArray *) cache
-{
-  return _cache;
-}
-#endif
-
-//
-// For compatibility - will go away in pre4
-//
-- (void) setCache: (NSArray *) theCache
-{
-#if 1
-  [_cache removeAllObjects];
-
-  if (theCache)
-    {
-      [_cache addObjectsFromArray: theCache];
+    // We do NOT write empty cache files on disk.
+    //if ([_cache count] == 0) return YES;
+    
+    @try {
+        result = [NSArchiver archiveRootObject:self  toFile:_path];
     }
-#endif
+    @catch (NSException *exception) {
+        NSLog(@"Failed to synchronize the %@ cache - not written to disk.", _path);
+        result = NO;
+    }
+    
+    return result;
+}
+
+//
+// For compatibility - will go away in pre4
+//
+- (NSArray *) obtainCache
+{
+    return (_cache ? [NSArray arrayWithArray:_cache] : @[]);
 }
 
 @end
