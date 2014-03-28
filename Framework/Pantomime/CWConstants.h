@@ -107,7 +107,7 @@ PERFORM_SELECTOR_2(del, @selector(authenticationFailed:), PantomimeAuthenticatio
   @constant PantomimeEncoding8bit Identity encoding.
   @constant PantomimeEncodingBinary Identity encoding.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeEncoding)
 {
   PantomimeEncodingNone = 0,
   PantomimeEncoding7bit = 0,
@@ -115,7 +115,7 @@ typedef enum
   PantomimeEncodingBase64 = 2,
   PantomimeEncoding8bit = 3,
   PantomimeEncodingBinary = 4
-} PantomimeEncoding;
+};
 
 
 /*!
@@ -130,12 +130,13 @@ typedef enum
   @constant PantomimeFormatMailSpoolFile The mail spool file, in mbox format but without cache synchronization.
   @constant PantomimeFormatFolder Custom format.
 */
-typedef enum {
+typedef NS_ENUM(NSInteger, PantomimeFolderFormat)
+{
   PantomimeFormatMbox = 0,
   PantomimeFormatMaildir = 1,
   PantomimeFormatMailSpoolFile = 2,
   PantomimeFormatFolder = 3
-} PantomimeFolderFormat;
+};
 
 
 /*!
@@ -146,11 +147,11 @@ typedef enum {
   @constant PantomimeFormatUnknown Unknown format.
   @constant PantomimeFormatFlowed The "format=flowed" is used.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeMessageFormat)
 {
   PantomimeFormatUnknown = 0,
   PantomimeFormatFlowed = 1
-} PantomimeMessageFormat;
+};
 
 
 /*!
@@ -165,7 +166,7 @@ typedef enum
   @constant PantomimeSeen The message has been read.
   @constant PantomimeDeleted The message is marked as deleted.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeFlag)
 {
   PantomimeAnswered = 1,
   PantomimeDraft = 2,
@@ -173,7 +174,7 @@ typedef enum
   PantomimeRecent = 8,
   PantomimeSeen = 16,
   PantomimeDeleted = 32
-} PantomimeFlag;
+};
 
 
 /*!
@@ -192,7 +193,7 @@ typedef enum
   @constant PantomimeUnmarked The folder does not contain any new
                               messages since the last time it has been open.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeFolderType)
 {
   PantomimeHoldsFolders = 1,
   PantomimeHoldsMessages = 2,
@@ -200,7 +201,7 @@ typedef enum
   PantomimeNoSelect = 8,
   PantomimeMarked = 16,
   PantomimeUnmarked = 32
-} PantomimeFolderType;
+};
 
 
 /*!
@@ -214,13 +215,13 @@ typedef enum
   @constant PantomimeSubject Search in the "Subject:" header value.
   @constant PantomimeContent Search in the message content.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeSearchMask)
 {
   PantomimeFrom = 1,
   PantomimeTo = 2,
   PantomimeSubject = 4,
   PantomimeContent = 8
-} PantomimeSearchMask;
+};
 
 
 /*!
@@ -231,11 +232,11 @@ typedef enum
   @constant PantomimeCaseInsensitiveSearch Don't consider the case when performing a search operation.
   @constant PantomimeRegularExpression The search criteria represents a regular expression.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeSearchOption)
 {
   PantomimeCaseInsensitiveSearch = 1,
   PantomimeRegularExpression = 2
-} PantomimeSearchOption;
+};
 
 
 /*!
@@ -247,12 +248,12 @@ typedef enum
   @constant PantomimeReadOnlyMode The folder will be open in read-only.
   @constant PantomimeReadWriteMode The folder will be open in read-write.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeFolderMode)
 {
   PantomimeUnknownMode = 1,
   PantomimeReadOnlyMode = 2,
   PantomimeReadWriteMode = 3
-} PantomimeFolderMode;
+};
 
 /*!
   @typedef PantomimeForwardMode
@@ -264,11 +265,11 @@ typedef enum
                                        extracted and included inline in the
 				       forwarded response.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeForwardMode)
 {
   PantomimeAttachmentForwardMode = 1,
   PantomimeInlineForwardMode = 2
-} PantomimeForwardMode;
+};
 
 
 /*!
@@ -279,11 +280,11 @@ typedef enum
   @constant PantomimeAttachmentDisposition The part is separated from the mail body.
   @constant PantomimeInlineDisposition The part is part of the mail body.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeContentDisposition)
 {
   PantomimeAttachmentDisposition = 1,
   PantomimeInlineDisposition = 2
-} PantomimeContentDisposition;
+};
 
 /*!
   @typedef PantomimeReplyMode
@@ -298,12 +299,12 @@ typedef enum
   @constant PantomimeNormalReplyMode Reply to the sender, with a properly build message content.
   @constant PantomimeReplyAllMode Reply to all recipients.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeReplyMode)
 {
   PantomimeSimpleReplyMode = 1,
   PantomimeNormalReplyMode = 2,
   PantomimeReplyAllMode = 4
-} PantomimeReplyMode;
+};
 
 
 /*!
@@ -319,7 +320,7 @@ typedef enum
   @constant PantomimeResentBccRecipient Recipient which will obtain a black carbon copy of the message
                                         being redirected.
 */
-typedef enum
+typedef NS_ENUM(NSInteger, PantomimeRecipientType)
 {
   PantomimeToRecipient = 1,
   PantomimeCcRecipient = 2,
@@ -327,4 +328,5 @@ typedef enum
   PantomimeResentToRecipient = 4,
   PantomimeResentCcRecipient = 5,
   PantomimeResentBccRecipient = 6
-} PantomimeRecipientType;
+};
+
