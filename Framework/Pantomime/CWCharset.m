@@ -48,23 +48,23 @@
 static NSMutableDictionary *charset_name_description = nil;
 static NSMutableDictionary *charset_instance_cache = nil;
 
-//
-//
-//
+@interface CWCharset ()
+
+@property NSInteger numCodes;
+@property NSInteger identityMap;
+
+@end
+
 @implementation CWCharset
 
 + (void) initialize
 {
-  if (!charset_instance_cache)
-    {
-      charset_instance_cache = [[NSMutableDictionary alloc] init];
-    }
-
-  if (!charset_name_description)
-    {
-      charset_name_description = [[NSMutableDictionary alloc] init];
-    }
-} 
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        charset_instance_cache = [[NSMutableDictionary alloc] init];
+        charset_name_description = [[NSMutableDictionary alloc] init];
+    });
+}
 
 
 //
@@ -73,21 +73,26 @@ static NSMutableDictionary *charset_instance_cache = nil;
 - (id) initWithCodeCharTable: (const struct charset_code *) c
 		      length: (NSInteger) n
 {
-  self = [super init];
-  
-  _codes = c;
-  _num_codes = n; 
-  _identity_map = 0x20;
-  
-  if (n > 0 && _codes[0].code == 0x20)
+    self = [super init];
+    
+    if (self)
     {
-      NSInteger i = 1;
-      for (_identity_map=0x20;
-	   i < _num_codes && _codes[i].code == _identity_map + 1 && _codes[i].value == _identity_map + 1;
-	   _identity_map++,i++) ;
+        _codes = c;
+        _numCodes = n;
+        _identityMap = 0x20;
+        
+        if ((n > 0) &&
+            (_codes[0].code == 0x20))
+        {
+            NSInteger i = 1;
+            for (_identityMap = 0x20;
+                 (i < _numCodes) && (_codes[i].code == _identityMap + 1) && (_codes[i].value == _identityMap + 1);
+                 _identityMap++,i++)
+            { }
+        }
     }
-
-  return self;
+    
+    return self;
 }
 
 
@@ -96,22 +101,22 @@ static NSMutableDictionary *charset_instance_cache = nil;
 //
 - (NSInteger) codeForCharacter: (unichar) theCharacter
 {
-  NSInteger i;
-
-  if (theCharacter <= _identity_map)
+    NSInteger i;
+    
+    if (theCharacter <= _identityMap)
     {
-      return theCharacter;
+        return theCharacter;
     }
-  
-  for (i = 0; i < _num_codes; i++)
+    
+    for (i = 0; i < _numCodes; i++)
     {
-      if (_codes[i].value == theCharacter)
-	{
-	  return _codes[i].code;
-	}
+        if (_codes[i].value == theCharacter)
+        {
+            return _codes[i].code;
+        }
     }
-  
-  return -1;
+    
+    return -1;
 }
 
 
@@ -120,17 +125,17 @@ static NSMutableDictionary *charset_instance_cache = nil;
 //
 - (BOOL) characterIsInCharset: (unichar) theCharacter
 {
-  if (theCharacter <= _identity_map)
+    if (theCharacter <= _identityMap)
     {
-      return YES;
+        return YES;
     }
-
-  if ([self codeForCharacter: theCharacter] != -1)
+    
+    if ([self codeForCharacter: theCharacter] != -1)
     {
-      return YES;
+        return YES;
     }
-  
-  return NO;
+    
+    return NO;
 }
 
 
@@ -140,8 +145,8 @@ static NSMutableDictionary *charset_instance_cache = nil;
 // 
 - (NSString *) name
 {
-  [self subclassResponsibility: _cmd];
-  return nil;
+    [self subclassResponsibility: _cmd];
+    return nil;
 }
 
 
@@ -150,53 +155,53 @@ static NSMutableDictionary *charset_instance_cache = nil;
 //
 + (NSDictionary *) allCharsets
 {
-  if (![charset_name_description count])
+    if (![charset_name_description count])
     {
-      [charset_name_description setObject: _(@"Western European (ISO Latin 1)")     forKey: @"iso-8859-1"];
-      [charset_name_description setObject: _(@"Western European (ISO Latin 9)")     forKey: @"iso-8859-15"];
-      [charset_name_description setObject: _(@"Western European (Windows Latin 1)") forKey: @"windows-1252"];
-
-      [charset_name_description setObject: _(@"Japanese (ISO 2022-JP)")             forKey: @"iso-2022-jp"];
-      [charset_name_description setObject: _(@"Japanese (EUC-JP)")                  forKey: @"euc-jp"];
-
-      [charset_name_description setObject: _(@"Traditional Chinese (BIG5)")         forKey: @"big5"];
-  
-      [charset_name_description setObject: _(@"Arabic (ISO 8859-6)")                forKey: @"iso-8859-6"];
-  
-      [charset_name_description setObject: _(@"Greek (ISO 8859-7)")                 forKey: @"iso-8859-7"];
-      [charset_name_description setObject: _(@"Greek (Windows)")                    forKey: @"windows-1253"];
-
-      [charset_name_description setObject: _(@"Hebrew (ISO 8859-8)")                forKey: @"iso-8859-8"];
-  
-      [charset_name_description setObject: _(@"Cyrillic (ISO 8859-5)")              forKey: @"iso-8859-5"];
-      [charset_name_description setObject: _(@"Cyrillic (KOI8-R)")                  forKey: @"koi8-r"];
-      [charset_name_description setObject: _(@"Cyrillic (Windows)")                 forKey: @"windows-1251"];
-
-      [charset_name_description setObject: _(@"Thai (ISO 8859-11)")                 forKey: @"iso-8859-11"];
-
-      [charset_name_description setObject: _(@"Central European (ISO Latin 2)")     forKey: @"iso-8859-2"];
-      [charset_name_description setObject: _(@"Central European (Windows Latin 2)") forKey: @"windows-1250"];
-  
-      [charset_name_description setObject: _(@"Turkish (Latin 5)")                  forKey: @"iso-8859-9"];
-      [charset_name_description setObject: _(@"Turkish (Windows)")                  forKey: @"windows-1254"];
-  
-      [charset_name_description setObject: _(@"South European (ISO Latin 3)")       forKey: @"iso-8859-3"];
-      [charset_name_description setObject: _(@"North European (ISO Latin 4)")       forKey: @"iso-8859-4"];
- 
-      [charset_name_description setObject: _(@"Nordic (ISO Latin 6)")               forKey: @"iso-8859-10"];
-      [charset_name_description setObject: _(@"Baltic Rim (ISO Latin 7)")           forKey: @"iso-8859-13"];
-      [charset_name_description setObject: _(@"Celtic (ISO Latin 8)")               forKey: @"iso-8859-14"];
-
-      [charset_name_description setObject: _(@"Simplified Chinese (GB2312)")        forKey: @"gb2312"];
-      [charset_name_description setObject: _(@"UTF-8")                              forKey: @"utf-8"];
-
+        [charset_name_description setObject:NSLocalizedString(@"Western European (ISO Latin 1)", nil)     forKey: @"iso-8859-1"];
+        [charset_name_description setObject:NSLocalizedString(@"Western European (ISO Latin 9)", nil)     forKey: @"iso-8859-15"];
+        [charset_name_description setObject:NSLocalizedString(@"Western European (Windows Latin 1)", nil) forKey: @"windows-1252"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Japanese (ISO 2022-JP)", nil)             forKey: @"iso-2022-jp"];
+        [charset_name_description setObject:NSLocalizedString(@"Japanese (EUC-JP)", nil)                  forKey: @"euc-jp"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Traditional Chinese (BIG5)", nil)         forKey: @"big5"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Arabic (ISO 8859-6)", nil)                forKey: @"iso-8859-6"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Greek (ISO 8859-7)", nil)                 forKey: @"iso-8859-7"];
+        [charset_name_description setObject:NSLocalizedString(@"Greek (Windows)", nil)                    forKey: @"windows-1253"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Hebrew (ISO 8859-8)", nil)                forKey: @"iso-8859-8"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Cyrillic (ISO 8859-5)", nil)              forKey: @"iso-8859-5"];
+        [charset_name_description setObject:NSLocalizedString(@"Cyrillic (KOI8-R)", nil)                  forKey: @"koi8-r"];
+        [charset_name_description setObject:NSLocalizedString(@"Cyrillic (Windows)", nil)                 forKey: @"windows-1251"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Thai (ISO 8859-11)", nil)                 forKey: @"iso-8859-11"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Central European (ISO Latin 2)", nil)     forKey: @"iso-8859-2"];
+        [charset_name_description setObject:NSLocalizedString(@"Central European (Windows Latin 2)", nil) forKey: @"windows-1250"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Turkish (Latin 5)", nil)                  forKey: @"iso-8859-9"];
+        [charset_name_description setObject:NSLocalizedString(@"Turkish (Windows)", nil)                  forKey: @"windows-1254"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"South European (ISO Latin 3)", nil)       forKey: @"iso-8859-3"];
+        [charset_name_description setObject:NSLocalizedString(@"North European (ISO Latin 4)", nil)       forKey: @"iso-8859-4"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Nordic (ISO Latin 6)", nil)               forKey: @"iso-8859-10"];
+        [charset_name_description setObject:NSLocalizedString(@"Baltic Rim (ISO Latin 7)", nil)           forKey: @"iso-8859-13"];
+        [charset_name_description setObject:NSLocalizedString(@"Celtic (ISO Latin 8)", nil)               forKey: @"iso-8859-14"];
+        
+        [charset_name_description setObject:NSLocalizedString(@"Simplified Chinese (GB2312)", nil)        forKey: @"gb2312"];
+        [charset_name_description setObject:NSLocalizedString(@"UTF-8", nil)                              forKey: @"utf-8"];
+        
 #ifdef MACOSX
-      [charset_name_description setObject: _(@"Korean (EUC-KR/KS C 5601)")          forKey: @"euc-kr"];
-      [charset_name_description setObject: _(@"Japanese (Win/Mac)")                 forKey: @"shift_jis"];
+        [charset_name_description setObject:NSLocalizedString(@"Korean (EUC-KR/KS C 5601)", nil)          forKey: @"euc-kr"];
+        [charset_name_description setObject:NSLocalizedString(@"Japanese (Win/Mac)", nil)                 forKey: @"shift_jis"];
 #endif
     }
-
-  return charset_name_description;
+    
+    return charset_name_description;
 }
 
 
@@ -207,106 +212,106 @@ static NSMutableDictionary *charset_instance_cache = nil;
 //
 + (CWCharset *) charsetForName: (NSString *) theName
 {
-  CWCharset *theCharset;
-
-  theCharset = [charset_instance_cache objectForKey: [theName lowercaseString]];
-
-  if (!theCharset)
+    CWCharset *theCharset;
+    
+    theCharset = [charset_instance_cache objectForKey:[theName lowercaseString]];
+    
+    if (!theCharset)
     {
-      CWCharset *aCharset;
-      
-      if ([[theName lowercaseString] isEqualToString: @"iso-8859-2"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_2 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-3"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_3 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-4"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_4 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-5"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_5 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-6"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_6 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-7"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_7 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-8"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_8 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-9"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_9 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-10"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_10 alloc] init];
- 	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-11"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_11 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-13"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_13 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-14"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_14 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"iso-8859-15"])
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_15 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"koi8-r"])
-	{
-	  aCharset = (CWCharset *)[[CWKOI8_R alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"koi8-u"])
-	{
-	  aCharset = (CWCharset *)[[CWKOI8_U alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"windows-1250"])
-	{
-	  aCharset = (CWCharset *)[[CWWINDOWS_1250 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"windows-1251"])
-	{
-	  aCharset = (CWCharset *)[[CWWINDOWS_1251 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"windows-1252"])
-	{
-	  aCharset = (CWCharset *)[[CWWINDOWS_1252 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"windows-1253"])
-	{
-	  aCharset = (CWCharset *)[[CWWINDOWS_1253 alloc] init];
-	}
-      else if ([[theName lowercaseString] isEqualToString: @"windows-1254"])
-	{
-	  aCharset = (CWCharset *)[[CWWINDOWS_1254 alloc] init];
-	}
-      else
-	{
-	  aCharset = (CWCharset *)[[CWISO8859_1 alloc] init];
-	}
-      
-      [charset_instance_cache setObject: aCharset
-			      forKey: [theName lowercaseString]];
-
-      return aCharset;
+        CWCharset *aCharset;
+        
+        if ([[theName lowercaseString] isEqualToString: @"iso-8859-2"])
+        {
+            aCharset = [[CWISO8859_2 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-3"])
+        {
+            aCharset = [[CWISO8859_3 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-4"])
+        {
+            aCharset = [[CWISO8859_4 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-5"])
+        {
+            aCharset = [[CWISO8859_5 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-6"])
+        {
+            aCharset = [[CWISO8859_6 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-7"])
+        {
+            aCharset = [[CWISO8859_7 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-8"])
+        {
+            aCharset = [[CWISO8859_8 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-9"])
+        {
+            aCharset = [[CWISO8859_9 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-10"])
+        {
+            aCharset = [[CWISO8859_10 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-11"])
+        {
+            aCharset = [[CWISO8859_11 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-13"])
+        {
+            aCharset = [[CWISO8859_13 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-14"])
+        {
+            aCharset = [[CWISO8859_14 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"iso-8859-15"])
+        {
+            aCharset = [[CWISO8859_15 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"koi8-r"])
+        {
+            aCharset = [[CWKOI8_R alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"koi8-u"])
+        {
+            aCharset = [[CWKOI8_U alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"windows-1250"])
+        {
+            aCharset = [[CWWINDOWS_1250 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"windows-1251"])
+        {
+            aCharset = [[CWWINDOWS_1251 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"windows-1252"])
+        {
+            aCharset = [[CWWINDOWS_1252 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"windows-1253"])
+        {
+            aCharset = [[CWWINDOWS_1253 alloc] init];
+        }
+        else if ([[theName lowercaseString] isEqualToString: @"windows-1254"])
+        {
+            aCharset = [[CWWINDOWS_1254 alloc] init];
+        }
+        else
+        {
+            aCharset = [[CWISO8859_1 alloc] init];
+        }
+        
+        [charset_instance_cache setObject: aCharset
+                                   forKey: [theName lowercaseString]];
+        
+        return aCharset;
     }
-
-  return theCharset;
+    
+    return theCharset;
 }
 
 @end

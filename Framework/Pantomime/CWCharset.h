@@ -35,10 +35,8 @@ struct charset_code
 */
 @interface CWCharset : NSObject
 {
-  @private
+@private
     const struct charset_code *_codes;
-    NSInteger _num_codes;
-    NSInteger _identity_map;
 }
 
 /*!
@@ -50,8 +48,8 @@ struct charset_code
   @param codes The charset code table which must be sorted by code.
   @param num_codes The size of the table.
 */
-- (id) initWithCodeCharTable: (const struct charset_code *) codes
-                      length: (NSInteger) num_codes;
+- (id) initWithCodeCharTable:(const struct charset_code *)codes
+                      length:(NSInteger)num_codes;
 
 /*!
   @method codeForCharacter:
