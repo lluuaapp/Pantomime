@@ -36,24 +36,9 @@
 @interface CWContainer : NSObject
 
 @property CWMessage *message;
-@property (nonatomic, readonly) CWContainer *parent;
-@property (nonatomic, readonly) CWContainer *child;
-
-/*!
-  @method setParent:
-  @discussion This method is used to set the parent CWContainer of the receiver.
-  @param theParent The parent CWContainer, which might be nil if the receiver
-                   is part of the root set.
-*/
-- (void) setParent: (CWContainer *) theParent;
-
-/*!
-  @method setChild:
-  @discussion This method is used to add the specified child to the list
-              of children.
-  @param theChild The child to add which can be nil to remove the first child.
-*/
-- (void) setChild: (CWContainer *) theChild;
+@property (nonatomic) CWContainer *parent;
+@property (nonatomic) CWContainer *child;
+@property (nonatomic) CWContainer *next;
 
 /*!
   @method childAtIndex:
@@ -61,7 +46,7 @@
   @param theIndex The index of the child, which is 0 based.
   @result The CWContainer instance.
 */
-- (CWContainer *) childAtIndex: (NSUInteger) theIndex;
+- (CWContainer *) childAtIndex:(NSUInteger)theIndex;
 
 /*!
   @method count
@@ -70,14 +55,6 @@
   @result The number of children.
 */
 - (NSUInteger) count;
-
-/*!
-  @method setNext:
-  @discussion This method is used to set the next element in
-              sibling list.
-  @param theNext The next element, or nil if there's none.
-*/
-- (void) setNext: (CWContainer *) theNext;
 
 /*!
   @method allChildren

@@ -27,14 +27,6 @@
 #import "CWMessage.h"
 
 
-@interface CWContainer ()
-
-@property (nonatomic) CWContainer *parent;
-@property (nonatomic) CWContainer *child;
-@property (nonatomic) CWContainer *next;
-
-@end
-
 //
 //
 //
@@ -173,16 +165,6 @@
     
     return 0;
 }
-
-
-//
-//
-//
-- (void) setNext:(CWContainer *)theNext
-{
-    _next = theNext;
-}
-
 
 //
 //
