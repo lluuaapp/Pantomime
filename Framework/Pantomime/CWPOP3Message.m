@@ -20,12 +20,12 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "CWPOP3Message.h"
+#import "CWPOP3Message.h"
 
-#include "CWConstants.h"
-#include "CWFlags.h"
-#include "CWPOP3Folder.h"
-#include "CWPOP3Store.h"
+#import "CWConstants.h"
+#import "CWFlags.h"
+#import "CWPOP3Folder.h"
+#import "CWPOP3Store.h"
 
 @implementation CWPOP3Message 
 

@@ -20,12 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWPOP3Message
-#define _Pantomime_H_CWPOP3Message
-
-#import <Foundation/NSCoder.h>
-
-#include "CWMessage.h"
+#import "CWMessage.h"
 
 /*!
   @class CWPOP3Message
@@ -79,5 +74,3 @@
 */
 - (void) setFlags: (CWFlags *) theFlags;
 @end
-
-#endif // _Pantomime_H_CWPOP3Message

@@ -39,15 +39,7 @@
 
 - (void) close_mbox
 {
-#ifndef __MINGW32__
     struct flock lock;
-    
-#ifdef __linux__
-    if (flock(fd, LOCK_UN) == -1)
-    {
-        NSLog(@"CWLocalFolder+mbox: Could not remove advisory file lock for: %@. Rationale: %s", _path, strerror(errno));
-    }
-#endif
     
     // We remove the mandatory lock
     lock.l_type = F_UNLCK;
@@ -59,7 +51,6 @@
     {
         NSLog(@"CWLocalFolder+mbox: Could not remove mandatory file lock for: %@. Rationale: %s", _path, strerror(errno));
     }
-#endif
     
     //
     // We close the stream. This will also close our file descriptor.
@@ -98,11 +89,7 @@
     pathToMailbox = [NSString stringWithFormat: @"%@/%@", [_store path], self.name];
     
     // The stream is used to store (temporarily) the new local folder
-#ifdef __MINGW32__
-    theOutputStream = fopen([[NSString stringWithFormat: @"%@.tmp", pathToMailbox] UTF8String], "ab");
-#else
     theOutputStream = fopen([[NSString stringWithFormat: @"%@.tmp", pathToMailbox] UTF8String], "a");
-#endif
     theInputStream = [self stream];
     
     // We assume that our write operation was successful and we initialize our messageNumber to 1
@@ -294,9 +281,7 @@
 //
 - (FILE *) open_mbox
 {
-#ifndef __MINGW32__
     struct flock lock;
-#endif
     FILE *aStream;
     
     if (!_path)
@@ -305,11 +290,7 @@
         return NULL;
     }
     
-#ifdef __MINGW32__
-    fd = _open([_path UTF8String], _O_BINARY|_O_RDWR);
-#else
     fd = open([_path UTF8String], O_RDWR);
-#endif
     
     if (fd < 0)
     {
@@ -319,7 +300,6 @@
     
     //NSLog(@"In open_mbox, fd = %d", fd);
     
-#ifndef __MINGW32__
     lock.l_type = F_WRLCK;
     lock.l_whence = SEEK_SET;
     lock.l_start = 0;
@@ -331,25 +311,7 @@
         NSLog(@"CWLocalFolder+mbox: Unable to obtain the mandatory lock on the folder descriptor at path %@.", _path);
     }
     
-#ifdef __linux__
-    if (flock(fd, LOCK_EX|LOCK_NB) < 0)
-    {
-        NSLog(@"CWLocalFolder+mbox: Unable to obtain the advisory lock on the folder descriptor at path %@.", _path);
-        close(fd);
-        return NULL;
-    }
-    else
-    {
-        flock(fd, LOCK_UN);
-    }
-#endif
-#endif
-    
-#ifdef __MINGW32__
-    aStream = _fdopen(fd, "r+");
-#else
     aStream = fdopen(fd, "r+");
-#endif
     
     [self setStream: aStream];
     

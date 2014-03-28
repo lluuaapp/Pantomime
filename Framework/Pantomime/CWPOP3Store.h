@@ -20,14 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWPOP3Store
-#define _Pantomime_H_CWPOP3Store
-
-#include "CWService.h"
-#include "CWStore.h"
-
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
+#import "CWService.h"
+#import "CWStore.h"
 
 /*!
   @typedef POP3Command
@@ -108,5 +102,3 @@ typedef enum {
 - (void) sendCommand: (POP3Command) theCommand  arguments: (NSString *) theFormat, ...;
 
 @end
-
-#endif // _Pantomime_H_CWPOP3Store

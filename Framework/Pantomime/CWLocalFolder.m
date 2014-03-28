@@ -347,11 +347,7 @@
             
             NSString *aMailFilePath = [NSString stringWithFormat: @"%@/cur/%@", _path, aMailFile];
             
-#ifdef __MINGW32__      
-            aStream = fopen([aMailFilePath UTF8String], "bw+");
-#else
             aStream = fopen([aMailFilePath UTF8String], "w+");
-#endif
             
             if (!aStream)
             {

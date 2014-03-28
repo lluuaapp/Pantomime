@@ -41,28 +41,24 @@
 //
 ssize_t read_block(int fd, void *buf, size_t count)
 {
-  ssize_t tot = 0, bytes = 0;
-  
-  while (tot < count)
+    ssize_t tot = 0, bytes = 0;
+    
+    while (tot < count)
     {
-#ifdef __MINGW32__ 
-      if ((bytes = _read(fd, buf+tot, count-tot)) == -1)
-#else
-      if ((bytes = read(fd, buf+tot, count-tot)) == -1)
-#endif
+        if ((bytes = read(fd, buf+tot, count-tot)) == -1)
         {
-	  if (errno != EINTR)
-	    {
-	      return -1;
-	    }
-	}
-      else
-	{
-	  tot += bytes;
-	}
+            if (errno != EINTR)
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            tot += bytes;
+        }
     }
-  
-  return tot;
+    
+    return tot;
 }
 
 
@@ -71,13 +67,9 @@ ssize_t read_block(int fd, void *buf, size_t count)
 //
 int safe_close(int fd)
 {
-  int value;
-#ifdef __MINGW32__
-  while (value = _close(fd), value == -1 && errno == EINTR);
-#else
-  while (value = close(fd), value == -1 && errno == EINTR);
-#endif
-  return value;
+    int value;
+    while (value = close(fd), value == -1 && errno == EINTR);
+    return value;
 }
 
 //
@@ -85,13 +77,9 @@ int safe_close(int fd)
 //
 ssize_t safe_read(int fd, void *buf, size_t count)
 {
-  ssize_t value;
-#ifdef __MINGW32__
-  while (value = _read(fd, buf, count), value == -1 && errno == EINTR);
-#else
-  while (value = read(fd, buf, count), value == -1 && errno == EINTR);
-#endif
-  return value;
+    ssize_t value;
+    while (value = read(fd, buf, count), value == -1 && errno == EINTR);
+    return value;
 }
 
 //
@@ -99,9 +87,9 @@ ssize_t safe_read(int fd, void *buf, size_t count)
 //
 ssize_t safe_recv(int fd, void *buf, size_t count, int flags)
 {
-  ssize_t value;
-  while (value = recv(fd, buf, count, flags), value == -1 && errno == EINTR);
-  return value;
+    ssize_t value;
+    while (value = recv(fd, buf, count, flags), value == -1 && errno == EINTR);
+    return value;
 }
 
 //

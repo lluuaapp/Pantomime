@@ -132,64 +132,56 @@ static NSInteger currentLocalMessageVersion = 1;
 //
 - (NSData *) rawSource
 {
-  NSData *aData;
-  char *buf;
-  NSInteger fd;
-
-  // If we are reading from a mbox file, the file is already open
-  if ([(CWLocalFolder *)[self folder] type] == PantomimeFormatMbox)
+    NSData *aData;
+    char *buf;
+    NSInteger fd;
+    
+    // If we are reading from a mbox file, the file is already open
+    if ([(CWLocalFolder *)[self folder] type] == PantomimeFormatMbox)
     {
-      fd = [(CWLocalFolder *)[self folder] fd];
+        fd = [(CWLocalFolder *)[self folder] fd];
     }
-  // For maildir, we need to open the specific file
-  else
+    // For maildir, we need to open the specific file
+    else
     {
-#ifdef __MINGW32__
-      fd = _open([[NSString stringWithFormat: @"%@/cur/%@", [(CWLocalFolder *)[self folder] path], _mailFilename] UTF8String], O_RDONLY);
-#else
-      fd = open([[NSString stringWithFormat: @"%@/cur/%@", [(CWLocalFolder *)[self folder] path], _mailFilename] UTF8String], O_RDONLY);
-#endif
+        fd = open([[NSString stringWithFormat: @"%@/cur/%@", [(CWLocalFolder *)[self folder] path], _mailFilename] UTF8String], O_RDONLY);
     }
-
-  if (fd < 0)
+    
+    if (fd < 0)
     {
-      NSLog(@"Unable to get the file descriptor");
-      return nil;
+        NSLog(@"Unable to get the file descriptor");
+        return nil;
     }
-  
-  //NSLog(@"Seeking to %d", [self filePosition]);
-
-#ifdef __MINGW32__
-  if (_lseek(fd, [self filePosition], SEEK_SET) < 0)
-#else  
-  if (lseek(fd, [self filePosition], SEEK_SET) < 0)
-#endif
+    
+    //NSLog(@"Seeking to %d", [self filePosition]);
+    
+    if (lseek(fd, [self filePosition], SEEK_SET) < 0)
     {
-      NSLog(@"Unable to seek.");
-      return nil;
+        NSLog(@"Unable to seek.");
+        return nil;
     }
-  
-  buf = (char *)malloc(_size*sizeof(char));
-
-  if (buf != NULL && read_block(fd, buf, _size) >= 0)
+    
+    buf = (char *)malloc(_size*sizeof(char));
+    
+    if (buf != NULL && read_block(fd, buf, _size) >= 0)
     {
-      aData = [NSData dataWithBytesNoCopy: buf  length: _size  freeWhenDone: YES];
+        aData = [NSData dataWithBytesNoCopy: buf  length: _size  freeWhenDone: YES];
     }
-  else
+    else
     {
-      free(buf);
-      aData = nil;
+        free(buf);
+        aData = nil;
     }
-  
-  // If we are operating on a local file, close it.
-  if ([(CWLocalFolder *)[self folder] type] == PantomimeFormatMaildir)
+    
+    // If we are operating on a local file, close it.
+    if ([(CWLocalFolder *)[self folder] type] == PantomimeFormatMaildir)
     {
-      safe_close(fd);
+        safe_close(fd);
     }
-  
-  //NSLog(@"READ |%@|", [aData asciiString]);
-
-  return aData;
+    
+    //NSLog(@"READ |%@|", [aData asciiString]);
+    
+    return aData;
 }
 
 
