@@ -36,7 +36,7 @@
 #import "CWTCPConnection.h"
 #import "CWURLName.h"
 #import "CWCacheRecord.h"
-
+#import "CWIMAPQueueObject.h"
 
 #if __LP64__
 #define CWNSIntegerFormat "ld"
@@ -51,6 +51,8 @@
 //
 static NSStringEncoding defaultCStringEncoding;
 static NSData *CRLF;
+
+#define CSIMAPTDefaultPort 143
 
 //
 // This C function is used to verify if a line (specified in
@@ -90,62 +92,22 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
     return 0;
 }
 
-//
-//
-//
-@interface CWIMAPQueueObject : NSObject
+@interface CWIMAPStore ()
 
-@property IMAPCommand command;
-@property NSString *arguments;
-@property NSData *tag;
-@property NSMutableDictionary *info;
-@property NSInteger literal;
+@property CWIMAPQueueObject *currentQueueObject;
 
-- (id) initWithCommand: (IMAPCommand) theCommand
-             arguments: (NSString *) theArguments
-                   tag: (NSData *) theTag
-                  info: (NSDictionary *) theInfo;
-@end
+@property NSMutableDictionary *folders;
+@property NSMutableDictionary *openFolders;
+@property NSMutableDictionary *folderStatus;
+@property NSMutableArray *subscribedFolders;
 
-@implementation CWIMAPQueueObject
+@property CWIMAPFolder *selectedFolder;
 
-- (id) initWithCommand: (IMAPCommand) theCommand
-	     arguments: (NSString *) theArguments
-		   tag: (NSData *) theTag
-		  info: (NSDictionary *) theInfo
-{
-    self = [super init];
-    if (self)
-    {
-        _command = theCommand;
-        _literal = 0;
-        _arguments = theArguments;
-        _tag = theTag;
-        
-        if (theInfo)
-        {
-            _info = [[NSMutableDictionary alloc] initWithDictionary: theInfo];
-        }
-        else
-        {
-            _info = [[NSMutableDictionary alloc] init];
-        }
-    }
-    return self;
-}
+@property unichar folderSeparator;
+@property NSInteger tag;
 
-- (NSString *) description
-{
-    return [NSString stringWithFormat: @"%ld %@", (long)self.command, self.arguments];
-}
+@property BOOL idling;
 
-@end
-
-
-//
-// Private methods
-//
-@interface CWIMAPStore (Private)
 - (NSString *) _folderNameFromString: (NSString *) theString;
 - (void) _parseFlags: (NSString *) aString
              message: (CWIMAPMessage *) theMessage
@@ -173,6 +135,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 - (void) _parseSTARTTLS;
 - (void) _parseUIDVALIDITY: (const char *) theString;
 - (void) _restoreQueue;
+
 @end
 
 //
@@ -180,36 +143,37 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 //
 @implementation CWIMAPStore
 
-+ (void) initialize
-{
-  defaultCStringEncoding = [NSString defaultCStringEncoding];
-  CRLF = [[NSData alloc] initWithBytes: "\r\n"  length: 2];
-}
-
-
 //
 //
 //
 - (id) initWithName: (NSString *) theName
 	       port: (NSUInteger) thePort
 {
-  if (thePort == 0) thePort = 143;
-
-  self = [super initWithName: theName  port: thePort];
-
-  _folderSeparator = 0;
-  _selectedFolder = nil;
-  _tag = 1;
-
-  _folders = [[NSMutableDictionary alloc] init];
-  _openFolders = [[NSMutableDictionary alloc] init];
-  _subscribedFolders = [[NSMutableArray alloc] init];
-  _folderStatus = [[NSMutableDictionary alloc] init];
-
-  _lastCommand = IMAP_AUTHORIZATION;
-  _currentQueueObject = nil;
-  
-  return self;
+    if (thePort == 0) thePort = CSIMAPTDefaultPort;
+    
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        defaultCStringEncoding = [NSString defaultCStringEncoding];
+        CRLF = [[NSData alloc] initWithBytes: "\r\n"  length: 2];
+    });
+    
+    self = [super initWithName: theName  port: thePort];
+    if (self)
+    {
+        _folderSeparator = 0;
+        _selectedFolder = nil;
+        _tag = 1;
+        
+        _folders = [[NSMutableDictionary alloc] init];
+        _openFolders = [[NSMutableDictionary alloc] init];
+        _subscribedFolders = [[NSMutableArray alloc] init];
+        _folderStatus = [[NSMutableDictionary alloc] init];
+        
+        _lastCommand = IMAP_AUTHORIZATION;
+        _currentQueueObject = nil;
+    }
+    
+    return self;
 }
 
 
@@ -218,7 +182,8 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 //
 - (id) initWithURL: (CWURLName *) theURL
 {
-  return [self initWithName: [theURL host]  port: 143];
+    return [self initWithName:[theURL host]
+                         port:CSIMAPTDefaultPort];
 }
 
 //
@@ -415,7 +380,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 				else if (_lastCommand == IMAP_IDLE)
 				{
 					// NSLog(@"got + idling");
-					idling = YES;
+					self.idling = YES;
 					break;
 				}
 			}
@@ -1101,16 +1066,6 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
   return 0;
 }
 
-
-//
-//
-//
-- (unsigned char) folderSeparator
-{
-  return _folderSeparator;
-}
-
-
 //
 //
 //
@@ -1145,7 +1100,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 
 - (void) startIDLE
 {
-	if (NO == idling)
+	if (NO == self.idling)
 	{
 		[self sendCommand:IMAP_IDLE
 					 info:nil
@@ -1154,9 +1109,9 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 }
 - (void) stopIDLE
 {
-	if (idling)
+	if (self.idling)
 	{
-		idling = NO;
+		self.idling = NO;
 		[self sendCommand:IMAP_DONE
 					 info:nil
 				arguments:@"DONE"];
@@ -1293,14 +1248,6 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
   [self sendCommand: IMAP_STARTTLS  info: nil  arguments: @"STARTTLS"];
 }
 
-@end
-
-
-//
-// Private methods
-//
-@implementation CWIMAPStore (Private)
-
 //
 // This method is used to parse the name of a mailbox.
 //
@@ -1309,53 +1256,53 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 //
 - (NSString *) _folderNameFromString: (NSString *) theString
 {
-  NSString *aString;
-  NSRange aRange;
-
-  aRange = [theString rangeOfString: @"\""];
-
-  if (aRange.length)
+    NSString *aString;
+    NSRange aRange;
+    
+    aRange = [theString rangeOfString: @"\""];
+    
+    if (aRange.length)
     {
-      NSInteger mark;
-
-      mark = aRange.location + 1;
-      
-      aRange = [theString rangeOfString: @"\""
-			  options: 0
-			  range: NSMakeRange(mark, [theString length] - mark)];
-      
-      aString = [theString substringWithRange: NSMakeRange(mark, aRange.location - mark)];
-
-      // Check if we got "NIL" or a real separator.
-      if ([aString length] == 1)
-	{
-	  _folderSeparator = [aString characterAtIndex: 0];
-	}
-      else
-	{
-	  _folderSeparator = 0;
-	}
-      
-      mark = aRange.location + 2;
-      aString = [theString substringFromIndex: mark];
+        NSInteger mark;
+        
+        mark = aRange.location + 1;
+        
+        aRange = [theString rangeOfString: @"\""
+                                  options: 0
+                                    range: NSMakeRange(mark, [theString length] - mark)];
+        
+        aString = [theString substringWithRange: NSMakeRange(mark, aRange.location - mark)];
+        
+        // Check if we got "NIL" or a real separator.
+        if ([aString length] == 1)
+        {
+            _folderSeparator = [aString characterAtIndex:0];
+        }
+        else
+        {
+            _folderSeparator = 0;
+        }
+        
+        mark = aRange.location + 2;
+        aString = [theString substringFromIndex: mark];
     }
-  else
+    else
     {
-      aRange = [theString rangeOfString: @"NIL"  options: NSCaseInsensitiveSearch];
-
-      if (aRange.length)
-	{
-	  aString = [theString substringFromIndex: aRange.location + aRange.length + 1];
-	}
-      else
-	{
-	  return theString;
-	}
+        aRange = [theString rangeOfString: @"NIL"  options: NSCaseInsensitiveSearch];
+        
+        if (aRange.length)
+        {
+            aString = [theString substringFromIndex: aRange.location + aRange.length + 1];
+        }
+        else
+        {
+            return theString;
+        }
     }
     
-  aString = [aString stringFromQuotedString];
-  
-  return aString;
+    aString = [aString stringFromQuotedString];
+    
+    return aString;
 }
 
 
@@ -1709,7 +1656,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
     [self scanFromData:aData withFormat:"* %" CWNSIntegerFormat " EXISTS", &n];
 	
 	// NSLog(@"_parseEXISTS: %ld", n);
-	if (idling &&
+	if (self.idling &&
         (nil != _currentQueueObject) &&
 		(IMAP_IDLE == _currentQueueObject.command) &&
 		(n > [_selectedFolder->allMessages count]))
@@ -2654,7 +2601,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
 			
 		case IMAP_IDLE:
 			NSLog(@"IDLE terminated");
-			idling = NO;
+			self.idling = NO;
 			break;
 			
 		default:

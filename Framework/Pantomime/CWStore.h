@@ -164,7 +164,7 @@ extern NSString* PantomimeFolderRenameFailed;
 	  or -subscribedFolderEnumerator was not invoked before
 	  calling this method.
 */
-- (unsigned char) folderSeparator;
+- (unichar) folderSeparator;
 
 /*!
   @method close

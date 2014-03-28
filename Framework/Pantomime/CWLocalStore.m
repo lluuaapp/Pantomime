@@ -304,7 +304,7 @@
 //
 //
 //
-- (unsigned char) folderSeparator
+- (unichar) folderSeparator
 {
   return '/';
 }

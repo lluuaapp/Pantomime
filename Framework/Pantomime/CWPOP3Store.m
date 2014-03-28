@@ -283,7 +283,7 @@ static NSData *CRLF;
 //
 // POP3 has no concept of folder separator.
 //
-- (unsigned char) folderSeparator
+- (unichar) folderSeparator
 {
   return 0;
 }

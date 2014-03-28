@@ -179,16 +179,6 @@ typedef enum {
               the CWTransport protocol, is Pantomime's SMTP client code.
 */
 @interface CWSMTP : CWService <CWTransport>
-{
-  @private
-    NSMutableArray *_sent_recipients;
-    NSMutableArray *_recipients;
-    CWMessage *_message;
-    NSData *_data;
-    
-    NSUInteger _max_size;
-    BOOL _redirected;
-}
 
 /*!
   @method lastResponse

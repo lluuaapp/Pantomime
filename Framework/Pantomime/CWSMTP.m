@@ -21,6 +21,7 @@
 */
 
 #import "CWSMTP.h"
+#import "CWSMTPQueueObject.h"
 
 #import "CWConnection.h"
 #import "CWConstants.h"
@@ -43,65 +44,43 @@ static NSData *CRLF;
 //
 static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, BOOL aBOOL)
 {
-  CWInternetAddress *theAddress;
-  NSInteger i, count;
-
-  count = [theRecipients count];
-
-  for (i = 0; i < count; i++)
+    CWInternetAddress *theAddress;
+    NSInteger i, count;
+    
+    count = [theRecipients count];
+    
+    for (i = 0; i < count; i++)
     {
-      theAddress = [theRecipients objectAtIndex: i];
-
-      if (aBOOL)
-	{
-	  if ([theAddress type] > 3)
-	    {
-	      return theAddress;
-	    }
-	}
-      else
-	{
-	  if ([theAddress type] < 4)
-	    {
-	      return theAddress;
-	    }
-	}
+        theAddress = [theRecipients objectAtIndex: i];
+        
+        if (aBOOL)
+        {
+            if ([theAddress type] > 3)
+            {
+                return theAddress;
+            }
+        }
+        else
+        {
+            if ([theAddress type] < 4)
+            {
+                return theAddress;
+            }
+        }
     }
-
-  return nil;
+    
+    return nil;
 }
 
-//
-//
-//
-@interface CWSMTPQueueObject : NSObject
-{
-  @public
-    SMTPCommand command;
-    NSString *arguments;
-}
-- (id) initWithCommand: (SMTPCommand) theCommand
-	     arguments: (NSString *) theArguments;
-@end
-
-@implementation CWSMTPQueueObject
-
-- (id) initWithCommand: (SMTPCommand) theCommand
-	     arguments: (NSString *) theArguments
-{
-  self = [super init];
-  command = theCommand;
-  ASSIGN(arguments, theArguments);
-  return self;
-}
-
-@end
-
-
-//
-// Private SMTP methods
-//
 @interface CWSMTP ()
+
+@property NSMutableArray *sentRecipients;
+@property NSMutableArray *recipients;
+@property (nonatomic) CWMessage *message;
+@property NSData *data;
+
+@property NSUInteger maxSize;
+@property BOOL redirected;
 
 - (void) _parseAUTH_CRAM_MD5;
 - (void) _parseAUTH_LOGIN;
@@ -120,39 +99,28 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 
 @end
 
-
-//
-//
-//
 @implementation CWSMTP
 
-+ (void) initialize
+- (id) initWithName:(NSString *)theName
+               port:(NSUInteger)thePort
 {
-  defaultCStringEncoding = [NSString defaultCStringEncoding];
-  CRLF = [[NSData alloc] initWithBytes: "\r\n"  length: 2];
-}
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        defaultCStringEncoding = [NSString defaultCStringEncoding];
+        CRLF = [[NSData alloc] initWithBytes: "\r\n"  length: 2];
+    });
 
-
-//
-// initializers
-//
-- (id) initWithName: (NSString *) theName
-	       port: (NSUInteger) thePort
-{
-  self = [super initWithName: theName  port: thePort];
-
-  _sent_recipients = nil;
-  _recipients = nil;
-  _message = nil;
-  _data = nil;
-  _max_size = 0;
-
-  _lastCommand = SMTP_AUTHORIZATION;
-  
-  // We queue our first "command".
-  [_queue addObject: [[CWSMTPQueueObject alloc] initWithCommand: _lastCommand  arguments: @""]];
-
-  return self;
+    self = [super initWithName:theName  port:thePort];
+    if (self)
+    {
+        _lastCommand = SMTP_AUTHORIZATION;
+        
+        // We queue our first "command".
+        [_queue addObject:[[CWSMTPQueueObject alloc] initWithCommand:_lastCommand
+                                                           arguments: @""]];
+    }
+    
+    return self;
 }
 
 //
@@ -162,7 +130,7 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 //
 - (NSData *) lastResponse
 {
-  return [_responsesFromServer lastObject];
+    return [_responsesFromServer lastObject];
 }
 
 
@@ -171,12 +139,12 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 //
 - (NSInteger) lastResponseCode
 {
-  if ([_responsesFromServer count] > 0)
+    if ([_responsesFromServer count] > 0)
     {
-      return atoi([[[_responsesFromServer lastObject] subdataToIndex: 3] cString]);
+        return atoi([[[_responsesFromServer lastObject] subdataToIndex: 3] cString]);
     }
-
-  return 0;
+    
+    return 0;
 }
 
 
@@ -184,33 +152,33 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 // This method is used to authenticate ourself to the SMTP server.
 //
 - (void) authenticate: (NSString *) theUsername
-	     password: (NSString *) thePassword
-	    mechanism: (NSString *) theMechanism
+             password: (NSString *) thePassword
+            mechanism: (NSString *) theMechanism
 {
-  ASSIGN(_username, theUsername);
-  ASSIGN(_password, thePassword);
-  ASSIGN(_mechanism, theMechanism);
-
-  if (!theMechanism)
+    ASSIGN(_username, theUsername);
+    ASSIGN(_password, thePassword);
+    ASSIGN(_mechanism, theMechanism);
+    
+    if (!theMechanism)
     {
-      AUTHENTICATION_FAILED(_delegate, @"");
+        AUTHENTICATION_FAILED(_delegate, @"");
     }
-  else if ([theMechanism caseInsensitiveCompare: @"PLAIN"] == NSOrderedSame)
+    else if ([theMechanism caseInsensitiveCompare: @"PLAIN"] == NSOrderedSame)
     {
-      [self sendCommand: SMTP_AUTH_PLAIN  arguments: @"AUTH PLAIN"];
+        [self sendCommand: SMTP_AUTH_PLAIN  arguments: @"AUTH PLAIN"];
     }
-  else if ([theMechanism caseInsensitiveCompare: @"LOGIN"] == NSOrderedSame)
+    else if ([theMechanism caseInsensitiveCompare: @"LOGIN"] == NSOrderedSame)
     {
-      [self sendCommand: SMTP_AUTH_LOGIN  arguments: @"AUTH LOGIN"];
+        [self sendCommand: SMTP_AUTH_LOGIN  arguments: @"AUTH LOGIN"];
     }
-  else if ([theMechanism caseInsensitiveCompare: @"CRAM-MD5"] == NSOrderedSame)
+    else if ([theMechanism caseInsensitiveCompare: @"CRAM-MD5"] == NSOrderedSame)
     {
-      [self sendCommand: SMTP_AUTH_CRAM_MD5  arguments: @"AUTH CRAM-MD5"];
+        [self sendCommand: SMTP_AUTH_CRAM_MD5  arguments: @"AUTH CRAM-MD5"];
     }
-  else
+    else
     {
-      // Unknown / Unsupported mechanism
-      AUTHENTICATION_FAILED(_delegate, theMechanism);
+        // Unknown / Unsupported mechanism
+        AUTHENTICATION_FAILED(_delegate, theMechanism);
     }
 }
 
@@ -220,7 +188,7 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 //
 - (void) close
 {
-  [self sendCommand: SMTP_QUIT  arguments: @"QUIT"];
+    [self sendCommand: SMTP_QUIT  arguments: @"QUIT"];
 }
 
 
@@ -229,7 +197,7 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 //
 - (void) noop
 {
-  [self sendCommand: SMTP_NOOP  arguments: @"NOOP"];
+    [self sendCommand: SMTP_NOOP  arguments: @"NOOP"];
 }
 
 
@@ -237,8 +205,8 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 // This method sends a RSET SMTP command.
 //
 - (void) reset
-{ 
-  [self sendCommand: SMTP_RSET  arguments: @"RSET"];
+{
+    [self sendCommand: SMTP_RSET  arguments: @"RSET"];
 }
 
 
@@ -317,12 +285,12 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
     }
     
     
-    _lastCommand = aQueueObject ? aQueueObject->command : 0;
+    _lastCommand = aQueueObject ? aQueueObject.command : 0;
     
     // We send the command to the POP3 server.
     if (nil != aQueueObject)
     {
-        [self writeData:[aQueueObject->arguments dataUsingEncoding: defaultCStringEncoding]];
+        [self writeData:[aQueueObject.arguments dataUsingEncoding: defaultCStringEncoding]];
         [self writeData:CRLF];
     }
 }
@@ -364,8 +332,8 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 		ASSIGN(_recipients, [NSMutableArray arrayWithArray: [aMessage recipients]]);
     }
 	
-	_sent_recipients = nil;
-	_sent_recipients = [_recipients mutableCopy];
+	_sentRecipients = nil;
+	_sentRecipients = [_recipients mutableCopy];
 	
 	// We first verify if it's a redirected message
 	if ([_message resentFrom])
@@ -379,7 +347,7 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 		aString = [[_message from] address];
     }
 	
-	if (_max_size)
+	if (_maxSize)
     {
 		[self sendCommand: SMTP_MAIL  arguments: @"MAIL FROM:<%@> SIZE=%d", aString, [_data length]];
     }
@@ -389,25 +357,12 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
     }
 }
 
-
-//
-//
-//
 - (void) setMessage: (CWMessage *) theMessage
 {
     _data = nil;
     _message = theMessage;
 }
 
-- (CWMessage *) message
-{
-    return _message;
-}
-
-
-//
-//
-//
 - (void) setMessageData: (NSData *) theData
 {
     _message = nil;
@@ -416,30 +371,8 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 
 - (NSData *) messageData
 {
-  return _data;
+    return _data;
 }
-
-
-//
-//
-//
-- (void) setRecipients: (NSArray *) theRecipients
-{
-    if (theRecipients)
-    {
-        _recipients = [NSMutableArray arrayWithArray: theRecipients];
-    }
-    else
-    {
-        _recipients = nil;
-    }
-}
-
-- (NSArray *) recipients
-{
-    return _recipients;
-}
-
 
 //
 // This methods reads everything the server sends. Once it judge it has
@@ -811,7 +744,7 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
 
 	      if (aRange.length)
 		{
-		  _max_size = atoi([[aData subdataFromIndex: aRange.location+1] cString]);
+		  _maxSize = atoi([[aData subdataFromIndex: aRange.location+1] cString]);
 		}
 	    }
 	}
@@ -859,7 +792,7 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
       POST_NOTIFICATION(PantomimeTransactionInitiationCompleted, self, [NSDictionary dictionaryWithObject: _message  forKey: @"Message"]);
       (void)PERFORM_SELECTOR_1(_delegate, @selector(transactionInitiationCompleted:), PantomimeTransactionInitiationCompleted);
 
-      [self sendCommand: SMTP_RCPT  arguments: @"RCPT TO:<%@>", [next_recipient(_sent_recipients, _redirected) address]];
+      [self sendCommand: SMTP_RCPT  arguments: @"RCPT TO:<%@>", [next_recipient(_sentRecipients, _redirected) address]];
     }
   else
     {
@@ -920,13 +853,13 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
     {
       CWInternetAddress *theAddress;
 
-      theAddress = next_recipient(_sent_recipients, _redirected);
+      theAddress = next_recipient(_sentRecipients, _redirected);
 
       if (theAddress)
 	{
-	  [_sent_recipients removeObject: theAddress];
+	  [_sentRecipients removeObject: theAddress];
 	  
-	  theAddress = next_recipient(_sent_recipients, _redirected);
+	  theAddress = next_recipient(_sentRecipients, _redirected);
 	  
 	  if (theAddress)
 	    {

@@ -52,22 +52,18 @@
 - (id) init
 {
     self = [super init];
-    if (self) {
-        
+    if (self)
+    {
         _supportedMechanisms = [[NSMutableArray alloc] init];
         _responsesFromServer = [[NSMutableArray alloc] init];
         _capabilities = [[NSMutableArray alloc] init];
         _queue = [[NSMutableArray alloc] init];
-        _username = nil;
-        _password = nil;
-        
         
         _rbuf = [[NSMutableData alloc] init];
         _wbuf = [[NSMutableData alloc] init];
         
         _runLoopModes = [[NSMutableArray alloc] initWithObjects: NSDefaultRunLoopMode, nil];
         _connectionTimeout = _readTimeout = _writeTimeout = DEFAULT_TIMEOUT;
-        _lastCommand = 0;
         
         previous_queue = [[NSMutableArray alloc] init];
         reconnecting = opening_mailbox = NO;
@@ -86,8 +82,8 @@
     self = [self init];
     if (self) {
         
-        [self setName: theName];
-        [self setPort: thePort];
+        [self setName:theName];
+        [self setPort:thePort];
     }
     return self;
 }

@@ -150,22 +150,6 @@ extern NSString* PantomimeFolderNewMessageWhileIDLE;
               the CWStore protocol, is Pantomime's IMAP client code.
 */ 
 @interface CWIMAPStore : CWService <CWStore>
-{
-  @private
-    CWIMAPQueueObject *_currentQueueObject;
-  
-    NSMutableDictionary *_folders;
-    NSMutableDictionary *_openFolders;
-    NSMutableDictionary *_folderStatus;
-    NSMutableArray *_subscribedFolders;
- 
-    CWIMAPFolder *_selectedFolder;
-
-    unsigned char _folderSeparator;
-    NSInteger _tag;
-	
-	BOOL idling;
-}
 
 /*!
   @method folderForName:mode:prefetch:

@@ -529,7 +529,7 @@
 //
 //
 //
-- (NSString *) stringByDeletingLastPathComponentWithSeparator: (unsigned char) theSeparator
+- (NSString *) stringByDeletingLastPathComponentWithSeparator: (unichar) theSeparator
 {
   NSInteger i, c;
   
@@ -550,7 +550,7 @@
 //
 // 
 //
-- (NSString *) stringByDeletingFirstPathSeparator: (unsigned char) theSeparator
+- (NSString *) stringByDeletingFirstPathSeparator: (unichar) theSeparator
 {
   if ([self length] && [self characterAtIndex: 0] == theSeparator)
     {

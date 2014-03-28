@@ -163,7 +163,7 @@
   @param theSeparator The separator to use.
   @result A string without the last path component.
 */
-- (NSString *) stringByDeletingLastPathComponentWithSeparator: (unsigned char) theSeparator;
+- (NSString *) stringByDeletingLastPathComponentWithSeparator: (unichar) theSeparator;
 
 /*!
   @method stringByDeletingFirstPathSeparator:
@@ -172,7 +172,7 @@
   @param theSeparator The separator to use.
   @result A string without the leading separator.
 */
-- (NSString *) stringByDeletingFirstPathSeparator: (unsigned char) theSeparator;
+- (NSString *) stringByDeletingFirstPathSeparator: (unichar) theSeparator;
 
 /*!
   @method is7bitSafe
