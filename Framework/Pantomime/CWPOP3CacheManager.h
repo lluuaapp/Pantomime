@@ -20,15 +20,10 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWPOP3CacheManager
-#define _Pantomime_H_CWPOP3CacheManager
-
-#import <Foundation/NSMapTable.h>
-
-#include "CWCacheManager.h"
+#import "CWCacheManager.h"
 
 @class CWPOP3CacheObject;
-@class NSDate;
+@class CWCacheRecord;
 
 /*!
   @class CWPOP3CacheManager
@@ -41,7 +36,7 @@
 @interface CWPOP3CacheManager: CWCacheManager
 {
   @private
-    NSMapTable *_table;
+    NSMutableDictionary *_messageTable;
     NSUInteger _count;
     NSInteger _fd;
 }
@@ -63,7 +58,5 @@
   @discussion This method is used to write a cache record to disk.
   @param theRecord The record to write.
 */
-- (void) writeRecord: (cache_record *) theRecord;
+- (void) writeRecord:(CWCacheRecord *)theRecord;
 @end
-
-#endif // _Pantomime_H_CWPOP3CacheManager

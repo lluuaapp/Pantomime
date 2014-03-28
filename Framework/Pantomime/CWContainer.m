@@ -27,22 +27,18 @@
 #import "CWMessage.h"
 
 
+@interface CWContainer ()
+
+@property (nonatomic) CWContainer *parent;
+@property (nonatomic) CWContainer *child;
+@property (nonatomic) CWContainer *next;
+
+@end
+
 //
 //
 //
 @implementation CWContainer
-
-- (id) init
-{
-  self = [super init];
-
-  message = nil;
-  parent = nil;
-  child = nil;
-  next = nil;
-
-  return self;
-}
 
 //
 // access / mutation methods
@@ -51,11 +47,11 @@
 {
     if (theParent && theParent != self)
     {
-        parent = theParent;
+        _parent = theParent;
     }
     else
     {
-        parent = nil;
+        _parent = nil;
     }
 }
 
@@ -66,47 +62,44 @@
 // #warning Fix mem leaks
 - (void) setChild: (CWContainer *) theChild
 {
-    if (!theChild || theChild == self || theChild->next == self || theChild == child)
+    if (!theChild || theChild == self || theChild.next == self || theChild == self.child)
     {
         return;
     }
     
     if (theChild)
     {
-        CWContainer *aChild;
+        CWContainer *aChild = nil;
         
         // We search down in the children of theChild to be sure that
         // self IS NOT reachable
         // FIXME - we should use childrenEnumerator since we are NOT looping
         // in all children with this code
-        aChild = theChild->child;
-        
-        while (aChild)
+        for (aChild in [self allChildren])
       	{
             if (aChild == self)
       	    {
                 return;
       	    }
-            aChild = aChild->next;
       	}
         
         
         // We finally add it!
-        if (!child)
+        if (!_child)
         {
-            child = theChild;
+            _child = theChild;
         }
         else
-        {	  
-            aChild = child;
+        {
+            aChild = _child;
             
             // We go at the end of our list of children
-            //while ( aChild->next != nil && aChild->next != aChild )
-            while (aChild->next != nil)
-            {     
-                if (aChild->next == aChild)
+            //while ( aChild.next != nil && aChild.next != aChild )
+            while (aChild.next != nil)
+            {
+                if (aChild.next == aChild)
                 {
-                    aChild->next = theChild;
+                    aChild.next = theChild;
                     return;
                 }
                 
@@ -116,16 +109,16 @@
                     return;
                 }
                 
-                aChild = aChild->next;
+                aChild = aChild.next;
             }
             
-            aChild->next = theChild;
+            aChild.next = theChild;
         }
         
     }
     else
     {
-        child = nil;
+        _child = nil;
     }
 }
 
@@ -135,17 +128,17 @@
 //
 - (CWContainer *) childAtIndex: (NSUInteger) theIndex
 {
-  CWContainer *aChild;
-  NSUInteger i;
-
-  aChild = child;
-
-  for (i = 0; i < theIndex && aChild; i++)
-    {     
-      aChild = aChild->next;
+    CWContainer *aChild;
+    NSUInteger i;
+    
+    aChild = self.child;
+    
+    for (i = 0; i < theIndex && aChild; i++)
+    {
+        aChild = aChild.next;
     }
-
-  return aChild;
+    
+    return aChild;
 }
 
 
@@ -154,67 +147,67 @@
 //
 - (NSUInteger) count
 {
-  if (child)
+    if (self.child)
     {
-      CWContainer *aChild;
-      NSUInteger count;
-
-      aChild = child;
-      count = 0;
-
-      while (aChild)
-	{
-	  //if ( aChild == self || aChild->next == aChild )
-	  if (aChild == self)
-	    {
-	      count = 1;
-	      break;
-	    }
-
-	  aChild = aChild->next;
-	  count++;
-	}
-
-      return count;
+        CWContainer *aChild;
+        NSUInteger count;
+        
+        aChild = self.child;
+        count = 0;
+        
+        while (aChild)
+        {
+            //if ( aChild == self || aChild.next == aChild )
+            if (aChild == self)
+            {
+                count = 1;
+                break;
+            }
+            
+            aChild = aChild.next;
+            count++;
+        }
+        
+        return count;
     }
-  
-  return 0;
+    
+    return 0;
 }
 
 
 //
 //
 //
-- (void) setNext: (CWContainer *) theNext
+- (void) setNext:(CWContainer *)theNext
 {
-    next = theNext;
+    _next = theNext;
 }
 
 
 //
 //
 //
-- (NSEnumerator *) childrenEnumerator
+- (NSArray *) allChildren
 {
     NSMutableArray *aMutableArray;
     CWContainer *aContainer;
     
     aMutableArray = [[NSMutableArray alloc] init];
     
-    aContainer = child;
+    aContainer = self.child;
     
     while (aContainer)
     {
         [aMutableArray addObject: aContainer];
         
         // We add, recursively, all its children
-        [aMutableArray addObjectsFromArray: [[aContainer childrenEnumerator] allObjects]];
+        [aMutableArray addObjectsFromArray:[aContainer allChildren]];
         
         // We get our next container
-        aContainer = aContainer->next;
+        aContainer = aContainer.next;
     }
     
-    return [aMutableArray objectEnumerator];
+    return [NSArray arrayWithArray:aMutableArray];
 }
 
 @end

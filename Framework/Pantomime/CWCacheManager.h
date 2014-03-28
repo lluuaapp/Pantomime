@@ -20,10 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#import <Foundation/NSArray.h>
-#import <Foundation/NSCoder.h>
-#import <Foundation/NSString.h>
-
+#import <Foundation/Foundation.h>
 
 /*!
   @class CWCacheManager

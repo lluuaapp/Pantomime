@@ -23,10 +23,7 @@
 #ifndef _Pantomime_H_CWPOP3Folder
 #define _Pantomime_H_CWPOP3Folder
 
-#include "CWFolder.h"
-
-#import <Foundation/NSDictionary.h>
-#import <Foundation/NSString.h>
+#import "CWFolder.h"
 
 /*!
   @class CWPOP3Folder

@@ -63,7 +63,7 @@
     self = [self initWithName: theName];
     if (self)
     {
-        _mode = theMode;
+        self.mode = theMode;
     }
     return self;
 }
@@ -72,99 +72,99 @@
 //
 //
 //
-- (void) appendMessageFromRawSource: (NSData *) theData
-                              flags: (CWFlags *) theFlags
+- (void) appendMessageFromRawSource:(NSData*)theData
+                              flags:(CWFlags*)theFlags
 {
-  [self appendMessageFromRawSource: theData
-	flags: theFlags
-	internalDate: nil];
+    [self appendMessageFromRawSource:theData
+                               flags:theFlags
+                        internalDate:nil];
 }
 
 //
 //
 //
-- (void) appendMessageFromRawSource: (NSData *) theData
-                              flags: (CWFlags *) theFlags
-		       internalDate: (NSCalendarDate *) theDate
+- (void) appendMessageFromRawSource:(NSData*)theData
+                              flags:(CWFlags*)theFlags
+                       internalDate:(NSCalendarDate*)theDate
 {
-  NSDictionary *aDictionary;
-  NSString *flagsAsString;
-  NSData *aData;
- 
-  if (theFlags)
+    NSDictionary *aDictionary;
+    NSString *flagsAsString;
+    NSData *aData;
+    
+    if (theFlags)
     {
-      flagsAsString = [self _flagsAsStringFromFlags: theFlags];
+        flagsAsString = [self _flagsAsStringFromFlags: theFlags];
     }
-  else
+    else
     {
-      flagsAsString = @"";
+        flagsAsString = @"";
     }
-  
-  // We remove any invalid headers from our message
-  aData = [self _removeInvalidHeadersFromMessage: theData];
-  
-  if (theFlags)
+    
+    // We remove any invalid headers from our message
+    aData = [self _removeInvalidHeadersFromMessage: theData];
+    
+    if (theFlags)
     {
-      aDictionary = [NSDictionary dictionaryWithObjectsAndKeys: aData, @"NSData", self, @"Folder", theFlags, @"Flags", nil];
+        aDictionary = [NSDictionary dictionaryWithObjectsAndKeys: aData, @"NSData", self, @"Folder", theFlags, @"Flags", nil];
     }
-  else
+    else
     {
-      aDictionary = [NSDictionary dictionaryWithObjectsAndKeys: aData, @"NSData", self, @"Folder", nil];
+        aDictionary = [NSDictionary dictionaryWithObjectsAndKeys: aData, @"NSData", self, @"Folder", nil];
     }
-
-  
-  if (theDate)
+    
+    
+    if (theDate)
     {
-      [_store sendCommand: IMAP_APPEND
-	      info: aDictionary
-	      arguments: @"APPEND \"%@\" (%@) \"%@\" {%d}",                    // IMAP command
-	      _name,                                      // folder name
-	      flagsAsString,                                                   // flags
-	      [theDate descriptionWithCalendarFormat:@"%d-%b-%Y %H:%M:%S %z"], // internal date
-	      [aData length]];                                                 // length of the data to write
+        [_store sendCommand: IMAP_APPEND
+                       info: aDictionary
+                  arguments: @"APPEND \"%@\" (%@) \"%@\" {%d}",                    // IMAP command
+         self.name,                                      // folder name
+         flagsAsString,                                                   // flags
+         [theDate descriptionWithCalendarFormat:@"%d-%b-%Y %H:%M:%S %z"], // internal date
+         [aData length]];                                                 // length of the data to write
     }
-  else
+    else
     {
-      [_store sendCommand: IMAP_APPEND
-	      info: aDictionary
-	      arguments: @"APPEND \"%@\" (%@) {%d}",  // IMAP command
-	      _name,             // folder name
-	      flagsAsString,                          // flags
-	      [aData length]];                        // length of the data to write
+        [_store sendCommand: IMAP_APPEND
+                       info: aDictionary
+                  arguments: @"APPEND \"%@\" (%@) {%d}",  // IMAP command
+         self.name,             // folder name
+         flagsAsString,                          // flags
+         [aData length]];                        // length of the data to write
     }
 }
 
 //
 //
 //
-- (void) copyMessages: (NSArray *) theMessages
-	     toFolder: (NSString *) theFolder
+- (void) copyMessages:(NSArray*)theMessages
+             toFolder:(NSString*)theFolder
 {
-  NSMutableString *aMutableString;
-  NSInteger i, count;
-
-  // We create our message's UID set
-  aMutableString = [[NSMutableString alloc] init];
-  count = [theMessages count];
-
-  for (i = 0; i < count; i++)
+    NSMutableString *aMutableString;
+    NSInteger i, count;
+    
+    // We create our message's UID set
+    aMutableString = [[NSMutableString alloc] init];
+    count = [theMessages count];
+    
+    for (i = 0; i < count; i++)
     {
-      if (i == count-1)
-	{
-	  [aMutableString appendFormat: @"%lu", (unsigned long)[[theMessages objectAtIndex: i] UID]];
-	}
-      else
-	{
-	  [aMutableString appendFormat: @"%lu,", (unsigned long)[[theMessages objectAtIndex: i] UID]];
-	}
+        if (i == count-1)
+        {
+            [aMutableString appendFormat: @"%lu", (unsigned long)[[theMessages objectAtIndex: i] UID]];
+        }
+        else
+        {
+            [aMutableString appendFormat: @"%lu,", (unsigned long)[[theMessages objectAtIndex: i] UID]];
+        }
     }
- 
-  // We send our IMAP command
-  [_store sendCommand: IMAP_UID_COPY
-	  info: [NSDictionary dictionaryWithObjectsAndKeys: theMessages, @"Messages", theFolder, @"Name", self, @"Folder", nil]
-	  arguments: @"UID COPY %@ \"%@\"",
-	  aMutableString,
-	  theFolder];
+    
+    // We send our IMAP command
+    [_store sendCommand: IMAP_UID_COPY
+                   info: [NSDictionary dictionaryWithObjectsAndKeys: theMessages, @"Messages", theFolder, @"Name", self, @"Folder", nil]
+              arguments: @"UID COPY %@ \"%@\"",
+     aMutableString,
+     theFolder];
 }
 
 

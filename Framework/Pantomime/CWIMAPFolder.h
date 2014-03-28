@@ -97,9 +97,9 @@ extern NSString* PantomimeMessageStoreFailed;
   @param theFlags The flags of the message, nil if no flags need to be kept.
   @param theDate The INTERNALDATE of the message, or nil to use the current date.
 */
-- (void) appendMessageFromRawSource: (NSData *) theData
-                              flags:(CWFlags *) theFlags
-                       internalDate: (NSCalendarDate *) theDate;
+- (void) appendMessageFromRawSource:(NSData*)theData
+                              flags:(CWFlags*)theFlags
+                       internalDate:(NSCalendarDate*)theDate;
 
 /*!
   @method copyMessages: toFolder:
@@ -114,8 +114,8 @@ extern NSString* PantomimeMessageStoreFailed;
   @param theFolder The name of the target folder. The name must include
                    hierarchy separators if the target folder is a subfolder.
 */
-- (void) copyMessages: (NSArray *) theMessages
-             toFolder: (NSString *) theFolder;
+- (void) copyMessages:(NSArray*)theMessages
+             toFolder:(NSString*)theFolder;
 
 /*!
   @method prefetch

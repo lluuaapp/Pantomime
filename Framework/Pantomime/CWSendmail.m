@@ -225,26 +225,28 @@
 
 - (void) _fail
 {
-  POST_NOTIFICATION(PantomimeMessageNotSent, self, [NSDictionary dictionaryWithObject: _message  forKey: @"Message"]);
-  (void)PERFORM_SELECTOR_1(_delegate, @selector(messageNotSent:), PantomimeMessageNotSent);
+    NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:_message, @"Message", nil];
+    POST_NOTIFICATION(PantomimeMessageNotSent, self, userInfo);
+    (void)PERFORM_SELECTOR_1(_delegate, @selector(messageNotSent:), PantomimeMessageNotSent);
 }
 
 - (void) _taskDidTerminate: (NSNotification *) theNotification
 {
-  // We first unregister ourself for the notification
-  [[NSNotificationCenter defaultCenter] removeObserver: self];
-  
-  if ([[theNotification object] terminationStatus] == 0)
+    // We first unregister ourself for the notification
+    [[NSNotificationCenter defaultCenter] removeObserver: self];
+    
+    if ([[theNotification object] terminationStatus] == 0)
     {
-      POST_NOTIFICATION(PantomimeMessageSent, self, [NSDictionary dictionaryWithObject: _message  forKey: @"Message"]);
-      PERFORM_SELECTOR_2(_delegate, @selector(messageSent:), PantomimeMessageSent, _message, @"Message");
+        NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:_message, @"Message", nil];
+        POST_NOTIFICATION(PantomimeMessageSent, self, userInfo);
+        PERFORM_SELECTOR_2(_delegate, @selector(messageSent:), PantomimeMessageSent, _message, @"Message");
     }
-  else
+    else
     {
-      [self _fail];
+        [self _fail];
     }
-
-  // We release our task...
+    
+    // We release our task...
 	[_tasks removeObject:[theNotification object]];
 }
 

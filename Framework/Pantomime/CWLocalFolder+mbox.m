@@ -40,39 +40,39 @@
 - (void) close_mbox
 {
 #ifndef __MINGW32__
-  struct flock lock;
-
+    struct flock lock;
+    
 #ifdef __linux__
-  if (flock(fd, LOCK_UN) == -1)
+    if (flock(fd, LOCK_UN) == -1)
     {
-      NSLog(@"CWLocalFolder+mbox: Could not remove advisory file lock for: %@. Rationale: %s", _path, strerror(errno));
+        NSLog(@"CWLocalFolder+mbox: Could not remove advisory file lock for: %@. Rationale: %s", _path, strerror(errno));
     }
 #endif
-
-  // We remove the mandatory lock
-  lock.l_type = F_UNLCK;
-  lock.l_whence = SEEK_SET;
-  lock.l_start = lock.l_len = 0;
-  lock.l_pid = getpid();
-
-  if (fcntl(fd, F_SETLK, &lock) == -1)
+    
+    // We remove the mandatory lock
+    lock.l_type = F_UNLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = lock.l_len = 0;
+    lock.l_pid = getpid();
+    
+    if (fcntl(fd, F_SETLK, &lock) == -1)
     {
-      NSLog(@"CWLocalFolder+mbox: Could not remove mandatory file lock for: %@. Rationale: %s", _path, strerror(errno));
-     }
+        NSLog(@"CWLocalFolder+mbox: Could not remove mandatory file lock for: %@. Rationale: %s", _path, strerror(errno));
+    }
 #endif
-
-  //
-  // We close the stream. This will also close our file descriptor.
-  //
-  // fopen(3) says:
-  //
-  // The file descriptor is not dup'ed, and will be closed when the
-  // stream created  by fdopen is closed. 
-  //
-  fclose(stream);
-  
-  stream = NULL;
-  fd = -1;
+    
+    //
+    // We close the stream. This will also close our file descriptor.
+    //
+    // fopen(3) says:
+    //
+    // The file descriptor is not dup'ed, and will be closed when the
+    // stream created  by fdopen is closed.
+    //
+    fclose(stream);
+    
+    stream = NULL;
+    fd = -1;
 }
 
 
@@ -81,209 +81,205 @@
 //
 - (void) expunge_mbox
 {
-  FILE *theInputStream, *theOutputStream;
-
-  NSMutableArray *aMutableArray;
-  CWLocalMessage *aMessage;
-  CWFlags *theFlags;
-  
-  BOOL writeWasSuccessful, seenStatus, seenXStatus, doneWritingHeaders;
-  NSString *pathToMailbox;
-  
-  NSInteger i, messageNumber, count;
-  char aLine[1024];
-
-  aMutableArray = [[NSMutableArray alloc] init];
-
-  pathToMailbox = [NSString stringWithFormat: @"%@/%@", [_store path], _name];
-  
-  // The stream is used to store (temporarily) the new local folder
+    FILE *theInputStream, *theOutputStream;
+    
+    NSMutableArray *aMutableArray;
+    CWLocalMessage *aMessage;
+    CWFlags *theFlags;
+    
+    BOOL writeWasSuccessful, seenStatus, seenXStatus, doneWritingHeaders;
+    NSString *pathToMailbox;
+    
+    NSInteger i, messageNumber, count;
+    char aLine[1024];
+    
+    aMutableArray = [[NSMutableArray alloc] init];
+    
+    pathToMailbox = [NSString stringWithFormat: @"%@/%@", [_store path], self.name];
+    
+    // The stream is used to store (temporarily) the new local folder
 #ifdef __MINGW32__
-  theOutputStream = fopen([[NSString stringWithFormat: @"%@.tmp", pathToMailbox] UTF8String], "ab");
+    theOutputStream = fopen([[NSString stringWithFormat: @"%@.tmp", pathToMailbox] UTF8String], "ab");
 #else
-  theOutputStream = fopen([[NSString stringWithFormat: @"%@.tmp", pathToMailbox] UTF8String], "a");
+    theOutputStream = fopen([[NSString stringWithFormat: @"%@.tmp", pathToMailbox] UTF8String], "a");
 #endif
-  theInputStream = [self stream];
-
-  // We assume that our write operation was successful and we initialize our messageNumber to 1
-  writeWasSuccessful = YES;
-  messageNumber = 1;
-  
-  // We verify it the creation failed
-  if (!theOutputStream)
+    theInputStream = [self stream];
+    
+    // We assume that our write operation was successful and we initialize our messageNumber to 1
+    writeWasSuccessful = YES;
+    messageNumber = 1;
+    
+    // We verify it the creation failed
+    if (!theOutputStream)
     {
-      POST_NOTIFICATION(PantomimeFolderExpungeFailed, self, nil);
-      PERFORM_SELECTOR_2([[self store] delegate], @selector(folderExpungeFailed:), PantomimeFolderExpungeFailed, self, @"Folder");
-      return;
+        POST_NOTIFICATION(PantomimeFolderExpungeFailed, self, nil);
+        PERFORM_SELECTOR_2([[self store] delegate], @selector(folderExpungeFailed:), PantomimeFolderExpungeFailed, self, @"Folder");
+        return;
     }
-  
-  count = [allMessages count];
-
-  for (i = 0; i < count; i++)
+    
+    count = [allMessages count];
+    
+    for (i = 0; i < count; i++)
     {
-      aMessage = [allMessages objectAtIndex: i];
-      theFlags = [aMessage flags];
-
-      doneWritingHeaders = seenStatus = seenXStatus = NO;    
-      
-      if ([theFlags contain: PantomimeDeleted])
-	{
-	  //[(CWLocalCacheManager *)_cacheManager removeObject: aMessage];
-	  [aMutableArray addObject: aMessage];
-	}
-      else
-	{
-	  long delta, position, size;
-	  NSInteger headers_length = 0;
-	  
-	  // We get our position and headers_length
-	  position = ftell(theOutputStream);
-	  
-	  // We seek to the beginning of the message
-	  fseek(theInputStream, [aMessage filePosition], SEEK_SET);
-	 
-	  size = [aMessage size];
-	  memset(aLine, 0, 1024);
-	  
-	  while (fgets(aLine, 1024, theInputStream) != NULL &&
-		 (ftell(theInputStream) < ([aMessage filePosition] + size)))
-	    {
-	      // We verify if we aren't finished reading our headers
-	      if (!doneWritingHeaders)
-		{
-		  // We check for the "null line" (ie., end of headers)
-		  if (strlen(aLine) == 1 && strcmp("\n", aLine) == 0)
-		    {
-		      doneWritingHeaders = YES;
-		      
-#if 1
-		      headers_length = ftell(theOutputStream);
-
-		      if (!seenStatus) 
-			{
-			  fputs([[NSString stringWithFormat: @"Status: %@\n",
-					   [theFlags statusString]] UTF8String], theOutputStream);
-			}
-		      
-		      if (!seenXStatus) 
-			{
-			  fputs([[NSString stringWithFormat: @"X-Status: %@\n",
-					   [theFlags xstatusString]] UTF8String], theOutputStream);
-			}
-
-		      delta =  ftell(theOutputStream)-headers_length;
-
-		      // Since we are done writing our headers, we update the headers_length variable
-		      //headers_length = ftell(theOutputStream) - position;
-
-		      // We adjust the size of the message since headers might have been rewritten (Status/X-Status).
-		      // We need the trailing -1 to actually remove the header/content separator (a single \n).
-		      //delta = headers_length - ([aMessage bodyFilePosition] - [aMessage filePosition] - 1);
-		      
-		      if (delta > 0)
-			{
-			  //NSLog(@"delta = %d", delta);
-			  [aMessage setSize: (size+delta)];
-			}
-#endif
-		    }
-		  
-		  // If we read the Status header, we replace it with the current Status header
-// #warning we might need to adjust the size here too!
-#if 1
-		  if (strncasecmp(aLine,"Status:", 7) == 0) 
-		    {
-		      seenStatus = YES;
-		      memset(aLine, 0, 1024);
-		      sprintf(aLine, "Status: %s\n", [[theFlags statusString] UTF8String]); 
-		    }
-		  else if (strncasecmp(aLine,"X-Status:", 9) == 0)
-		    {
-		      seenXStatus = YES;
-		      memset(aLine, 0, 1024);
-		      sprintf(aLine, "X-Status: %s\n", [[theFlags xstatusString] UTF8String]); 
-		    }
-#endif
-		}
-	      
-	      // We write our line to our new stream
-	      if (fputs(aLine, theOutputStream) < 0)
-		{
-		  writeWasSuccessful = NO;
-		  break;
-		}
-	      
-	      memset(aLine, 0, 1024);
-	    } // while (...)
-	  
-	  // We add our message separator
-	  if (fputs("\n", theOutputStream) < 0)
-	    {
-	      writeWasSuccessful = NO;
-	      break;
-	    }
-	    
-	  // We update our message's ivars
-	  [aMessage setFilePosition: position];
-	  //[aMessage setBodyFilePosition: (position+headers_length+1)];
-	  [aMessage setMessageNumber: messageNumber];
-	  
-	  // We increment our messageNumber local variable
-	  messageNumber++;
-	}
-
+        aMessage = [allMessages objectAtIndex: i];
+        theFlags = [aMessage flags];
+        
+        doneWritingHeaders = seenStatus = seenXStatus = NO;
+        
+        if ([theFlags contain: PantomimeDeleted])
+        {
+            //[(CWLocalCacheManager *)_cacheManager removeObject: aMessage];
+            [aMutableArray addObject: aMessage];
+        }
+        else
+        {
+            long delta, position, size;
+            NSInteger headers_length = 0;
+            
+            // We get our position and headers_length
+            position = ftell(theOutputStream);
+            
+            // We seek to the beginning of the message
+            fseek(theInputStream, [aMessage filePosition], SEEK_SET);
+            
+            size = [aMessage size];
+            memset(aLine, 0, 1024);
+            
+            while (fgets(aLine, 1024, theInputStream) != NULL &&
+                   (ftell(theInputStream) < ([aMessage filePosition] + size)))
+            {
+                // We verify if we aren't finished reading our headers
+                if (!doneWritingHeaders)
+                {
+                    // We check for the "null line" (ie., end of headers)
+                    if (strlen(aLine) == 1 && strcmp("\n", aLine) == 0)
+                    {
+                        doneWritingHeaders = YES;
+                        
+                        headers_length = ftell(theOutputStream);
+                        
+                        if (!seenStatus)
+                        {
+                            fputs([[NSString stringWithFormat: @"Status: %@\n",
+                                    [theFlags statusString]] UTF8String], theOutputStream);
+                        }
+                        
+                        if (!seenXStatus)
+                        {
+                            fputs([[NSString stringWithFormat: @"X-Status: %@\n",
+                                    [theFlags xstatusString]] UTF8String], theOutputStream);
+                        }
+                        
+                        delta =  ftell(theOutputStream)-headers_length;
+                        
+                        // Since we are done writing our headers, we update the headers_length variable
+                        //headers_length = ftell(theOutputStream) - position;
+                        
+                        // We adjust the size of the message since headers might have been rewritten (Status/X-Status).
+                        // We need the trailing -1 to actually remove the header/content separator (a single \n).
+                        //delta = headers_length - ([aMessage bodyFilePosition] - [aMessage filePosition] - 1);
+                        
+                        if (delta > 0)
+                        {
+                            //NSLog(@"delta = %d", delta);
+                            [aMessage setSize: (size+delta)];
+                        }
+                    }
+                    
+                    // If we read the Status header, we replace it with the current Status header
+                    // #warning we might need to adjust the size here too!
+                    if (strncasecmp(aLine,"Status:", 7) == 0)
+                    {
+                        seenStatus = YES;
+                        memset(aLine, 0, 1024);
+                        sprintf(aLine, "Status: %s\n", [[theFlags statusString] UTF8String]);
+                    }
+                    else if (strncasecmp(aLine,"X-Status:", 9) == 0)
+                    {
+                        seenXStatus = YES;
+                        memset(aLine, 0, 1024);
+                        sprintf(aLine, "X-Status: %s\n", [[theFlags xstatusString] UTF8String]);
+                    }
+                }
+                
+                // We write our line to our new stream
+                if (fputs(aLine, theOutputStream) < 0)
+                {
+                    writeWasSuccessful = NO;
+                    break;
+                }
+                
+                memset(aLine, 0, 1024);
+            } // while (...)
+            
+            // We add our message separator
+            if (fputs("\n", theOutputStream) < 0)
+            {
+                writeWasSuccessful = NO;
+                break;
+            }
+            
+            // We update our message's ivars
+            [aMessage setFilePosition: position];
+            //[aMessage setBodyFilePosition: (position+headers_length+1)];
+            [aMessage setMessageNumber: messageNumber];
+            
+            // We increment our messageNumber local variable
+            messageNumber++;
+        }
+        
     } // for (i = 0; i < count; i++)
-  
-  
-
-  // We close our output stream
-  if (fclose(theOutputStream) != 0)
+    
+    
+    
+    // We close our output stream
+    if (fclose(theOutputStream) != 0)
     {
-      writeWasSuccessful = NO;
+        writeWasSuccessful = NO;
     }
-  
-  //
-  // We verify if the last write was successful, if yes, we remove our original mailbox
-  // and we replace it by our temporary mailbox.
-  //
-  if (writeWasSuccessful)
+    
+    //
+    // We verify if the last write was successful, if yes, we remove our original mailbox
+    // and we replace it by our temporary mailbox.
+    //
+    if (writeWasSuccessful)
     {
-      // We close the current folder
-      [self close_mbox];
-      
-      // Now that everything is alright, replace <folder name> by <folder name>.tmp
+        // We close the current folder
+        [self close_mbox];
+        
+        // Now that everything is alright, replace <folder name> by <folder name>.tmp
 		[[NSFileManager defaultManager] removeItemAtPath:pathToMailbox error:NULL];
 		[[NSFileManager defaultManager] moveItemAtPath:[NSString stringWithFormat: @"%@.tmp", pathToMailbox] toPath:pathToMailbox error:NULL];
-      
-      // We sync our cache
-      //[_cacheManager synchronize];
-      if (_cacheManager) [_cacheManager expunge];
-      
-      // Now we re-open our folder and update the 'allMessages' ivar in the Folder superclass
-      [self open_mbox];
-
-      [allMessages removeObjectsInArray: aMutableArray];
-      //[self setMessages: [_cacheManager cache]];
+        
+        // We sync our cache
+        //[_cacheManager synchronize];
+        if (_cacheManager) [_cacheManager expunge];
+        
+        // Now we re-open our folder and update the 'allMessages' ivar in the Folder superclass
+        [self open_mbox];
+        
+        [allMessages removeObjectsInArray: aMutableArray];
+        //[self setMessages: [_cacheManager cache]];
     }
-  
-  //
-  // The last write failed, let's remove our temporary file and keep the original mbox which, might
-  // contains non-updated status flags or messages that have been transferred/deleted.
-  //
-  else
+    
+    //
+    // The last write failed, let's remove our temporary file and keep the original mbox which, might
+    // contains non-updated status flags or messages that have been transferred/deleted.
+    //
+    else
     {
-      NSLog(@"Writing to %@ failed. We keep the original mailbox.", pathToMailbox);
-      NSLog(@"This can be due to the fact that your partition containing this mailbox is full or that you don't have write permission in the directory where this mailbox is.");
-      [[NSFileManager defaultManager] removeItemAtPath:[NSString stringWithFormat: @"%@.tmp", pathToMailbox]
-												 error:NULL];
-      POST_NOTIFICATION(PantomimeFolderExpungeFailed, self, nil);
-      PERFORM_SELECTOR_2([[self store] delegate], @selector(folderExpungeFailed:), PantomimeFolderExpungeFailed, self, @"Folder");
-      return;
+        NSLog(@"Writing to %@ failed. We keep the original mailbox.", pathToMailbox);
+        NSLog(@"This can be due to the fact that your partition containing this mailbox is full or that you don't have write permission in the directory where this mailbox is.");
+        [[NSFileManager defaultManager] removeItemAtPath:[NSString stringWithFormat: @"%@.tmp", pathToMailbox]
+                                                   error:NULL];
+        POST_NOTIFICATION(PantomimeFolderExpungeFailed, self, nil);
+        PERFORM_SELECTOR_2([[self store] delegate], @selector(folderExpungeFailed:), PantomimeFolderExpungeFailed, self, @"Folder");
+        return;
     }
-  
-// #warning also return when invoking the delegate
-  POST_NOTIFICATION(PantomimeFolderExpungeCompleted, self, nil);
-  PERFORM_SELECTOR_2([[self store] delegate], @selector(folderExpungeCompleted:), PantomimeFolderExpungeCompleted, self, @"Folder");
+    
+    // #warning also return when invoking the delegate
+    POST_NOTIFICATION(PantomimeFolderExpungeCompleted, self, nil);
+    PERFORM_SELECTOR_2([[self store] delegate], @selector(folderExpungeCompleted:), PantomimeFolderExpungeCompleted, self, @"Folder");
 }
 
 
@@ -299,321 +295,321 @@
 - (FILE *) open_mbox
 {
 #ifndef __MINGW32__
-  struct flock lock;
+    struct flock lock;
 #endif
-  FILE *aStream;
-  
-  if (!_path)
+    FILE *aStream;
+    
+    if (!_path)
     {
-      NSLog(@"Invalid path to the mailbox file.");
-      return NULL;
+        NSLog(@"Invalid path to the mailbox file.");
+        return NULL;
     }
-
+    
 #ifdef __MINGW32__
-  fd = _open([_path UTF8String], _O_BINARY|_O_RDWR);
+    fd = _open([_path UTF8String], _O_BINARY|_O_RDWR);
 #else
-  fd = open([_path UTF8String], O_RDWR);
-#endif 
- 
-  if (fd < 0)
+    fd = open([_path UTF8String], O_RDWR);
+#endif
+    
+    if (fd < 0)
     {
-      NSLog(@"LocalFolder: Unable to get folder descriptor at path %@.", _path);
-      return NULL;
+        NSLog(@"LocalFolder: Unable to get folder descriptor at path %@.", _path);
+        return NULL;
     }
-
-  //NSLog(@"In open_mbox, fd = %d", fd);
-
+    
+    //NSLog(@"In open_mbox, fd = %d", fd);
+    
 #ifndef __MINGW32__
-  lock.l_type = F_WRLCK;
-  lock.l_whence = SEEK_SET;
-  lock.l_start = 0;
-  lock.l_len = 0;
-  lock.l_pid = getpid();
- 
-  if (fcntl(fd, F_SETLK, &lock) == -1)
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+    lock.l_pid = getpid();
+    
+    if (fcntl(fd, F_SETLK, &lock) == -1)
     {
-      NSLog(@"CWLocalFolder+mbox: Unable to obtain the mandatory lock on the folder descriptor at path %@.", _path);
+        NSLog(@"CWLocalFolder+mbox: Unable to obtain the mandatory lock on the folder descriptor at path %@.", _path);
     }
-  
+    
 #ifdef __linux__
-  if (flock(fd, LOCK_EX|LOCK_NB) < 0) 
+    if (flock(fd, LOCK_EX|LOCK_NB) < 0)
     {
-      NSLog(@"CWLocalFolder+mbox: Unable to obtain the advisory lock on the folder descriptor at path %@.", _path);
-      close(fd);
-      return NULL;
+        NSLog(@"CWLocalFolder+mbox: Unable to obtain the advisory lock on the folder descriptor at path %@.", _path);
+        close(fd);
+        return NULL;
     }
-  else 
+    else
     {
-      flock(fd, LOCK_UN);
+        flock(fd, LOCK_UN);
     }
 #endif
 #endif
-  
-#ifdef __MINGW32__  
-  aStream = _fdopen(fd, "r+");
+    
+#ifdef __MINGW32__
+    aStream = _fdopen(fd, "r+");
 #else
-  aStream = fdopen(fd, "r+");
+    aStream = fdopen(fd, "r+");
 #endif
-
-  [self setStream: aStream];
-  
-  if (aStream == NULL)
+    
+    [self setStream: aStream];
+    
+    if (aStream == NULL)
     {
-      NSLog(@"LocalFolder: Unable to open the specified mailbox at path %@.", _path);
-      return NULL;
+        NSLog(@"LocalFolder: Unable to open the specified mailbox at path %@.", _path);
+        return NULL;
     }
-  
+    
 #ifdef __linux__
-  flock(fd, LOCK_EX|LOCK_NB);
+    flock(fd, LOCK_EX|LOCK_NB);
 #endif  
-
-  return aStream;
+    
+    return aStream;
 }
 
 
 //
 //
 //
-- (void) parse_mbox: (NSString *) theFile
-	     stream: (FILE *) theStream
-	      flags: (CWFlags *) theFlags
-		all: (BOOL) theBOOL
+- (void) parse_mbox:(NSString*)theFile
+             stream:(FILE*)theStream
+              flags:(CWFlags*)theFlags
+                all:(BOOL) theBOOL
 {
-  CWLocalMessage *aMessage;
-  long begin = 0L, end = 0L, size;
-  CWCacheRecord *record = [[CWCacheRecord alloc] init];
-  char aLine[1024];
-  
-  // We initialize our variables
-  aMessage = [[CWLocalMessage alloc] init];
-  CLEAR_CACHE_RECORD(record);
-
-  if (_type == PantomimeFormatMbox)
+    CWLocalMessage *aMessage;
+    long begin = 0L, end = 0L, size;
+    CWCacheRecord *record = [[CWCacheRecord alloc] init];
+    char aLine[1024];
+    
+    // We initialize our variables
+    aMessage = [[CWLocalMessage alloc] init];
+    CLEAR_CACHE_RECORD(record);
+    
+    if (_type == PantomimeFormatMbox)
     {
-      begin = ftell(theStream);
-    }
-
-  while (fgets(aLine, 1024, theStream) != NULL)
-    {
-      switch (tolower(aLine[0]))
-	{	
-	case 'b':
-	  if (theBOOL && strncasecmp(aLine, "Bcc", 2) == 0)
-	    {
-	      [CWParser parseDestination: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			forType: PantomimeBccRecipient
-			inMessage: aMessage
-			quick: NO];
-	    }
-	  break;
-	  
-	case 'c':
-	  if (strncasecmp(aLine, "Cc", 2) == 0)
-	    {
-	      record.cc = [CWParser parseDestination: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-				    forType: PantomimeCcRecipient
-				    inMessage: aMessage
-				    quick: NO];
-	    }
-	  else if (theBOOL && strncasecmp(aLine, "Content-Type", 12) == 0)
-	    {
-	      [CWParser parseContentType: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			inPart: aMessage];
-	    }
-	  break;
-	  
-	case 'd':
-	  if (strncasecmp(aLine, "Date", 4) == 0)
-	    {
-	      [CWParser parseDate: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			inMessage: aMessage];
-
-	      if ([aMessage receivedDate])
-		{
-		  record.date = [[aMessage receivedDate] timeIntervalSince1970];
-		}
-	    }
-	  break;
-	  
-	case 'f':
-	  if (strncasecmp(aLine, "From ", 5) == 0)
-	    {
-	      // do nothing, it's our message separator
-	    }
-	  else if (strncasecmp(aLine, "From", 4) == 0)
-	    {
-	      record.from = [CWParser parseFrom: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-				      inMessage: aMessage
-				      quick: NO];
-	    }
-	  break;
-	  
-	case 'i':
-	  if (strncasecmp(aLine, "In-Reply-To", 11) == 0)
-	    {
-	      record.in_reply_to = [CWParser parseInReplyTo: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-					     inMessage: aMessage
-					     quick: NO];
-	    }
-	  break;
-
-	case 'm':
-	  if (strncasecmp(aLine, "Message-ID", 10) == 0)
-	    {
-	      record.message_id = [CWParser parseMessageID: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-					    inMessage: aMessage
-					    quick: NO];
-	    }
-	  else if (strncasecmp(aLine, "MIME-Version", 12) == 0)
-	    {
-	      [CWParser parseMIMEVersion: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			inMessage: aMessage];
-	    }
-	  break;
-	  
-	case 'o':
-	  if (theBOOL && strncasecmp(aLine, "Organization", 12) == 0)
-	    {
-	      [CWParser parseOrganization: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			inMessage: aMessage];
-	    }
-	  break;
-	
-	case 'r':
-	  if (strncasecmp(aLine, "References", 10) == 0)
-	    {
-	      record.references = [CWParser parseReferences: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-					    inMessage: aMessage
-					    quick: NO];
-	    }
-	  else if (theBOOL && strncasecmp(aLine, "Reply-To", 8) == 0)
-	    {
-	      [CWParser parseReplyTo: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			inMessage: aMessage];
-	    }
-	  else if (theBOOL && strncasecmp(aLine, "Resent-From", 11) == 0)
-	    {
-	      [CWParser parseResentFrom: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			inMessage: aMessage];
-	    }
-	  break;
-	  
-	case 's':
-	  if (strncasecmp(aLine, "Status", 6) == 0)
-	    {
-	      [CWParser parseStatus: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			inMessage: aMessage];
-	    }
-	  else if (strncasecmp(aLine, "Subject", 7) == 0)
-	    {
-	      record.subject = [CWParser parseSubject: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-					inMessage: aMessage
-					quick: NO];
-	    }
-	  break;
-	  
-	case 't':
-	  if (strncasecmp(aLine, "To", 2) == 0)
-	    {
-	      record.to = [CWParser parseDestination: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-				    forType: PantomimeToRecipient
-				    inMessage: aMessage
-				    quick: NO];
-	    }
-	  break;
-	  
-	case 'x':
-	  if (strncasecmp(aLine, "X-Status", 8) == 0)
-	    {
-	      [CWParser parseXStatus: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			inMessage: aMessage];
-	    }
-	  break;
-	  
-	case '\n':
-	  [aMessage setFilePosition: begin];
-	  //[aMessage setBodyFilePosition: ftell(theStream)];
-	  
-	  // We must set this in case the last message of our mbox is
-	  // an "empty message", i.e, a message with all the headers but
-	  // with an empty content.
-	  end = ftell(theStream);
-	  
-	  while (fgets(aLine, 1024, theStream) != NULL)
-	    {
-	      if (strncmp(aLine, "From ", 5) == 0 && _type == PantomimeFormatMbox) break;
-	      else end = ftell(theStream);
-	    }
-	  
-	  fseek(theStream, end, SEEK_SET);
-	  size = end-begin;
-	  
-	  // We set the properties of our message object and we add it to our folder.
-	  [aMessage setSize: size];
-	  [aMessage setMessageNumber: [allMessages count]+1];
-	  [aMessage setFolder: self];
-	  [aMessage setType: _type];
-	  [self appendMessage: aMessage];
-	      
-	  record.filename = (char *)[[theFile lastPathComponent] UTF8String];
-	  record.flags = (theFlags ? theFlags->flags : [aMessage flags]->flags);
-	  record.position = begin;
-	  record.size = size;
-	  [_cacheManager writeRecord:record];
-	  CLEAR_CACHE_RECORD(record);
-	  //
-	  
-	  // if we are reading a maildir message, check for flag information in the file name
-	  if (_type == PantomimeFormatMaildir)
-	    {
-	      NSString *info;
-	      NSInteger indexOfPatternSeparator;
-	      
-	      [aMessage setMailFilename: [theFile lastPathComponent]];
-
-	      // The name of file will be unique_pattern:info with the status flags in the info field
-	      indexOfPatternSeparator = [theFile indexOfCharacter: ':'];
-	      
-	      if (indexOfPatternSeparator > 1)
-		{
-		  info = [theFile substringFromIndex: indexOfPatternSeparator];
-		}
-	      else
-		{
-		  info = @"";
-		}
-	      
-	      // We remove all the flags and rebuild
-	      [[aMessage flags] removeAll];
-	      [[aMessage flags] addFlagsFromData: [info dataUsingEncoding: NSASCIIStringEncoding]
-				format: PantomimeFormatMaildir];
-	    }		
-	  
-
-	  begin = ftell(theStream);
-	  
-	  // We re-init our message and our mutable string for the next message we're gonna read
-	  aMessage = [[CWLocalMessage alloc] init];
-	  break;
-	  
-	default:
-	  if (theBOOL)
-	    {
-	      [CWParser parseUnknownHeader: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
-			inMessage: aMessage];
-	    }
-	  break;
-	}
+        begin = ftell(theStream);
     }
     
-  //
-  // We sync our cache if's an mbox file since we are done parsing. For
-  // maildir, we synchronize it in -parse_maildir:
-  //
-  if (_type == PantomimeFormatMbox)
+    while (fgets(aLine, 1024, theStream) != NULL)
     {
-      //NSLog(@"Sync cache.");
-      [_cacheManager synchronize];
+        switch (tolower(aLine[0]))
+        {
+            case 'b':
+                if (theBOOL && strncasecmp(aLine, "Bcc", 2) == 0)
+                {
+                    [CWParser parseDestination: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                       forType: PantomimeBccRecipient
+                                     inMessage: aMessage
+                                         quick: NO];
+                }
+                break;
+                
+            case 'c':
+                if (strncasecmp(aLine, "Cc", 2) == 0)
+                {
+                    record.cc = [CWParser parseDestination: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                                   forType: PantomimeCcRecipient
+                                                 inMessage: aMessage
+                                                     quick: NO];
+                }
+                else if (theBOOL && strncasecmp(aLine, "Content-Type", 12) == 0)
+                {
+                    [CWParser parseContentType: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                        inPart: aMessage];
+                }
+                break;
+                
+            case 'd':
+                if (strncasecmp(aLine, "Date", 4) == 0)
+                {
+                    [CWParser parseDate: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                              inMessage: aMessage];
+                    
+                    if ([aMessage receivedDate])
+                    {
+                        record.date = [[aMessage receivedDate] timeIntervalSince1970];
+                    }
+                }
+                break;
+                
+            case 'f':
+                if (strncasecmp(aLine, "From ", 5) == 0)
+                {
+                    // do nothing, it's our message separator
+                }
+                else if (strncasecmp(aLine, "From", 4) == 0)
+                {
+                    record.from = [CWParser parseFrom: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                            inMessage: aMessage
+                                                quick: NO];
+                }
+                break;
+                
+            case 'i':
+                if (strncasecmp(aLine, "In-Reply-To", 11) == 0)
+                {
+                    record.in_reply_to = [CWParser parseInReplyTo: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                                        inMessage: aMessage
+                                                            quick: NO];
+                }
+                break;
+                
+            case 'm':
+                if (strncasecmp(aLine, "Message-ID", 10) == 0)
+                {
+                    record.message_id = [CWParser parseMessageID: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                                       inMessage: aMessage
+                                                           quick: NO];
+                }
+                else if (strncasecmp(aLine, "MIME-Version", 12) == 0)
+                {
+                    [CWParser parseMIMEVersion: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                     inMessage: aMessage];
+                }
+                break;
+                
+            case 'o':
+                if (theBOOL && strncasecmp(aLine, "Organization", 12) == 0)
+                {
+                    [CWParser parseOrganization: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                      inMessage: aMessage];
+                }
+                break;
+                
+            case 'r':
+                if (strncasecmp(aLine, "References", 10) == 0)
+                {
+                    record.references = [CWParser parseReferences: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                                        inMessage: aMessage
+                                                            quick: NO];
+                }
+                else if (theBOOL && strncasecmp(aLine, "Reply-To", 8) == 0)
+                {
+                    [CWParser parseReplyTo: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                 inMessage: aMessage];
+                }
+                else if (theBOOL && strncasecmp(aLine, "Resent-From", 11) == 0)
+                {
+                    [CWParser parseResentFrom: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                    inMessage: aMessage];
+                }
+                break;
+                
+            case 's':
+                if (strncasecmp(aLine, "Status", 6) == 0)
+                {
+                    [CWParser parseStatus: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                inMessage: aMessage];
+                }
+                else if (strncasecmp(aLine, "Subject", 7) == 0)
+                {
+                    record.subject = [CWParser parseSubject: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                                  inMessage: aMessage
+                                                      quick: NO];
+                }
+                break;
+                
+            case 't':
+                if (strncasecmp(aLine, "To", 2) == 0)
+                {
+                    record.to = [CWParser parseDestination: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                                   forType: PantomimeToRecipient
+                                                 inMessage: aMessage
+                                                     quick: NO];
+                }
+                break;
+                
+            case 'x':
+                if (strncasecmp(aLine, "X-Status", 8) == 0)
+                {
+                    [CWParser parseXStatus: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                 inMessage: aMessage];
+                }
+                break;
+                
+            case '\n':
+                [aMessage setFilePosition: begin];
+                //[aMessage setBodyFilePosition: ftell(theStream)];
+                
+                // We must set this in case the last message of our mbox is
+                // an "empty message", i.e, a message with all the headers but
+                // with an empty content.
+                end = ftell(theStream);
+                
+                while (fgets(aLine, 1024, theStream) != NULL)
+                {
+                    if (strncmp(aLine, "From ", 5) == 0 && _type == PantomimeFormatMbox) break;
+                    else end = ftell(theStream);
+                }
+                
+                fseek(theStream, end, SEEK_SET);
+                size = end-begin;
+                
+                // We set the properties of our message object and we add it to our folder.
+                [aMessage setSize: size];
+                [aMessage setMessageNumber: [allMessages count]+1];
+                [aMessage setFolder: self];
+                [aMessage setType: _type];
+                [self appendMessage: aMessage];
+                
+                record.filename = (char *)[[theFile lastPathComponent] UTF8String];
+                record.flags = (theFlags ? theFlags->flags : [aMessage flags]->flags);
+                record.position = begin;
+                record.size = size;
+                [_cacheManager writeRecord:record];
+                CLEAR_CACHE_RECORD(record);
+                //
+                
+                // if we are reading a maildir message, check for flag information in the file name
+                if (_type == PantomimeFormatMaildir)
+                {
+                    NSString *info;
+                    NSInteger indexOfPatternSeparator;
+                    
+                    [aMessage setMailFilename: [theFile lastPathComponent]];
+                    
+                    // The name of file will be unique_pattern:info with the status flags in the info field
+                    indexOfPatternSeparator = [theFile indexOfCharacter: ':'];
+                    
+                    if (indexOfPatternSeparator > 1)
+                    {
+                        info = [theFile substringFromIndex: indexOfPatternSeparator];
+                    }
+                    else
+                    {
+                        info = @"";
+                    }
+                    
+                    // We remove all the flags and rebuild
+                    [[aMessage flags] removeAll];
+                    [[aMessage flags] addFlagsFromData: [info dataUsingEncoding: NSASCIIStringEncoding]
+                                                format: PantomimeFormatMaildir];
+                }		
+                
+                
+                begin = ftell(theStream);
+                
+                // We re-init our message and our mutable string for the next message we're gonna read
+                aMessage = [[CWLocalMessage alloc] init];
+                break;
+                
+            default:
+                if (theBOOL)
+                {
+                    [CWParser parseUnknownHeader: [self unfoldLinesStartingWith: aLine  fileStream: theStream]
+                                       inMessage: aMessage];
+                }
+                break;
+        }
+    }
+    
+    //
+    // We sync our cache if's an mbox file since we are done parsing. For
+    // maildir, we synchronize it in -parse_maildir:
+    //
+    if (_type == PantomimeFormatMbox)
+    {
+        //NSLog(@"Sync cache.");
+        [_cacheManager synchronize];
     }
 }
 
@@ -622,64 +618,64 @@
 // This method is used to unfold the lines that have been folded
 // by starting with the first line.
 //
-- (NSData *) unfoldLinesStartingWith: (char *) firstLine 
-			  fileStream: (FILE*) theStream
+- (NSData *) unfoldLinesStartingWith:(char*)firstLine
+                          fileStream:(FILE*)theStream
 {
-  NSMutableData *aMutableData;
-  char aLine[1024], buf[1024];
-  long mark;
-  
-  // We initialize our buffers
-  memset(aLine, 0, 1024);
-  memset(buf, 0, 1024);
+    NSMutableData *aMutableData;
+    char aLine[1024], buf[1024];
+    long mark;
     
-  mark = ftell(theStream);
-  fgets(aLine, 1024, theStream);
-
-  if (aLine == NULL)
+    // We initialize our buffers
+    memset(aLine, 0, 1024);
+    memset(buf, 0, 1024);
+    
+    mark = ftell(theStream);
+    fgets(aLine, 1024, theStream);
+    
+    if (aLine == NULL)
     {
-      return [NSData dataWithBytes: firstLine  length: strlen(firstLine)];
+        return [NSData dataWithBytes: firstLine  length: strlen(firstLine)];
     }
-
-  // We create our mutable data
-  aMutableData = [[NSMutableData alloc] initWithCapacity: strlen(firstLine)];
-
-  // We remove the trailing \n and we append our first line to our mutable data
-  strncpy(buf, firstLine, strlen(firstLine) - 1);
-  [aMutableData appendCFormat: @"%s ", buf];
-  
-  // We loop as long as we have a space or tab character as the first character 
-  // of the line that we just read
-  while (aLine[0] == 9 || aLine[0] == 32)
+    
+    // We create our mutable data
+    aMutableData = [[NSMutableData alloc] initWithCapacity: strlen(firstLine)];
+    
+    // We remove the trailing \n and we append our first line to our mutable data
+    strncpy(buf, firstLine, strlen(firstLine) - 1);
+    [aMutableData appendCFormat: @"%s ", buf];
+    
+    // We loop as long as we have a space or tab character as the first character
+    // of the line that we just read
+    while (aLine[0] == 9 || aLine[0] == 32)
     {
-      char *ptr;
-
-      // We skip the first char
-      ptr = aLine;
-      ptr++;
-      
-      // We init our buffer and we copy the data into it by trimming the trailing \n
-      memset(buf, 0, 1024);
-      strncpy(buf, ptr, strlen(ptr)-1);
-      [aMutableData appendCFormat: @"%s ", buf];
-      
-      // We set our mark and get the next folded line (if there's one)
-      mark = ftell(theStream);
-      memset(aLine, 0, 1024);
-      fgets(aLine, 1024, theStream);
-      
-      if (aLine == NULL)
+        char *ptr;
+        
+        // We skip the first char
+        ptr = aLine;
+        ptr++;
+        
+        // We init our buffer and we copy the data into it by trimming the trailing \n
+        memset(buf, 0, 1024);
+        strncpy(buf, ptr, strlen(ptr)-1);
+        [aMutableData appendCFormat: @"%s ", buf];
+        
+        // We set our mark and get the next folded line (if there's one)
+        mark = ftell(theStream);
+        memset(aLine, 0, 1024);
+        fgets(aLine, 1024, theStream);
+        
+        if (aLine == NULL)
         {
-          return nil;
+            return nil;
         }
     }
-
-  // We reset our file pointer position
-  fseek(theStream, mark, SEEK_SET);
-  
-  // We trim our last " " that we added to our data
-  [aMutableData setLength: [aMutableData length]-1];
-  return aMutableData;
+    
+    // We reset our file pointer position
+    fseek(theStream, mark, SEEK_SET);
+    
+    // We trim our last " " that we added to our data
+    [aMutableData setLength: [aMutableData length]-1];
+    return aMutableData;
 }
 
 
@@ -687,26 +683,26 @@
 // The returned value will always be at least "1", unless
 // theData is nil or its length is 0, in which case 0 is returned.
 //
-+ (NSUInteger) numberOfMessagesFromData: (NSData *) theData
++ (NSUInteger) numberOfMessagesFromData:(NSData*)theData
 {
-  NSRange aRange;
-  NSInteger count, len;
-
-  if (!theData || (len = [theData length]) == 0)
+    NSRange aRange;
+    NSInteger count, len;
+    
+    if (!theData || (len = [theData length]) == 0)
     {
-      return 0;
+        return 0;
     }
-
-  aRange = NSMakeRange(0,0);
-  count = 0;
-
-  do
+    
+    aRange = NSMakeRange(0,0);
+    count = 0;
+    
+    do
     {
-      aRange = [theData rangeOfCString: "\nFrom "  options: 0  range: NSMakeRange(NSMaxRange(aRange), len-NSMaxRange(aRange))];
-      count++;
+        aRange = [theData rangeOfCString: "\nFrom "  options: 0  range: NSMakeRange(NSMaxRange(aRange), len-NSMaxRange(aRange))];
+        count++;
     } while (aRange.location != NSNotFound);
-
-  return count;
+    
+    return count;
 }
 
 

@@ -20,16 +20,13 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "CWDNSManager.h"
+#import "CWDNSManager.h"
+#import "CWConstants.h"
 
-#include "CWConstants.h"
-#ifdef __MINGW32__
-#include <winsock2.h>
-#else
 #include <netdb.h>
-#endif
 #include <unistd.h>
 #include <err.h>
+
 
 static CWDNSManager *singleInstance = nil;
 
@@ -47,15 +44,6 @@ static CWDNSManager *singleInstance = nil;
   return self;
 }
 
-
-//
-//
-//
-- (void) dealloc
-{
-  RELEASE(_cache);
-  [super dealloc];
-}
 
 - (NSArray *) availableAddressesForName:(NSString *)theName
 								   port:(unsigned short) thePort

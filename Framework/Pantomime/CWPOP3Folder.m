@@ -20,22 +20,22 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "CWPOP3Folder.h"
+#import "CWPOP3Folder.h"
 
-#include "CWConnection.h"
-#include "CWConstants.h"
-#include "CWMessage.h"
-#include "CWPOP3CacheManager.h"
-#include "CWPOP3CacheObject.h"
-#include "CWPOP3Message.h"
-#include "CWPOP3Store.h"
-#include "CWTCPConnection.h"
-#include "NSData+Extensions.h"
-#include "NSString+Extensions.h"
+#import "CWConnection.h"
+#import "CWConstants.h"
+#import "CWMessage.h"
+#import "CWPOP3CacheManager.h"
+#import "CWPOP3CacheObject.h"
+#import "CWPOP3Message.h"
+#import "CWPOP3Store.h"
+#import "CWTCPConnection.h"
+#import "NSData+CWExtensions.h"
+#import "NSString+CWExtensions.h"
 
-#include <Foundation/NSAutoreleasePool.h>
-#include <Foundation/NSException.h>
-#include <Foundation/NSValue.h>
+#import <Foundation/NSAutoreleasePool.h>
+#import <Foundation/NSException.h>
+#import <Foundation/NSValue.h>
 
 #include <limits.h>
 #include <stdio.h>

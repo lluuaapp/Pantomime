@@ -19,24 +19,18 @@
 **  License along with this library; if not, write to the Free Software
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
-#include "CWPOP3Store.h"
+#import "CWPOP3Store.h"
 
-#include "CWConstants.h"
-#include "CWMD5.h"
-#include "CWMIMEUtility.h"
-#include "NSData+Extensions.h"
-#include "CWPOP3CacheManager.h"
-#include "CWPOP3Folder.h"
-#include "CWPOP3Message.h"
-#include "CWStore.h"
-#include "CWTCPConnection.h"
-#include "CWURLName.h"
-
-#include <Foundation/NSArray.h>
-#include <Foundation/NSBundle.h>
-#include <Foundation/NSException.h>
-#include <Foundation/NSNotification.h>
-#include <Foundation/NSPathUtilities.h>
+#import "CWConstants.h"
+#import "CWMD5.h"
+#import "CWMIMEUtility.h"
+#import "NSData+CWExtensions.h"
+#import "CWPOP3CacheManager.h"
+#import "CWPOP3Folder.h"
+#import "CWPOP3Message.h"
+#import "CWTCPConnection.h"
+#import "CWURLName.h"
+#import "CWCacheRecord.h"
 
 #include <stdio.h>
 
@@ -64,17 +58,14 @@ static NSData *CRLF;
 - (id) initWithCommand: (POP3Command) theCommand
 	     arguments: (NSString *) theArguments
 {
-  self = [super init];
-  command = theCommand;
-  ASSIGN(arguments, theArguments);
-  return self;
+    self = [super init];
+    if (self) {
+        command = theCommand;
+        arguments = theArguments;
+    }
+    return self;
 }
 
-- (void) dealloc
-{
-  RELEASE(arguments);
-  [super dealloc];
-}
 @end
 
 
@@ -117,53 +108,40 @@ static NSData *CRLF;
 //
 //
 //
-- (id) initWithName: (NSString *) theName
-	       port: (NSUInteger) thePort
+- (id) initWithName:(NSString *)theName
+               port:(NSUInteger)thePort
 {
-  if (thePort == 0) thePort = 110;
-
-  self = [super initWithName: theName  port: thePort];
-
-  _lastCommand = POP3_AUTHORIZATION;
-  _timestamp = nil;
-  
-  // We initialize out POP3Folder object.
-  _folder = [[CWPOP3Folder alloc] initWithName: @"Inbox"];
-  [_folder setStore: self];
-  
-  // We queue our first "command".
-  [_queue addObject: AUTORELEASE([[CWPOP3QueueObject alloc] initWithCommand: _lastCommand  arguments: @""])];
-
-  return self;
+    self = [super initWithName: theName  port:thePort?:110];
+    if (self)
+    {
+        _lastCommand = POP3_AUTHORIZATION;
+        _timestamp = nil;
+        
+        // We initialize out POP3Folder object.
+        _folder = [[CWPOP3Folder alloc] initWithName: @"Inbox"];
+        [_folder setStore: self];
+        
+        // We queue our first "command".
+        [_queue addObject:[[CWPOP3QueueObject alloc] initWithCommand: _lastCommand  arguments: @""]];
+    }
+    
+    return self;
 }
 
 
 //
 //
 //
-- (void) dealloc
+- (id) initWithURL:(CWURLName *)theURL
 {
-  //NSLog(@"POP3Store: -dealloc");
-  RELEASE(_folder);
-  RELEASE(_timestamp);
-
-  [super dealloc];
+    return [self initWithName:[theURL host]  port:110];
 }
 
 
 //
 //
 //
-- (id) initWithURL: (CWURLName *) theURL
-{
-  return [self initWithName: [theURL host]  port: 110];
-}
-
-
-//
-//
-//
-- (NSEnumerator *) folderEnumerator
+- (NSEnumerator *)folderEnumerator
 {
   return [[NSArray arrayWithObject: @"Inbox"] objectEnumerator];
 }
@@ -172,7 +150,7 @@ static NSData *CRLF;
 //
 //
 //
-- (NSEnumerator *) subscribedFolderEnumerator
+- (NSEnumerator *)subscribedFolderEnumerator
 {
   return [self folderEnumerator];
 }
@@ -181,7 +159,7 @@ static NSData *CRLF;
 //
 //
 //
-- (NSEnumerator *) openFoldersEnumerator
+- (NSEnumerator *)openFoldersEnumerator
 {
   return [[NSArray arrayWithObject: _folder] objectEnumerator];
 }
@@ -190,7 +168,7 @@ static NSData *CRLF;
 //
 //
 //
-- (void) removeFolderFromOpenFolders: (CWFolder *) theFolder
+- (void) removeFolderFromOpenFolders:(CWFolder *)theFolder
 {
   // Do nothing
 }
@@ -200,9 +178,9 @@ static NSData *CRLF;
 // This method authenticates the Store to the POP3 server.
 // In case of an error, it returns NO.
 //
-- (void) authenticate: (NSString *) theUsername
-	     password: (NSString *) thePassword
-	    mechanism: (NSString *) theMechanism
+- (void) authenticate:(NSString*)theUsername
+             password:(NSString*)thePassword
+            mechanism:(NSString*)theMechanism
 {
   ASSIGN(_username, theUsername);
   ASSIGN(_password, thePassword);
@@ -217,12 +195,10 @@ static NSData *CRLF;
       aMutableData = [[NSMutableData alloc] init];
       [aMutableData appendCFormat:  @"%@%@", _timestamp, _password];
       aMD5 = [[CWMD5 alloc] initWithData: aMutableData];
-      RELEASE(aMutableData);
 
       [aMD5 computeDigest];
 
       [self sendCommand: POP3_APOP  arguments: @"APOP %@ %@", _username, [aMD5 digestAsString]];
-      RELEASE(aMD5);
     }
   else
     {
@@ -483,66 +459,66 @@ static NSData *CRLF;
 //
 - (void) sendCommand: (POP3Command) theCommand  arguments: (NSString *) theFormat, ...
 {
-  CWPOP3QueueObject *aQueueObject;
-
-  //NSLog(@"sendCommand invoked, cmd = %i", theCommand);
-
-  if (theCommand == POP3_EMPTY_QUEUE)
+    CWPOP3QueueObject *aQueueObject;
+    
+    //NSLog(@"sendCommand invoked, cmd = %i", theCommand);
+    
+    if (theCommand == POP3_EMPTY_QUEUE)
     {
-      if ([_queue count])
-	{
-	  // We dequeue the first inserted command from the queue.
-	  aQueueObject = [_queue lastObject];
-	}
-      else
-	{
-	  // The queue is empty, we have nothing more to do...
-	  return;
-	}
+        if ([_queue count])
+        {
+            // We dequeue the first inserted command from the queue.
+            aQueueObject = [_queue lastObject];
+        }
+        else
+        {
+            // The queue is empty, we have nothing more to do...
+            return;
+        }
     }
-  else
+    else
     {
-      NSString *aString;
-      va_list args;
-      
-      va_start(args, theFormat);
-      
-      aString = [[NSString alloc] initWithFormat: theFormat  arguments: args];
-      
-      aQueueObject = [[CWPOP3QueueObject alloc] initWithCommand: theCommand  arguments: aString];
-      RELEASE(aString);
+        NSString *aString = nil;
+        
+        {
+            va_list args;
+            va_start(args, theFormat);
+            aString = [[NSString alloc] initWithFormat:theFormat  arguments:args];
+            va_end(args);
+        }
 
-      [_queue insertObject: aQueueObject  atIndex: 0];
-      RELEASE(aQueueObject);
-
-      //NSLog(@"queue size = %d:", [_queue count]);
-      
-      // If we had queued commands, we return since we'll eventually
-      // dequeue them one by one. Otherwise, we run it immediately.
-      if ([_queue count] > 1)
-	{
-	  //NSLog(@"QUEUED |%@|", aString);
-	  return;
-	}
+        aQueueObject = [[CWPOP3QueueObject alloc] initWithCommand:theCommand  arguments:aString];
+        
+        [_queue insertObject: aQueueObject  atIndex: 0];
+        
+        //NSLog(@"queue size = %d:", [_queue count]);
+        
+        // If we had queued commands, we return since we'll eventually
+        // dequeue them one by one. Otherwise, we run it immediately.
+        if ([_queue count] > 1)
+        {
+            //NSLog(@"QUEUED |%@|", aString);
+            return;
+        }
     }
-  
-  //NSLog(@"Sending |%@|", aQueueObject->arguments);
-  _lastCommand = aQueueObject->command;
-
-  // We verify if we had queued an indicator to tell us that we were done
-  // wrt expunging the POP3 folder.
-  if (_lastCommand == POP3_EXPUNGE_COMPLETED)
+    
+    //NSLog(@"Sending |%@|", aQueueObject->arguments);
+    _lastCommand = aQueueObject->command;
+    
+    // We verify if we had queued an indicator to tell us that we were done
+    // wrt expunging the POP3 folder.
+    if (_lastCommand == POP3_EXPUNGE_COMPLETED)
     {
-      [_queue removeObject: [_queue lastObject]];
-
-      POST_NOTIFICATION(PantomimeFolderExpungeCompleted, self, [NSDictionary dictionaryWithObject: _folder  forKey: @"Folder"]); 
-      PERFORM_SELECTOR_2(_delegate, @selector(folderExpungeCompleted:), PantomimeFolderExpungeCompleted, _folder, @"Folder");
-      return;
+        [_queue removeObject: [_queue lastObject]];
+        
+        POST_NOTIFICATION(PantomimeFolderExpungeCompleted, self, [NSDictionary dictionaryWithObject: _folder  forKey: @"Folder"]);
+        PERFORM_SELECTOR_2(_delegate, @selector(folderExpungeCompleted:), PantomimeFolderExpungeCompleted, _folder, @"Folder");
+        return;
     }
-
-  // We send the command to the POP3 server.
-  [self writeData: [aQueueObject->arguments dataUsingEncoding: defaultCStringEncoding]];
-  [self writeData: CRLF];
+    
+    // We send the command to the POP3 server.
+    [self writeData: [aQueueObject->arguments dataUsingEncoding: defaultCStringEncoding]];
+    [self writeData: CRLF];
 }
 
 //
@@ -563,17 +539,17 @@ static NSData *CRLF;
 
 - (void) _parseAPOP
 {
-  NSData *aData;
-  
-  aData = [_responsesFromServer lastObject];
-  
-  if ([aData hasCPrefix: "+OK"])
+    NSData *aData;
+    
+    aData = [_responsesFromServer lastObject];
+    
+    if ([aData hasCPrefix: "+OK"])
     {
-      AUTHENTICATION_COMPLETED(_delegate, @"APOP");
+        AUTHENTICATION_COMPLETED(_delegate, @"APOP");
     }
-  else
+    else
     {
-      AUTHENTICATION_FAILED(_delegate, @"APOP");
+        AUTHENTICATION_FAILED(_delegate, @"APOP");
     }
 }
 
@@ -622,7 +598,7 @@ static NSData *CRLF;
   for (i = 1; i < count; i++)
     {
       aData = [_responsesFromServer objectAtIndex: i];
-      [_capabilities addObject: AUTORELEASE([[NSString alloc] initWithData: aData  encoding: defaultCStringEncoding])];
+      [_capabilities addObject:[[NSString alloc] initWithData:aData  encoding:defaultCStringEncoding]];
     }
   
   POST_NOTIFICATION(PantomimeServiceInitialized, self, nil);
@@ -660,7 +636,7 @@ static NSData *CRLF;
 		sscanf([[_responsesFromServer objectAtIndex: i] cString], "%i %li", &index, &size);
 #endif
       
-      aMessage = [_folder->allMessages objectAtIndex: (index-1)];
+      aMessage = [_folder->allMessages objectAtIndex:(index-1)];
       [aMessage setSize: size];
       [aMessage setMessageNumber: i];
     }
@@ -713,72 +689,72 @@ static NSData *CRLF;
 //
 - (void) _parseRETR
 {
-  NSData *aData;
-  
-  aData = [_responsesFromServer objectAtIndex: 0];
-
-  if ([aData hasCPrefix: "+OK"])
+    NSData *aData;
+    
+    aData = [_responsesFromServer objectAtIndex: 0];
+    
+    if ([aData hasCPrefix: "+OK"])
     {
-      NSMutableData *aMutableData;
-      CWPOP3Message *aMessage;
-      NSInteger count, i, index;
-
-      // We get the index of the message we are parsing...
-      sscanf([((CWPOP3QueueObject *)[_queue lastObject])->arguments UTF8String], "RETR %ld", (long)(&index));
-
-      aMessage = (CWPOP3Message *)[_folder messageAtIndex: (index-1)];
-      aMutableData = [[NSMutableData alloc] initWithCapacity: [aMessage size]];
-      count = [_responsesFromServer count];
-
-      for (i = 1; i < count; i++)
-	{
-	  [aMutableData appendData: [_responsesFromServer objectAtIndex: i]];
-
-	  // We do NOT append the last \n.
-	  if (i < count-1)
-	    {
-	      [aMutableData appendBytes: "\n"  length: 1];
-	    }
-	}
-
-      [aMessage setRawSource: aMutableData];
-
-      if (_lastCommand == POP3_RETR_AND_INITIALIZE)
-	{
-	  NSRange aRange;
-	  
-	  aRange = [aMutableData rangeOfCString: "\n\n"];
-	  
-	  if (aRange.length == 0)
-	    {
-	      [aMessage setInitialized: NO];
-	    }
-	  else
-	    {
-	      [aMessage setHeadersFromData: [aMutableData subdataWithRange: NSMakeRange(0,aRange.location)]];
-	      [CWMIMEUtility setContentFromRawSource:
-			       [aMutableData subdataWithRange:
-					       NSMakeRange(aRange.location + 2, [aMutableData length]-(aRange.location+2))]
-			     inPart: aMessage];
-	      [aMessage setInitialized: YES];
-	    }
-	}
-      
-      [aMessage setSize: [aMutableData length]];
-      RELEASE(aMutableData);
-
-      // Do that in parse top also?
-      if ([_folder cacheManager])
-	{
-	  cache_record r;
-
-	  r.date = [[NSCalendarDate calendarDate] timeIntervalSince1970];
-	  r.pop3_uid = [aMessage UID];
-	  [[_folder cacheManager] writeRecord: &r];
-	}
-
-      POST_NOTIFICATION(PantomimeMessagePrefetchCompleted, self, [NSDictionary dictionaryWithObject: aMessage  forKey: @"Message"]);
-      PERFORM_SELECTOR_2(_delegate, @selector(messagePrefetchCompleted:), PantomimeMessagePrefetchCompleted, aMessage, @"Message");
+        NSMutableData *aMutableData;
+        CWPOP3Message *aMessage;
+        NSInteger count, i, index;
+        
+        // We get the index of the message we are parsing...
+        sscanf([((CWPOP3QueueObject *)[_queue lastObject])->arguments UTF8String], "RETR %ld", &index);
+        
+        aMessage = (CWPOP3Message *)[_folder messageAtIndex: (index-1)];
+        aMutableData = [[NSMutableData alloc] initWithCapacity: [aMessage size]];
+        count = [_responsesFromServer count];
+        
+        for (i = 1; i < count; i++)
+        {
+            [aMutableData appendData: [_responsesFromServer objectAtIndex: i]];
+            
+            // We do NOT append the last \n.
+            if (i < count-1)
+            {
+                [aMutableData appendBytes: "\n"  length: 1];
+            }
+        }
+        
+        [aMessage setRawSource: aMutableData];
+        
+        if (_lastCommand == POP3_RETR_AND_INITIALIZE)
+        {
+            NSRange aRange;
+            
+            aRange = [aMutableData rangeOfCString: "\n\n"];
+            
+            if (aRange.length == 0)
+            {
+                [aMessage setInitialized: NO];
+            }
+            else
+            {
+                [aMessage setHeadersFromData: [aMutableData subdataWithRange: NSMakeRange(0,aRange.location)]];
+                [CWMIMEUtility setContentFromRawSource:
+                 [aMutableData subdataWithRange:
+                  NSMakeRange(aRange.location + 2, [aMutableData length]-(aRange.location+2))]
+                                                inPart: aMessage];
+                [aMessage setInitialized: YES];
+            }
+        }
+        
+        [aMessage setSize: [aMutableData length]];
+        
+        // Do that in parse top also?
+        if ([_folder cacheManager])
+        {
+            CWCacheRecord *r = [[CWCacheRecord alloc] init];
+            
+            r.date = [[NSCalendarDate calendarDate] timeIntervalSince1970];
+            r.pop3_uid = [aMessage UID];
+            
+            [[_folder cacheManager] writeRecord:r];
+        }
+        
+        POST_NOTIFICATION(PantomimeMessagePrefetchCompleted, self, [NSDictionary dictionaryWithObject: aMessage  forKey: @"Message"]);
+        PERFORM_SELECTOR_2(_delegate, @selector(messagePrefetchCompleted:), PantomimeMessagePrefetchCompleted, aMessage, @"Message");
     }
 }
 
@@ -810,7 +786,6 @@ static NSData *CRLF;
 	  aMessage = [[CWPOP3Message alloc] init];
 	  [aMessage setFolder: _folder];
 	  [_folder->allMessages addObject: aMessage];
-	  RELEASE(aMessage);
 	}
 
       //NSLog(@"Folder count = %d", [_folder count]);
@@ -882,8 +857,7 @@ static NSData *CRLF;
 	  [aMutableData appendBytes: "\n"  length: 1];
 	}
 
-      [aMessage setRawSource: aMutableData];
-      RELEASE(aMutableData);
+      [aMessage setRawSource:aMutableData];
 
       POST_NOTIFICATION(PantomimeMessagePrefetchCompleted, self, [NSDictionary dictionaryWithObject: aMessage  forKey: @"Message"]);
       PERFORM_SELECTOR_2(_delegate, @selector(messagePrefetchCompleted:), PantomimeMessagePrefetchCompleted, aMessage, @"Message");
@@ -909,7 +883,7 @@ static NSData *CRLF;
 #else
 		sscanf([[_responsesFromServer objectAtIndex: i] cString],"%i %s", &index, buf);
 #endif
-       [[_folder->allMessages objectAtIndex: (index-1)] setUID: [NSString stringWithCString: buf]];
+       [[_folder->allMessages objectAtIndex:(index-1)] setUID:[NSString stringWithUTF8String:buf]];
     }
 
   POST_NOTIFICATION(PantomimeFolderPrefetchCompleted, self, [NSDictionary dictionaryWithObject: _folder  forKey: @"Folder"]);

@@ -24,7 +24,7 @@
 #import "CWConstants.h"
 #import "NSData+CWExtensions.h"
 
-#include <CommonCrypto/CommonDigest.h>
+#import <CommonCrypto/CommonDigest.h>
 
 #define word32 NSUInteger
 

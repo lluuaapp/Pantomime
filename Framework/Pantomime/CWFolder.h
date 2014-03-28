@@ -20,6 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+#import <Foundation/Foundation.h>
 #import "CWConstants.h"
 
 @class CWFlags;
@@ -280,7 +281,6 @@ extern NSString* PantomimeFolderSearchFailed;
 
   @protected
     NSMutableDictionary *_properties;
-    NSString *_name;
 
     id _cacheManager;
     id _store;
@@ -295,6 +295,13 @@ extern NSString* PantomimeFolderSearchFailed;
 }
 
 /*!
+ @method name
+ @discussion This method returns the name of the folder.
+ @result The full name of the folder.
+ */
+@property NSString *name;
+
+/*!
   @method initWithName:
   @discussion This method initialize a folder with the
               specified name. The name can contain folder
@@ -305,20 +312,6 @@ extern NSString* PantomimeFolderSearchFailed;
   @result The folder, nil in case of an error.
 */
 - (id) initWithName: (NSString *) theName;
-
-/*!
-  @method name
-  @discussion This method returns the name of the folder.
-  @result The full name of the folder.
-*/
-- (NSString *) name;
-
-/*!
-  @method setName:
-  @discussion Sets the name of a folder.
-  @param theName The name of the folder.
-*/
-- (void) setName: (NSString *) theName;
 
 /*!
   @method appendMessage:

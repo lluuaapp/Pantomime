@@ -32,16 +32,16 @@
               CWCacheManager superclass for CWIMAPFolder instances.
 */
 @interface CWIMAPCacheManager: CWCacheManager
-{
-  @private
-    NSMutableDictionary *messageTable;
-    NSUInteger _UIDValidity;
 
-    CWFolder *_folder;
-
-    NSUInteger _count;
-    NSInteger _fd;
-}
+/*!
+ @method UIDValidity
+ @discussion This method is used to obtain the UID validity
+ value of the receiver's cache. If it doesn't
+ match the UID validity of its associated
+ CWIMAPFolder instance, you should invalidate the cache.
+ @result The UID validity.
+ */
+@property NSUInteger uidValidity;
 
 /*!
   @method messageWithUID:
@@ -60,24 +60,6 @@
   @param theUID The UID of the message to remove from the cache.
 */
 - (void) removeMessageWithUID: (NSUInteger) theUID;
-
-/*!
-  @method UIDValidity
-  @discussion This method is used to obtain the UID validity
-              value of the receiver's cache. If it doesn't
-	      match the UID validity of its associated
-	      CWIMAPFolder instance, you should invalidate the cache.
-  @result The UID validity.
-*/
-- (NSUInteger) UIDValidity;
-
-/*!
-  @method setUIDValidity:
-  @discussion This method is used to set the UID validity value
-              of the receiver's cache.
-  @param theUIDValidity The value to set.
-*/
-- (void) setUIDValidity: (NSUInteger) theUIDValidity;
 
 /*!
   @method writeRecord:message:

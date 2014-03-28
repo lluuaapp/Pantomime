@@ -20,9 +20,8 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "CWPOP3CacheObject.h"
-
-#include "CWConstants.h"
+#import "CWPOP3CacheObject.h"
+#import "CWConstants.h"
 
 static NSInteger currentPOP3CacheObjectVersion = 1;
 
@@ -54,18 +53,6 @@ static NSInteger currentPOP3CacheObjectVersion = 1;
   [self setDate: theDate];
   
   return self;
-}
-
-
-//
-//
-//
-- (void) dealloc
-{
-  RELEASE(_date);
-  RELEASE(_UID);
-
-  [super dealloc];
 }
 
 

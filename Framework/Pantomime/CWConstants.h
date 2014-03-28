@@ -33,10 +33,6 @@
 #ifdef MACOSX 
 #define ASSIGN(object,value)    object = value
 #define DESTROY(object) object = nil
-
-#define NSLocalizedString(key, comment) \
-  [[NSBundle mainBundle] localizedStringForKey:(key) value:@"" table:nil]
-
 #define _(X) NSLocalizedString (X, @"")
 #endif
 

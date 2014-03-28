@@ -20,14 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWDNSManager
-#define _Pantomime_H_CWDNSManager
-
-#include "CWConnection.h"
-
-#import <Foundation/NSArray.h>
-#import <Foundation/NSDictionary.h>
-#import <Foundation/NSObject.h>
+#import <Foundation/Foundation.h>
 
 /*!
   @class CWDNSManager
@@ -66,5 +59,3 @@
 + (id) singleInstance;
 
 @end
-
-#endif // _Pantomime_H_CWDNSManager

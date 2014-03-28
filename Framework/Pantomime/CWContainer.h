@@ -34,11 +34,10 @@
 	      an accessor) - for performance reasons.
 */
 @interface CWContainer : NSObject
-{
-  @public
-    CWContainer *parent, *child, *next;
-    CWMessage *message;
-}
+
+@property CWMessage *message;
+@property (nonatomic, readonly) CWContainer *parent;
+@property (nonatomic, readonly) CWContainer *child;
 
 /*!
   @method setParent:
@@ -81,10 +80,10 @@
 - (void) setNext: (CWContainer *) theNext;
 
 /*!
-  @method childrenEnumerator
+  @method allChildren
   @discussion This method is used to obtain all children of the receiver.
-  @result All children, as a NSEnumerator instance.
+  @result All children
 */
-- (NSEnumerator *) childrenEnumerator;
+- (NSArray *) allChildren;
 
 @end

@@ -20,13 +20,7 @@
 **  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef _Pantomime_H_CWPOP3CacheObject
-#define _Pantomime_H_CWPOP3CacheObject
-
-#import <Foundation/NSCalendarDate.h>
-#import <Foundation/NSCoder.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
+#import <Foundation/Foundation.h>
 
 /*!
   @class CWPOP3CacheObject
@@ -88,5 +82,3 @@
 - (NSString *) UID;
 
 @end
-
-#endif // _Pantomime_H_CWPOP3CacheObject

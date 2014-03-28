@@ -38,16 +38,6 @@
 
 
 //
-//
-//
-- (void) dealloc
-{
-  RELEASE(_UID);
-  [super dealloc];
-}
-
-
-//
 // NSCoding protocol
 //
 - (void) encodeWithCoder: (NSCoder *) theCoder

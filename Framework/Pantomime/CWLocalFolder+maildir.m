@@ -112,74 +112,70 @@
 //
 - (void) parse_maildir: (NSString *) theDirectory  all: (BOOL) theBOOL
 {
-  NSString *aPath, *aNewPath, *thisMailFile;
-  NSFileManager *aFileManager;
-  NSMutableArray *allFiles;
-  FILE *aStream;
-  NSInteger i, count;
-  BOOL b;
-
-  if (!theDirectory)
+    NSString *aPath, *aNewPath, *thisMailFile;
+    NSFileManager *aFileManager;
+    NSMutableArray *allFiles;
+    FILE *aStream;
+    NSInteger i, count;
+    BOOL b;
+    
+    if (!theDirectory)
     {
-      return;
+        return;
     }
-
-  // We check if we must later move the file after
-  // parsing it.
-  b = NO;
-
-  if ([theDirectory isEqualToString: @"new"] || [theDirectory isEqualToString: @"tmp"])
+    
+    // We check if we must later move the file after
+    // parsing it.
+    b = NO;
+    
+    if ([theDirectory isEqualToString: @"new"] || [theDirectory isEqualToString: @"tmp"])
     {
-      b = YES;
+        b = YES;
     }
-  
-  aFileManager = [NSFileManager defaultManager];
-
-  // Read the directory
-  aPath = [NSString stringWithFormat: @"%@/%@", _path, theDirectory];
-  allFiles = [[NSMutableArray alloc] initWithArray: [aFileManager contentsOfDirectoryAtPath:aPath error:NULL]];
-
-  // We remove Apple Mac OS X .DS_Store file
-  [allFiles removeObject: @".DS_Store"];
-  count = [allFiles count];
-  
-  if (allFiles != nil && count > 0)
+    
+    aFileManager = [NSFileManager defaultManager];
+    
+    // Read the directory
+    aPath = [NSString stringWithFormat: @"%@/%@", _path, theDirectory];
+    allFiles = [[NSMutableArray alloc] initWithArray: [aFileManager contentsOfDirectoryAtPath:aPath error:NULL]];
+    
+    // We remove Apple Mac OS X .DS_Store file
+    [allFiles removeObject: @".DS_Store"];
+    count = [allFiles count];
+    
+    if (allFiles != nil && count > 0)
     {
-      for (i = 0; i < count; i++)
-	{
-	  thisMailFile = [NSString stringWithFormat: @"%@/%@", aPath, [allFiles objectAtIndex: i]];
-
-	  if (b)
-	    {
-	      aNewPath = [NSString stringWithFormat: @"%@/cur/%@", _path, [allFiles objectAtIndex: i]];
-	    }
-
-#ifdef __MINGW32__
-	  aStream = fopen([thisMailFile UTF8String], "rb");
-#else
-	  aStream = fopen([thisMailFile UTF8String], "r");
-#endif
-
-	  if (!aStream)
-	    {
-	      continue;
-	    }
-	 
-	  [self parse_mbox: (b ? aNewPath : thisMailFile)  stream: aStream  flags: nil  all: theBOOL];
-	  
-	  fclose(aStream);
-	  
-	  // If we read this from the "new" or "tmp" sub-directories,
-	  // move it to the "cur" directory
-	  if (b)
-	    {
-	      [aFileManager moveItemAtPath:thisMailFile
-								toPath:aNewPath
-								 error:NULL];
-	    }	  
-	}
-
-      [_cacheManager synchronize];
+        for (i = 0; i < count; i++)
+        {
+            thisMailFile = [NSString stringWithFormat: @"%@/%@", aPath, [allFiles objectAtIndex: i]];
+            
+            if (b)
+            {
+                aNewPath = [NSString stringWithFormat: @"%@/cur/%@", _path, [allFiles objectAtIndex: i]];
+            }
+            
+            aStream = fopen([thisMailFile UTF8String], "r");
+            
+            if (!aStream)
+            {
+                continue;
+            }
+            
+            [self parse_mbox: (b ? aNewPath : thisMailFile)  stream: aStream  flags: nil  all: theBOOL];
+            
+            fclose(aStream);
+            
+            // If we read this from the "new" or "tmp" sub-directories,
+            // move it to the "cur" directory
+            if (b)
+            {
+                [aFileManager moveItemAtPath:thisMailFile
+                                      toPath:aNewPath
+                                       error:NULL];
+            }	  
+        }
+        
+        [_cacheManager synchronize];
     }
 }
 

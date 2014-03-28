@@ -295,12 +295,14 @@ static inline CWInternetAddress *next_recipient(NSMutableArray *theRecipients, B
     }
     else
     {
-        NSString *aString;
-        va_list args;
+        NSString *aString = nil;
         
-        va_start(args, theFormat);
-        
-        aString = [[NSString alloc] initWithFormat: theFormat  arguments: args];
+        {
+            va_list args;
+            va_start(args, theFormat);
+            aString = [[NSString alloc] initWithFormat: theFormat  arguments: args];
+            va_end(args);
+        }
         
         aQueueObject = [[CWSMTPQueueObject alloc] initWithCommand: theCommand  arguments: aString];
         

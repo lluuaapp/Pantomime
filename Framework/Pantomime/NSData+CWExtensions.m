@@ -1282,15 +1282,17 @@ static const char *hexDigit = "0123456789ABCDEF";
 
 - (void) appendCFormat: (NSString *) theFormat, ...
 {
-  NSString *aString;
-  va_list args;
-  
-  va_start(args, theFormat);
-  aString = [[NSString alloc] initWithFormat: theFormat  arguments: args];
-  va_end(args);
-  
-  // We allow lossy conversion to not lose any information / raise an exception
-  [self appendData: [aString dataUsingEncoding: NSASCIIStringEncoding  allowLossyConversion: YES]];
+    NSString *aString = nil;
+    
+    {
+        va_list args;
+        va_start(args, theFormat);
+        aString = [[NSString alloc] initWithFormat:theFormat  arguments:args];
+        va_end(args);
+    }
+    
+    // We allow lossy conversion to not lose any information / raise an exception
+    [self appendData: [aString dataUsingEncoding: NSASCIIStringEncoding  allowLossyConversion: YES]];
 }
 
 

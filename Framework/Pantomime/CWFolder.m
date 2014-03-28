@@ -35,26 +35,27 @@
 
 - (id) initWithName: (NSString *) theName
 {
-  self = [super init];
-
-  _properties = [[NSMutableDictionary alloc] init];
-  _allVisibleMessages = nil;
-  
-  allMessages = [[NSMutableArray alloc] init];
-  
-  //
-  // By default, we don't do message threading so we don't
-  // initialize this ivar for no reasons
-  //
-  _allContainers = nil;
-  _cacheManager = nil;
-  _mode = PantomimeUnknownMode;
-
-  [self setName: theName];
-  [self setShowDeleted: NO];
-  [self setShowRead: YES];
-
-  return self;
+    self = [super init];
+    if (self)
+    {
+        _properties = [[NSMutableDictionary alloc] init];
+        _allVisibleMessages = nil;
+        
+        allMessages = [[NSMutableArray alloc] init];
+        
+        //
+        // By default, we don't do message threading so we don't
+        // initialize this ivar for no reasons
+        //
+        _allContainers = nil;
+        _cacheManager = nil;
+        _mode = PantomimeUnknownMode;
+        
+        [self setName: theName];
+        [self setShowDeleted: NO];
+        [self setShowRead: YES];
+    }
+    return self;
 }
 
 
@@ -79,52 +80,33 @@
   return self;
 }
 
-
-//
-//
-//
-- (NSString *) name
-{
-  return _name;
-}
-
-
-//
-//
-//
-- (void) setName: (NSString *) theName
-{
-  ASSIGN(_name, theName);
-}
-
-
 //
 //
 //
 - (void) appendMessage: (CWMessage *) theMessage
 {
-  if (theMessage)
+    if (theMessage)
     {
-      [allMessages addObject: theMessage];
-      
-      if (_allVisibleMessages)
-	{
-	  [_allVisibleMessages addObject: theMessage];
-	}
-
-      // FIXME
-      // If we've done message threading, we simply append the message
-      // to the end of our containers array. We might want to place
-      // it in the right thread in the future.
-      if (_allContainers)
-	{
-	  CWContainer *aContainer;
-
-	  aContainer = [[CWContainer alloc] init];
-	  aContainer->message = theMessage;
-	  [theMessage setProperty: aContainer  forKey: @"Container"];
-	  [_allContainers addObject: aContainer];
-	}
+        [allMessages addObject: theMessage];
+        
+        if (_allVisibleMessages)
+        {
+            [_allVisibleMessages addObject: theMessage];
+        }
+        
+        // FIXME
+        // If we've done message threading, we simply append the message
+        // to the end of our containers array. We might want to place
+        // it in the right thread in the future.
+        if (_allContainers)
+        {
+            CWContainer *aContainer;
+            
+            aContainer = [[CWContainer alloc] init];
+            aContainer.message = theMessage;
+            [theMessage setProperty:aContainer  forKey:@"Container"];
+            [_allContainers addObject: aContainer];
+        }
     }
 }
 
@@ -489,7 +471,7 @@
             if (![aMessage messageID])
             {
                 aContainer = [[CWContainer alloc] init];
-                aContainer->message = aMessage;
+                aContainer.message = aMessage;
                 [aMessage setProperty: aContainer  forKey: @"Container"];
                 [_allContainers addObject: aContainer];
                 continue;
@@ -502,12 +484,12 @@
             
             if (aContainer)
             {
-                //aContainer->message = aMessage;
+                //aContainer.message = aMessage;
                 
-                if (aContainer->message != aMessage)
+                if (aContainer.message != aMessage)
                 {
                     aContainer = [[CWContainer alloc] init];
-                    aContainer->message = aMessage;
+                    aContainer.message = aMessage;
                     [aMessage setProperty: aContainer  forKey: @"Container"];
                     [idTable setValue:aContainer forKey:[aMessage messageID]];
                     aContainer = nil;
@@ -516,7 +498,7 @@
             else
             {
                 aContainer = [[CWContainer alloc] init];
-                aContainer->message = aMessage;
+                aContainer.message = aMessage;
                 [aMessage setProperty: aContainer  forKey: @"Container"];
                 [idTable setValue:aContainer forKey:[aMessage messageID]];
                 aContainer = nil;
@@ -559,15 +541,15 @@
                 // The last references
                 if ((j == ([[aMessage allReferences] count] - 1)) &&
                     (nil != aContainer) &&
-                    aContainer->parent == nil)
+                    aContainer.parent == nil)
                 {
                     // We grab the container of our current message
                     [(CWContainer *)[idTable valueForKey:[aMessage messageID]] setParent:aContainer];
                 }
                 
                 // We set the child
-                //if ( aContainer->message != aMessage &&
-                //     aContainer->child == nil )
+                //if ( aContainer.message != aMessage &&
+                //     aContainer.child == nil )
                 //  {
                 //    [aContainer setChild: NSMapGet(id_table, [aMessage messageID])];
                 //  }	      
@@ -620,7 +602,7 @@
             
             aContainer = [_allContainers objectAtIndex: i];
             
-            if (aContainer->parent != nil)
+            if (aContainer.parent != nil)
             {
                 [_allContainers removeObjectAtIndex: i];
             }
@@ -645,8 +627,8 @@
             while (aContainer)
             {
                 // A. If it is an empty container with no children, nuke it
-                if (aContainer->message == nil &&
-                    aContainer->child == nil)
+                if (aContainer.message == nil &&
+                    aContainer.child == nil)
                 {
                     // We nuke it
                     // FIXME: Won't work for non-root containers.
@@ -658,20 +640,20 @@
                 //    Do not promote the children if doing so would promote them to the root set 
                 //    -- unless there is only one child, in which case, do. 
                 // FIXME: We promote to the root no matter what :)
-                if (aContainer->message == nil && aContainer->child)
+                if (aContainer.message == nil && aContainer.child)
                 {
                     CWContainer *c = aContainer;
-                    [c->child setParent: nil];
-                    [_allContainers removeObject: c];
-                    [_allContainers addObject: c->child]; // We promote the the root for now
+                    [c.child setParent: nil];
+                    [_allContainers removeObject:c];
+                    [_allContainers addObject:c.child]; // We promote the the root for now
                     
                     // We go to our child and we continue to loop
-                    //aContainer = aContainer->child;
+                    //aContainer = aContainer.child;
                     aContainer = [aContainer childAtIndex: ([aContainer count]-1)];
                     continue;
                 }
                 
-                //aContainer = aContainer->child;
+                //aContainer = aContainer.child;
                 aContainer = [aContainer childAtIndex: ([aContainer count]-1)];
             }
             
@@ -696,7 +678,7 @@
             NSString *aString;
             
             aContainer = [_allContainers objectAtIndex: i];
-            aMessage = aContainer->message;
+            aMessage = aContainer.message;
             aString = [aMessage subject];
             
             if (aString)
@@ -706,7 +688,7 @@
                 // If the subject is now "", give up on this Container.
                 if ([aString length] == 0)
                 {
-                    //aContainer = aContainer->child;
+                    //aContainer = aContainer.child;
                     continue;
                 }
                 
@@ -729,7 +711,7 @@
                     NSString *aSubject;
                     
                     // We obtain the subject of the message of our container.
-                    aSubject = [((CWContainer *)[subjectTable valueForKey:aString])->message subject];
+                    aSubject = [((CWContainer *)[subjectTable valueForKey:aString]).message subject];
                     
                     if ([aSubject hasREPrefix] && ![[aMessage subject] hasREPrefix])
                     {
@@ -755,8 +737,8 @@
             aContainer = [_allContainers objectAtIndex: i];
             
             // Find the subject of this Container (as above.)
-            aSubject = [aContainer->message subject];
-            aString = [aContainer->message baseSubject];
+            aSubject = [aContainer.message subject];
+            aString = [aContainer.message baseSubject];
             
             // Look up the Container of that subject in the table.
             // If it is null, or if it is this container, continue.
@@ -768,7 +750,7 @@
             
             // If that container is a non-empty, and that message's subject does 
             // not begin with ``Re:'', but this message's subject does, then make this be a child of the other.
-            if (![[containerFromTable->message subject] hasREPrefix] &&
+            if (![[containerFromTable.message subject] hasREPrefix] &&
                 [aSubject hasREPrefix])
             {
                 [aContainer setParent: containerFromTable];
@@ -780,7 +762,7 @@
             // they were misordered. (This happens somewhat implicitly, since if there are two
             // messages, one with Re: and one without, the one without will be in the hash table,
             // regardless of the order in which they were seen.)
-            else if ([[containerFromTable->message subject] hasREPrefix] &&
+            else if ([[containerFromTable.message subject] hasREPrefix] &&
                      ![aSubject hasREPrefix])
             {
                 [containerFromTable setParent: aContainer];
