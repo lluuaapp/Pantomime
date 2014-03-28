@@ -28,23 +28,6 @@
     r.cc = nil;
 
 @interface CWCacheRecord : NSObject
-{
-@private
-    NSUInteger date;
-    NSUInteger flags;
-    NSUInteger position;   // For mbox based cache files
-    NSUInteger size;
-    NSUInteger imap_uid;   // For IMAP
-    char *filename;          // For maildir base cache files
-    NSString *pop3_uid;      // For POP3
-    NSData *from;
-    NSData *in_reply_to;
-    NSData *message_id;
-    NSData *references;
-    NSData *subject;
-    NSData *to;
-    NSData *cc;
-}
 
 @property (assign) NSUInteger date;
 @property (assign) NSUInteger flags;

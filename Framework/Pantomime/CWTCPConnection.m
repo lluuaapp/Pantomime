@@ -28,12 +28,14 @@
 
 #define DEFAULT_TIMEOUT 60
 
-//
-//
-//
-@implementation CWTCPConnection
+@interface CWTCPConnection ()
 
-@synthesize delegate;
+@property NSInputStream *inputStream;
+@property NSOutputStream *outputStream;
+
+@end
+
+@implementation CWTCPConnection
 
 //
 //
@@ -83,27 +85,27 @@
                             inputStream:&iStream 
                            outputStream:&oStream];
         
-        inputStream = iStream;
-        outputStream = oStream;
+        _inputStream = iStream;
+        _outputStream = oStream;
         
-        if ((nil == inputStream) ||
-            (nil == outputStream))
+        if ((nil == _inputStream) ||
+            (nil == _outputStream))
         {
             return nil;
         }
         
         
-        [inputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
-        [outputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+        [_inputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+        [_outputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
         
-        inputStream.delegate = self;
-        outputStream.delegate = self;
+        _inputStream.delegate = self;
+        _outputStream.delegate = self;
         
-        if ([inputStream streamStatus] == NSStreamStatusNotOpen)
-            [inputStream open];
+        if ([_inputStream streamStatus] == NSStreamStatusNotOpen)
+            [_inputStream open];
         
-        if ([outputStream streamStatus] == NSStreamStatusNotOpen)
-            [outputStream open];
+        if ([_outputStream streamStatus] == NSStreamStatusNotOpen)
+            [_outputStream open];
         
     }
     return self;
@@ -115,31 +117,31 @@
     {
         case NSStreamEventOpenCompleted:
         {
-            if (stream == outputStream) // only handled the event once
+            if (stream == _outputStream) // only handled the event once
             {
-                [delegate connectionReceivedOpenCompleted:self];
+                [self.delegate connectionReceivedOpenCompleted:self];
             }
             break;
         }
         case NSStreamEventHasBytesAvailable:
         {
-            if (stream == inputStream)
+            if (stream == _inputStream)
             {
-                [delegate connectionReceivedReadEvent:self];
+                [self.delegate connectionReceivedReadEvent:self];
             }
             break;
         }
         case NSStreamEventHasSpaceAvailable:
         {
-            if (stream == outputStream)
+            if (stream == _outputStream)
             {
-                [delegate connectionReceivedWriteEvent:self];
+                [self.delegate connectionReceivedWriteEvent:self];
             }
             break;
         }
         case NSStreamEventErrorOccurred:
         {
-            [delegate connection:self receivedError:[stream streamError]];
+            [self.delegate connection:self receivedError:[stream streamError]];
             break;
         }
             
@@ -155,16 +157,11 @@
 //
 - (void) dealloc
 {
-    delegate = nil;
+    self.delegate = nil;
     [self close];
     
-    inputStream.delegate = nil;
-    outputStream.delegate = nil;
-
-
-    inputStream = nil;
-    outputStream = nil;
-
+    _inputStream.delegate = nil;
+    _outputStream.delegate = nil;
 }
 
 
@@ -183,10 +180,10 @@
 //
 - (BOOL) isConnected
 {
-    return ((NSStreamStatusOpen <= [inputStream streamStatus]) &&
-            (NSStreamStatusClosed > [inputStream streamStatus]) &&
-            (NSStreamStatusOpen <= [outputStream streamStatus]) &&
-            (NSStreamStatusClosed > [outputStream streamStatus]));
+    return ((NSStreamStatusOpen <= [_inputStream streamStatus]) &&
+            (NSStreamStatusClosed > [_inputStream streamStatus]) &&
+            (NSStreamStatusOpen <= [_outputStream streamStatus]) &&
+            (NSStreamStatusClosed > [_outputStream streamStatus]));
 }
 
 //
@@ -194,8 +191,8 @@
 //
 - (BOOL) isSSL
 {
-    return ([[inputStream propertyForKey:NSStreamSocketSecurityLevelKey] isEqualToString:NSStreamSocketSecurityLevelNegotiatedSSL] &&
-            [[outputStream propertyForKey:NSStreamSocketSecurityLevelKey] isEqualToString:NSStreamSocketSecurityLevelNegotiatedSSL]);
+    return ([[_inputStream propertyForKey:NSStreamSocketSecurityLevelKey] isEqualToString:NSStreamSocketSecurityLevelNegotiatedSSL] &&
+            [[_outputStream propertyForKey:NSStreamSocketSecurityLevelKey] isEqualToString:NSStreamSocketSecurityLevelNegotiatedSSL]);
 }
 
 //
@@ -203,8 +200,8 @@
 //
 - (void) close
 {
-    [inputStream close];
-    [outputStream close];
+    [_inputStream close];
+    [_outputStream close];
 }
 
 //
@@ -212,9 +209,9 @@
 //
 - (NSInteger)read:(uint8_t*)buf length:(NSInteger)len
 {
-    if ([inputStream hasBytesAvailable])
+    if ([_inputStream hasBytesAvailable])
     {
-        return [inputStream read:buf maxLength:len];
+        return [_inputStream read:buf maxLength:len];
     }
     
     return 0;
@@ -226,9 +223,9 @@
 //
 - (NSInteger)write:(uint8_t*)buf length:(NSInteger)len
 {
-    if ([outputStream hasSpaceAvailable])
+    if ([_outputStream hasSpaceAvailable])
     {
-        return [outputStream write:buf maxLength:len];
+        return [_outputStream write:buf maxLength:len];
     }
     
     return 0;
@@ -242,8 +239,8 @@
 //
 - (NSInteger) startSSL
 {
-    return ([inputStream setProperty:NSStreamSocketSecurityLevelNegotiatedSSL forKey:NSStreamSocketSecurityLevelKey] &&
-            [outputStream setProperty:NSStreamSocketSecurityLevelNegotiatedSSL forKey:NSStreamSocketSecurityLevelKey] ?
+    return ([_inputStream setProperty:NSStreamSocketSecurityLevelNegotiatedSSL forKey:NSStreamSocketSecurityLevelKey] &&
+            [_outputStream setProperty:NSStreamSocketSecurityLevelNegotiatedSSL forKey:NSStreamSocketSecurityLevelKey] ?
             0 : 1);
 }
 

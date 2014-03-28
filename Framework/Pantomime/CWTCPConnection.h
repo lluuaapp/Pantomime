@@ -34,15 +34,8 @@
 	      this class or one of its methods directly.
 */
 @interface CWTCPConnection : NSObject <CWConnection, NSStreamDelegate>
-{
-@private
-    NSInputStream   *inputStream;
-    NSOutputStream  *outputStream;
-    
-    id<CWConnectionDelegate> __unsafe_unretained delegate;
-}
 
-@property (nonatomic, unsafe_unretained) id<CWConnectionDelegate> delegate;
+@property (weak) id<CWConnectionDelegate> delegate;
 
 /*!
   @method startSSL

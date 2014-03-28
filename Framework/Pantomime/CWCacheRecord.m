@@ -10,19 +10,4 @@
 
 @implementation CWCacheRecord
 
-@synthesize date;
-@synthesize flags;
-@synthesize position;
-@synthesize size;
-@synthesize imap_uid;
-@synthesize filename;
-@synthesize pop3_uid;
-@synthesize from;
-@synthesize in_reply_to;
-@synthesize message_id;
-@synthesize references;
-@synthesize subject;
-@synthesize to;
-@synthesize cc;
-
 @end
