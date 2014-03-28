@@ -361,20 +361,16 @@
 //
 - (NSInteger) numberOfDeletedMessages
 {
-  NSInteger c, i, count;
-  
-  c = [allMessages count];
-  count = 0;
-
-  for (i = 0; i < c; i++)
+    NSUInteger count = 0;
+    for (CWMessage *message in allMessages)
     {
-      if ([[[allMessages objectAtIndex: i] flags] contain: PantomimeDeleted])
-	{
-	  count++;
-	}
+        if ([[message flags] contain:PantomimeDeleted])
+        {
+            count++;
+        }
     }
-
-  return count;
+    
+    return count;
 }
 
 
@@ -383,20 +379,16 @@
 //
 - (NSInteger) numberOfUnreadMessages
 {
-  NSInteger i, c, count;
-  
-  c = [allMessages count];
-  count = 0;
-  
-  for (i = 0; i < c; i++)
+    NSUInteger count = 0;
+    for (CWMessage *message in allMessages)
     {
-      if (![[[allMessages objectAtIndex: i] flags] contain: PantomimeSeen])
-	{
-	  count++;
-	}
+        if ([[message flags] contain:PantomimeSeen])
+        {
+            count++;
+        }
     }
-
-  return count;
+    
+    return count;
 }
 
 
@@ -405,19 +397,14 @@
 //
 - (long) size;
 {
-  long size;
-  NSInteger c, i;
-
-  c = [allMessages count];
-  size = 0;
-  
-  for (i = 0; i < c; i++)
+    long size = 0;
+    
+    for (CWMessage *message in allMessages)
     {
-      size += [(CWMessage *)[allMessages objectAtIndex: i] size];
+        size += [message size];
     }
-
-  return size;
-  
+    
+    return size;
 }
 
 
@@ -437,7 +424,6 @@
 {
     NSMutableDictionary *idTable;
     NSMutableDictionary *subjectTable;
-    NSInteger i, count;
 
   // We clean up ...
   _allContainers = nil;
@@ -452,20 +438,9 @@
         //
         // 1. A., B. and C.
         //
-        count = [allMessages count];
-        for (i = 0; i < count; i++)
+        for (CWMessage *aMessage in allMessages)
         {
-            CWContainer *aContainer;
-            CWMessage *aMessage;
-            
-            NSString *aReference;
-            NSInteger j;
-            
-            // So that gcc shutup
-            aMessage = nil;
-            aReference = nil;
-            
-            aMessage = [allMessages objectAtIndex: i];
+            CWContainer *aContainer = nil;
             
             // We skip messages that don't have a valid Message-ID
             if (![aMessage messageID])
@@ -507,11 +482,9 @@
             //
             // B. For each element in the message's References field:
             //
-            for (j = 0; j < [[aMessage references] count]; j++)
+            NSArray *references = [aMessage references];
+            for (NSString *aReference in references)
             {
-                // We get a Message-ID
-                aReference = [[aMessage references] objectAtIndex: j];
-                
                 // Find a container object for the given Message-ID
                 aContainer = [idTable valueForKey:aReference];
 
@@ -539,7 +512,7 @@
                 
                 // Link the References field's Containers together in the order implied by the References header.
                 // The last references
-                if ((j == ([[aMessage references] count] - 1)) &&
+                if ((aReference == [references lastObject]) &&
                     (nil != aContainer) &&
                     aContainer.parent == nil)
                 {
@@ -569,13 +542,13 @@
             
             // If we have no References and no In-Reply-To fields, we simply set a
             // the parent to nil since it can be the message that started the thread.
-            if ([[aMessage references] count] == 0 &&
+            if ([references count] == 0 &&
                 [aMessage headerValueForName: @"In-Reply-To"] == nil)
             {
                 [aContainer setParent: nil];
             }
             // If we have no References but an In-Reply-To field, that becomes our parent.
-            else if ([[aMessage references] count] == 0 &&
+            else if ([references count] == 0 &&
                      [aMessage headerValueForName: @"In-Reply-To"])
             {
                 [aContainer setParent: (CWContainer *)[idTable valueForKey:[aMessage headerValueForName: @"In-Reply-To"]]];
@@ -584,8 +557,8 @@
             }
             else
             {
-                [aContainer setParent: (CWContainer *)[idTable valueForKey:aReference]];
-                [(CWContainer *)[idTable valueForKey:aReference] setChild: aContainer];
+                [aContainer setParent:(CWContainer *)[idTable valueForKey:[references lastObject]]];
+                [(CWContainer *)[idTable valueForKey:[references lastObject]] setChild:aContainer];
             }
             
         } // for (i = 0; ...
@@ -596,15 +569,13 @@
         [_allContainers addObjectsFromArray:[idTable allValues]];
         
         //while (NO)
-        for (i = ([_allContainers count] - 1); i >= 0; i--)
+        for (NSInteger i = ([_allContainers count] - 1); i >= 0; i--)
         {
-            CWContainer *aContainer;
-            
-            aContainer = [_allContainers objectAtIndex: i];
+            CWContainer *aContainer = [_allContainers objectAtIndex:i];
             
             if (aContainer.parent != nil)
             {
-                [_allContainers removeObjectAtIndex: i];
+                [_allContainers removeObjectAtIndex:i];
             }
         }
         
@@ -617,11 +588,9 @@
         // 4. Prune empty containers.
         //
         //while (NO)
-        for (i = ([_allContainers count] - 1); i >= 0; i--)
+        for (NSInteger i = ([_allContainers count] - 1); i >= 0; i--)
         {
-            CWContainer *aContainer;
-            
-            aContainer = [_allContainers objectAtIndex: i];
+            CWContainer *aContainer = [_allContainers objectAtIndex:i];
             
             // Recursively walk all containers under the root set.
             while (aContainer)
@@ -671,15 +640,10 @@
         //
         
         //while (NO)
-        for (i = 0; i < [_allContainers count]; i++)
+        for (CWContainer *aContainer in _allContainers)
         {
-            CWContainer *aContainer;
-            CWMessage *aMessage;
-            NSString *aString;
-            
-            aContainer = [_allContainers objectAtIndex: i];
-            aMessage = aContainer.message;
-            aString = [aMessage subject];
+            CWMessage *aMessage = aContainer.message;
+            NSString *aString = [aMessage subject];
             
             if (aString)
             {
@@ -729,20 +693,16 @@
         //    the root set. Now iterate over the root set, and gather together the difference.
         //
         //while (NO)
-        for (i = ([_allContainers count]-1); i >= 0; i--)
+        for (NSInteger i = ([_allContainers count] - 1); i >= 0; i--)
         {
-            CWContainer *aContainer, *containerFromTable;
-            NSString *aSubject, *aString;
-            
-            aContainer = [_allContainers objectAtIndex: i];
-            
-            // Find the subject of this Container (as above.)
-            aSubject = [aContainer.message subject];
-            aString = [aContainer.message baseSubject];
+            CWContainer *aContainer = [_allContainers objectAtIndex:i];
+            NSString *aSubject = [aContainer.message subject];
+            NSString *aString = [aContainer.message baseSubject];
             
             // Look up the Container of that subject in the table.
             // If it is null, or if it is this container, continue.
-            containerFromTable = [subjectTable valueForKey:aString];
+            CWContainer *containerFromTable = [subjectTable valueForKey:aString];
+            
             if (!containerFromTable || containerFromTable == aContainer) 
             {
                 continue; 
@@ -864,15 +824,12 @@
 //
 //
 //
-- (void) setFlags: (CWFlags *) theFlags
-         messages: (NSArray *) theMessages
+- (void) setFlags:(CWFlags*)theFlags
+         messages:(NSArray*)theMessages
 {
-  NSInteger c, i;
-
-  c = [theMessages count];
-  for (i = 0; i < c; i++)
+    for (CWMessage *message in theMessages)
     {
-      [[theMessages objectAtIndex: i] setFlags: theFlags];
+        [message setFlags:theFlags];
     }
 }
 

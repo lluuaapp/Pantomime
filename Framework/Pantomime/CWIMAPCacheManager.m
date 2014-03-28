@@ -149,7 +149,7 @@ static unsigned short version = 1;
             
             if (read(_fd, r, len-4) < 0) { NSLog(@"read failed"); abort(); }
             
-            ((CWFlags *)[aMessage flags])->flags = read_unsigned_int_memory(r);  // FASTER and _RIGHT_ since we can't call -setFlags: on CWIMAPMessage
+            aMessage.flags.flags = read_unsigned_int_memory(r);  // FASTER and _RIGHT_ since we can't call -setFlags: on CWIMAPMessage
             [aMessage setReceivedDate: [NSCalendarDate dateWithTimeIntervalSince1970: read_unsigned_int_memory(r+4)]];
             [aMessage setUID: read_unsigned_int_memory(r+8)];
             [aMessage setSize: read_unsigned_int_memory(r+12)];
@@ -255,7 +255,7 @@ static unsigned short version = 1;
     for (i = 0; i < _count; i++)
     {
         len = read_unsigned_int(_fd);
-        flags = ((CWFlags *)[(CWMessage*)[_folder->allMessages objectAtIndex:i] flags])->flags;
+        flags = ((CWMessage*)[_folder->allMessages objectAtIndex:i]).flags.flags;
         write_unsigned_int(_fd, flags);
         lseek(_fd, (len-8), SEEK_CUR);
     }

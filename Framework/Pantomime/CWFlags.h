@@ -32,10 +32,8 @@
 	      See the PantomimeFlag enum for the list of possible values.
 */
 @interface CWFlags : NSObject <NSCoding, NSCopying>
-{
-  @public
-    PantomimeFlag flags;
-}
+
+@property PantomimeFlag flags;
 
 /*!
   @method initWithFlags:

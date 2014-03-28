@@ -1427,7 +1427,7 @@ static inline NSInteger has_literal(char *buf, NSInteger c)
     }
     
     [[theMessage flags] replaceWithFlags: theFlags];
-    theRecord.flags = theFlags->flags;
+    theRecord.flags = theFlags.flags;
     
     //
     // If our previous command is NOT the FETCH command, we must inform our

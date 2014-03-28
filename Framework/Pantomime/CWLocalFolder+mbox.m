@@ -514,7 +514,7 @@
                 [self appendMessage: aMessage];
                 
                 record.filename = (char *)[[theFile lastPathComponent] UTF8String];
-                record.flags = (theFlags ? theFlags->flags : [aMessage flags]->flags);
+                record.flags = (theFlags ? theFlags.flags : aMessage.flags.flags);
                 record.position = begin;
                 record.size = size;
                 [_cacheManager writeRecord:record];

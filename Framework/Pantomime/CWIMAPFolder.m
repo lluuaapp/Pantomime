@@ -310,65 +310,65 @@
 - (void) setFlags: (CWFlags *) theFlags
          messages: (NSArray *) theMessages
 {
-  NSMutableString *aMutableString, *aSequenceSet;
-  CWIMAPMessage *aMessage;
-
-  if ([theMessages count] == 1)
+    NSMutableString *aMutableString, *aSequenceSet;
+    CWIMAPMessage *aMessage;
+    
+    if ([theMessages count] == 1)
     {
-      aMessage = [theMessages lastObject];
-      // We set the flags right away, just in case someone asks for them
-      // just after invoking this method. Nevertheless, they WILL be set
-      // in IMAPStore: -_parseOK:.
-      // We do the same below, when the count > 1
-      [[aMessage flags] replaceWithFlags: theFlags];
-      aSequenceSet = [NSMutableString stringWithFormat: @"%lu:%lu", (unsigned long)[aMessage UID], (unsigned long)[aMessage UID]];
+        aMessage = [theMessages lastObject];
+        // We set the flags right away, just in case someone asks for them
+        // just after invoking this method. Nevertheless, they WILL be set
+        // in IMAPStore: -_parseOK:.
+        // We do the same below, when the count > 1
+        [[aMessage flags] replaceWithFlags: theFlags];
+        aSequenceSet = [NSMutableString stringWithFormat: @"%lu:%lu", (unsigned long)[aMessage UID], (unsigned long)[aMessage UID]];
     }
-  else
+    else
     {
-      NSInteger i, count;
-
-      aSequenceSet = [[NSMutableString alloc] init];
-      count = [theMessages count];
-
-      for (i = 0; i < count; i++)
-	{
-	  aMessage = [theMessages objectAtIndex: i];
-	  [[aMessage flags] replaceWithFlags: theFlags];
-
-	  if (aMessage == [theMessages lastObject])
-	    {
-	      [aSequenceSet appendFormat: @"%lu", (unsigned long)[aMessage UID]];
-	    }
-	  else
-	    {
-	      [aSequenceSet appendFormat: @"%lu,", (unsigned long)[aMessage UID]];
-	    }
-	}
+        NSInteger i, count;
+        
+        aSequenceSet = [[NSMutableString alloc] init];
+        count = [theMessages count];
+        
+        for (i = 0; i < count; i++)
+        {
+            aMessage = [theMessages objectAtIndex: i];
+            [[aMessage flags] replaceWithFlags: theFlags];
+            
+            if (aMessage == [theMessages lastObject])
+            {
+                [aSequenceSet appendFormat: @"%lu", (unsigned long)[aMessage UID]];
+            }
+            else
+            {
+                [aSequenceSet appendFormat: @"%lu,", (unsigned long)[aMessage UID]];
+            }
+        }
     }
-  
-  aMutableString = [[NSMutableString alloc] init];
-  
-  //
-  // If we're removing all flags, we rather send a STORE -FLAGS (<current flags>) 
-  // than a STORE FLAGS (<new flags>) since some broken servers might not 
-  // support it (like Cyrus v1.5.19 and v1.6.24).
-  //
-  if (theFlags->flags == 0)
+    
+    aMutableString = [[NSMutableString alloc] init];
+    
+    //
+    // If we're removing all flags, we rather send a STORE -FLAGS (<current flags>)
+    // than a STORE FLAGS (<new flags>) since some broken servers might not
+    // support it (like Cyrus v1.5.19 and v1.6.24).
+    //
+    if (theFlags.flags == 0)
     {
-      [aMutableString appendFormat: @"UID STORE %@ -FLAGS.SILENT (", aSequenceSet];
-      [aMutableString appendString: [self _flagsAsStringFromFlags: theFlags]];
-      [aMutableString appendString: @")"];
+        [aMutableString appendFormat: @"UID STORE %@ -FLAGS.SILENT (", aSequenceSet];
+        [aMutableString appendString: [self _flagsAsStringFromFlags: theFlags]];
+        [aMutableString appendString: @")"];
     }
-  else
+    else
     {
-      [aMutableString appendFormat: @"UID STORE %@ FLAGS.SILENT (", aSequenceSet];
-      [aMutableString appendString: [self _flagsAsStringFromFlags: theFlags]];
-      [aMutableString appendString: @")"];
+        [aMutableString appendFormat: @"UID STORE %@ FLAGS.SILENT (", aSequenceSet];
+        [aMutableString appendString: [self _flagsAsStringFromFlags: theFlags]];
+        [aMutableString appendString: @")"];
     }
-  
-  [_store sendCommand: IMAP_UID_STORE
-	  info: [NSDictionary dictionaryWithObjectsAndKeys: theMessages, @"Messages", theFlags, @"Flags", nil]
-	  arguments: aMutableString];
+    
+    [_store sendCommand: IMAP_UID_STORE
+                   info: [NSDictionary dictionaryWithObjectsAndKeys: theMessages, @"Messages", theFlags, @"Flags", nil]
+              arguments: aMutableString];
 }
 
 

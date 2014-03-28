@@ -330,61 +330,61 @@ static unsigned short version = 1;
 //
 - (BOOL) synchronize
 {
-  NSDictionary *attributes; 
-  CWLocalMessage *aMessage;
-  NSUInteger len, flags;
-  NSInteger i;
-
-  if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
+    NSDictionary *attributes;
+    CWLocalMessage *aMessage;
+    NSUInteger len, flags;
+    NSInteger i;
+    
+    if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
     {
-      attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[(CWLocalFolder *)_folder path] error:NULL];
+        attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[(CWLocalFolder *)_folder path] error:NULL];
     }
-  else
+    else
     {
-      attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[NSString stringWithFormat: @"%@/cur", [(CWLocalFolder *)_folder path]] error:NULL];
+        attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[NSString stringWithFormat: @"%@/cur", [(CWLocalFolder *)_folder path]] error:NULL];
     }
-  
-  _modification_date = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
-  _count = [_folder->allMessages count];
-
-  if (lseek(_fd, 0L, SEEK_SET) < 0)
+    
+    _modification_date = [[attributes objectForKey: NSFileModificationDate] timeIntervalSince1970];
+    _count = [_folder->allMessages count];
+    
+    if (lseek(_fd, 0L, SEEK_SET) < 0)
     {
-      NSLog(@"fseek failed");
+        NSLog(@"fseek failed");
     }
-  
-  // We write our cache version, count, modification date and size.
-  write_unsigned_short(_fd, version);
-  write_unsigned_int(_fd, _count);
-  write_unsigned_int(_fd, _modification_date);
-
-  if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
+    
+    // We write our cache version, count, modification date and size.
+    write_unsigned_short(_fd, version);
+    write_unsigned_int(_fd, _count);
+    write_unsigned_int(_fd, _modification_date);
+    
+    if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
     {
-      _size = [[attributes objectForKey: NSFileSize] integerValue];
-      write_unsigned_int(_fd, _size);
+        _size = [[attributes objectForKey: NSFileSize] integerValue];
+        write_unsigned_int(_fd, _size);
     }
-
-  // We now update the message flags
-  //NSLog(@"Synching flags for mailbox %@, count = %d", [(CWLocalFolder *)_folder path], _count);
-  for (i = 0; i < _count; i++)
+    
+    // We now update the message flags
+    //NSLog(@"Synching flags for mailbox %@, count = %d", [(CWLocalFolder *)_folder path], _count);
+    for (i = 0; i < _count; i++)
     {
-      len = read_unsigned_int(_fd);
-      //NSLog(@"len = %d", len);
-
-      if ((NSNull *)(aMessage = [_folder->allMessages objectAtIndex: i]) != [NSNull null])
-	{
-	  flags = ((CWFlags *)[aMessage flags])->flags;
-	  write_unsigned_int(_fd, flags);
-	  lseek(_fd, (len-8), SEEK_CUR);
-	  //NSLog(@"wrote = %d", flags);
-	}
-      else
-	{
-	  lseek(_fd, (len-4), SEEK_CUR);
-	}
+        len = read_unsigned_int(_fd);
+        //NSLog(@"len = %d", len);
+        
+        if ((NSNull *)(aMessage = [_folder->allMessages objectAtIndex: i]) != [NSNull null])
+        {
+            flags = aMessage.flags.flags;
+            write_unsigned_int(_fd, flags);
+            lseek(_fd, (len-8), SEEK_CUR);
+            //NSLog(@"wrote = %d", flags);
+        }
+        else
+        {
+            lseek(_fd, (len-4), SEEK_CUR);
+        }
     }
-  //NSLog(@"Done!");
- 
-  return (fsync(_fd) == 0);
+    //NSLog(@"Done!");
+    
+    return (fsync(_fd) == 0);
 }
 
 
@@ -401,64 +401,64 @@ static unsigned short version = 1;
 //
 - (void) writeRecord: (CWCacheRecord *) theRecord
 {
-  NSUInteger len;
-
-  if (lseek(_fd, 0L, SEEK_END) < 0)
+    NSUInteger len;
+    
+    if (lseek(_fd, 0L, SEEK_END) < 0)
     {
-      NSLog(@"COULD NOT LSEEK TO END OF FILE");
-      abort();
+        NSLog(@"COULD NOT LSEEK TO END OF FILE");
+        abort();
     }
-  
-  // We calculate the length of this record (including the
-  // first five fields, which is 20 bytes long and is added
-  // at the very end)
-  len = 0;
-  len += [theRecord.from length]+2;
-  len += [theRecord.in_reply_to length]+2;
-  len += [theRecord.message_id length]+2;
-  len += [theRecord.references length]+2;
-  len += [theRecord.subject length]+2;
-  len += [theRecord.to length]+2;
-  len += [theRecord.cc length]+2;
-
-  if ([(CWLocalFolder *)_folder type] == PantomimeFormatMaildir)
+    
+    // We calculate the length of this record (including the
+    // first five fields, which is 20 bytes long and is added
+    // at the very end)
+    len = 0;
+    len += [theRecord.from length]+2;
+    len += [theRecord.in_reply_to length]+2;
+    len += [theRecord.message_id length]+2;
+    len += [theRecord.references length]+2;
+    len += [theRecord.subject length]+2;
+    len += [theRecord.to length]+2;
+    len += [theRecord.cc length]+2;
+    
+    if ([(CWLocalFolder *)_folder type] == PantomimeFormatMaildir)
     {
-      len += strlen(theRecord.filename)+2;
-      len += 16;
+        len += strlen(theRecord.filename)+2;
+        len += 16;
     }
-  else
+    else
     {
-      len += 20;
+        len += 20;
     }
-
-  // We write the length of our entry
-  write_unsigned_int(_fd, len);
-
-  // We write the flags, date, position and the size of the message.
-  write_unsigned_int(_fd, theRecord.flags);
-  write_unsigned_int(_fd, theRecord.date);
-
-  if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
+    
+    // We write the length of our entry
+    write_unsigned_int(_fd, len);
+    
+    // We write the flags, date, position and the size of the message.
+    write_unsigned_int(_fd, theRecord.flags);
+    write_unsigned_int(_fd, theRecord.date);
+    
+    if ([(CWLocalFolder *)_folder type] == PantomimeFormatMbox)
     {
-      write_unsigned_int(_fd, theRecord.position);
+        write_unsigned_int(_fd, theRecord.position);
     }
-  else
+    else
     {
-      write_string(_fd, (unsigned char *)theRecord.filename, strlen(theRecord.filename));
+        write_string(_fd, (unsigned char *)theRecord.filename, strlen(theRecord.filename));
     }
-  
-  write_unsigned_int(_fd, theRecord.size);
-  
-  // We write the read of our cached headers (From, In-Reply-To, Message-ID, References, Subject and To)
-  write_string(_fd, (unsigned char *)[theRecord.from bytes], [theRecord.from length]);
-  write_string(_fd, (unsigned char *)[theRecord.in_reply_to bytes], [theRecord.in_reply_to length]);
-  write_string(_fd, (unsigned char *)[theRecord.message_id bytes], [theRecord.message_id length]);
-  write_string(_fd, (unsigned char *)[theRecord.references bytes], [theRecord.references length]);
-  write_string(_fd, (unsigned char *)[theRecord.subject bytes], [theRecord.subject length]);
-  write_string(_fd, (unsigned char *)[theRecord.to bytes], [theRecord.to length]);
-  write_string(_fd, (unsigned char *)[theRecord.cc bytes], [theRecord.cc length]);
-
-  _count++;
+    
+    write_unsigned_int(_fd, theRecord.size);
+    
+    // We write the read of our cached headers (From, In-Reply-To, Message-ID, References, Subject and To)
+    write_string(_fd, (unsigned char *)[theRecord.from bytes], [theRecord.from length]);
+    write_string(_fd, (unsigned char *)[theRecord.in_reply_to bytes], [theRecord.in_reply_to length]);
+    write_string(_fd, (unsigned char *)[theRecord.message_id bytes], [theRecord.message_id length]);
+    write_string(_fd, (unsigned char *)[theRecord.references bytes], [theRecord.references length]);
+    write_string(_fd, (unsigned char *)[theRecord.subject bytes], [theRecord.subject length]);
+    write_string(_fd, (unsigned char *)[theRecord.to bytes], [theRecord.to length]);
+    write_string(_fd, (unsigned char *)[theRecord.cc bytes], [theRecord.cc length]);
+    
+    _count++;
 }
 
 
@@ -505,7 +505,7 @@ static unsigned short version = 1;
     {
       len = read_unsigned_int(_fd);
       aMessage = [_folder->allMessages objectAtIndex: i];
-      flags = ((CWFlags *)[aMessage flags])->flags;
+      flags = aMessage.flags.flags;
       delta = 0;
 
       if ((flags&PantomimeDeleted) == PantomimeDeleted)

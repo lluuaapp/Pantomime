@@ -30,7 +30,7 @@
 */
 @interface CWDNSManager : NSObject
 {
-  @private
+@private
     NSMutableDictionary *_cache;
 }
 

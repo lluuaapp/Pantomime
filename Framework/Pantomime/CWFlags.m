@@ -35,11 +35,14 @@
 
 - (id) initWithFlags: (PantomimeFlag) theFlags
 {
-  self = [super init];
-
-  flags = theFlags;
-
-  return self;
+    self = [super init];
+    
+    if (self)
+    {
+        _flags = theFlags;
+    }
+    
+    return self;
 }
 
 
@@ -48,67 +51,70 @@
 //
 - (void) encodeWithCoder: (NSCoder *) theCoder
 {
-  [theCoder encodeObject: [NSNumber numberWithInteger:flags]];
+    [theCoder encodeObject: [NSNumber numberWithInteger:_flags]];
 }
 
 
-- (id) initWithCoder: (NSCoder *) theCoder
+- (id) initWithCoder:(NSCoder*)theCoder
 {
-  self = [super init];
-
-  flags = [[theCoder decodeObject] integerValue];
-
-  return self;
+    self = [super init];
+    
+    if (self)
+    {
+        _flags = [[theCoder decodeObject] integerValue];
+    }
+    
+    return self;
 }
 
 
 //
 // NSCopying protocol
 //
-- (id) copyWithZone: (NSZone *) zone
+- (id) copyWithZone:(NSZone*)zone
 {
-  CWFlags *theFlags;
-
-  theFlags = [[CWFlags alloc] initWithFlags: flags];
-
-  return theFlags;
+    CWFlags *theFlags;
+    
+    theFlags = [[CWFlags alloc] initWithFlags:_flags];
+    
+    return theFlags;
 }
 
 
 //
 //
 //
-- (void) add: (PantomimeFlag) theFlag
+- (void) add:(PantomimeFlag)theFlag
 {
-  flags = flags|theFlag;
+    _flags = _flags|theFlag;
 }
 
 
 //
 //
 //
-- (void) addFlagsFromData: (NSData *) theData
-		   format: (PantomimeFolderFormat) theFormat
+- (void) addFlagsFromData:(NSData*)theData
+                   format:(PantomimeFolderFormat)theFormat
 {
-  NSRange theRange;
-  
-  if (theData)
-    {    
-      if (theFormat == PantomimeFormatMbox)
-	{
-	  CHECK_FLAG("R", PantomimeSeen);
-	  CHECK_FLAG("D", PantomimeDeleted);
-	  CHECK_FLAG("A", PantomimeAnswered);
-	  CHECK_FLAG("F", PantomimeFlagged);
-	}
-      else if (theFormat == PantomimeFormatMaildir)
-	{
-	  CHECK_FLAG("S", PantomimeSeen);
-	  CHECK_FLAG("R", PantomimeAnswered);
-	  CHECK_FLAG("F", PantomimeFlagged);
-	  CHECK_FLAG("D", PantomimeDraft);
-	  CHECK_FLAG("T", PantomimeDeleted);
-	}
+    NSRange theRange;
+    
+    if (theData)
+    {
+        if (theFormat == PantomimeFormatMbox)
+        {
+            CHECK_FLAG("R", PantomimeSeen);
+            CHECK_FLAG("D", PantomimeDeleted);
+            CHECK_FLAG("A", PantomimeAnswered);
+            CHECK_FLAG("F", PantomimeFlagged);
+        }
+        else if (theFormat == PantomimeFormatMaildir)
+        {
+            CHECK_FLAG("S", PantomimeSeen);
+            CHECK_FLAG("R", PantomimeAnswered);
+            CHECK_FLAG("F", PantomimeFlagged);
+            CHECK_FLAG("D", PantomimeDraft);
+            CHECK_FLAG("T", PantomimeDeleted);
+        }
     }
 }
 
@@ -118,13 +124,13 @@
 //
 - (BOOL) contain: (PantomimeFlag) theFlag
 {
-  if ((flags&theFlag) == theFlag) 
+    if ((_flags&theFlag) == theFlag)
     {
-      return YES;
+        return YES;
     }
-  else
+    else
     {
-      return NO;
+        return NO;
     }
 }
 
@@ -134,7 +140,7 @@
 //
 - (void) replaceWithFlags: (CWFlags *) theFlags
 {
-  flags = theFlags->flags;
+    _flags = theFlags.flags;
 }
 
 //
@@ -142,7 +148,7 @@
 //
 - (void) remove: (PantomimeFlag) theFlag
 {
-  flags = flags&(flags^theFlag);
+    _flags = _flags&(_flags^theFlag);
 }
 
 
@@ -151,7 +157,7 @@
 //
 - (void) removeAll
 {
-  flags = 0;
+    _flags = 0;
 }
 
 
@@ -160,7 +166,7 @@
 //
 - (NSString *) statusString
 {
-  return [NSString stringWithFormat: @"%cO", ([self contain: PantomimeSeen] ? 'R' : ' ')];
+    return [NSString stringWithFormat: @"%cO", ([self contain: PantomimeSeen] ? 'R' : ' ')];
 }
 
 //
@@ -177,26 +183,26 @@
 //
 - (NSString *) xstatusString
 {
-  NSMutableString *aMutableString;
-
-  aMutableString = [[NSMutableString alloc] init];
-  
-  if ([self contain: PantomimeDeleted])
+    NSMutableString *aMutableString;
+    
+    aMutableString = [[NSMutableString alloc] init];
+    
+    if ([self contain: PantomimeDeleted])
     {
-      [aMutableString appendFormat: @"%c", 'D'];
+        [aMutableString appendFormat:@"%c", 'D'];
     }
-
-  if ([self contain: PantomimeFlagged])
+    
+    if ([self contain: PantomimeFlagged])
     {
-      [aMutableString appendFormat: @"%c", 'F'];
+        [aMutableString appendFormat:@"%c", 'F'];
     }
-
-  if ([self contain: PantomimeAnswered])
+    
+    if ([self contain: PantomimeAnswered])
     {
-      [aMutableString appendFormat: @"%c", 'A'];
+        [aMutableString appendFormat:@"%c", 'A'];
     }
-
-  return aMutableString;
+    
+    return aMutableString;
 }
 
 
@@ -205,36 +211,36 @@
 //
 - (NSString *) maildirString
 {
-  NSMutableString *aMutableString;
-  
-  aMutableString = [[NSMutableString alloc] initWithString: @"2,"];
-  
-  if ([self contain: PantomimeDraft])
+    NSMutableString *aMutableString;
+    
+    aMutableString = [[NSMutableString alloc] initWithString: @"2,"];
+    
+    if ([self contain:PantomimeDraft])
     {
-      [aMutableString appendString: @"D"];
+        [aMutableString appendString:@"D"];
     }
-  
-  if ([self contain: PantomimeFlagged])
+    
+    if ([self contain:PantomimeFlagged])
     {
-      [aMutableString appendString: @"F"];
+        [aMutableString appendString:@"F"];
     }
-  
-  if ([self contain: PantomimeAnswered])
+    
+    if ([self contain:PantomimeAnswered])
     {
-      [aMutableString appendString: @"R"];
+        [aMutableString appendString:@"R"];
     }
-  
-  if ([self contain: PantomimeSeen])
+    
+    if ([self contain:PantomimeSeen])
     {
-      [aMutableString appendString: @"S"];
+        [aMutableString appendString:@"S"];
     }
-  
-  if ([self contain: PantomimeDeleted])
+    
+    if ([self contain:PantomimeDeleted])
     {
-      [aMutableString appendString: @"T"];
+        [aMutableString appendString:@"T"];
     }
-
-  return aMutableString;
+    
+    return aMutableString;
 }
 
 @end
