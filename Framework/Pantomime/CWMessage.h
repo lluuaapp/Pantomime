@@ -71,20 +71,69 @@ extern NSString* PantomimeMessageExpunged;
 */
 @interface CWMessage : CWPart <NSCoding>
 {
-  @protected
+@protected
     NSData *_rawSource;
-
-  @private
-    NSMutableDictionary *_properties;
-    NSMutableArray *_recipients;  
- 
-    NSArray *_references;
-    CWFolder *_folder;
-    CWFlags *_flags;
-
-    NSUInteger _message_number;
-    BOOL _initialized;    
 }
+
+/*!
+  @method allReferences
+  @discussion This method is used to obtain the value of the
+              "References" header. The values are particularly
+	      useful for message threading.
+  @result The value of the "References" header. This corresponds
+          to a NSArray of NSString instances. Each instance is normally
+	  a Message-ID.
+*/
+@property NSArray *references;
+
+/*!
+  @method flags
+  @discussion This method is used to obtain the flags associated to
+              the receiver.
+  @result The CWFlags instance of the receiver.
+*/
+@property CWFlags *flags;
+
+/*!
+  @method folder
+  @discussion This method is used to get the associated
+              receiver's folder.
+  @result The CWFolder instance in which the message is
+          stored, nil if no folder holds the receiver.
+*/
+@property CWFolder *folder;
+
+/*!
+  @method rawSource
+  @discussion This method is used to obtain the raw
+              representation of the receiver. Subclasses
+	      will overwrite this method so it's not
+	      blocking (see the documentation of this
+	      method for CWIMAPMessage, for example).
+  @result The raw representation, or nil if it has not
+          been loaded.
+*/
+@property (nonatomic) NSData *rawSource;
+
+/*!
+  @method messageNumber
+  @discussion This method is used to obtain the message sequence number (MSN)
+              of the receiver. MSN have a special meaning for IMAP
+	      messages (see 2.3.1.2. of RFC3501 for details).
+  @result The MSN, 0 if none was previously set.
+*/
+@property NSUInteger messageNumber;
+
+/*!
+  @method isInitialized
+  @discussion This method is used to verify if a message has been
+              initialized or not. An inititalized message is a message
+	      for which all parts have been initilized. A message
+	      for which only the headers are set is not an
+	      initialized message.
+  @result YES if the message is initialized, NO otherwise.
+*/
+@property (getter=isInitialized) BOOL initialized;
 
 /*!
   @method initWithHeaders:
@@ -123,23 +172,6 @@ extern NSString* PantomimeMessageExpunged;
   @param theInternetAddress The CWInternetAddress instance.
 */
 - (void) setFrom: (CWInternetAddress *) theInternetAddress;
-
-/*!
-  @method messageNumber
-  @discussion This method is used to obtain the message sequence number (MSN)
-              of the receiver. MSN have a special meaning for IMAP
-	      messages (see 2.3.1.2. of RFC3501 for details).
-  @result The MSN, 0 if none was previously set.
-*/
-- (NSUInteger) messageNumber;
-
-/*!
-  @method setMessageNumber:
-  @discussion This method is used to set the message number value
-              of the receiver.
-  @param theMessageNumber The value.
-*/
-- (void) setMessageNumber: (NSUInteger) theMessageNumber;
 
 /*!
   @method messageID
@@ -288,45 +320,6 @@ extern NSString* PantomimeMessageExpunged;
 - (void) setBaseSubject: (NSString *) theBaseSubject;
 
 /*!
-  @method isInitialized
-  @discussion This method is used to verify if a message has been
-              initialized or not. An inititalized message is a message
-	      for which all parts have been initilized. A message
-	      for which only the headers are set is not an
-	      initialized message.
-  @result YES if the message is initialized, NO otherwise.
-*/
-- (BOOL) isInitialized;
-
-/*!
-  @method setInitialized:
-  @discussion This method is used to initialize the message or
-              free the resources taken by its content. Subclasses
-	      of CWMessage sometimes overwrite this method.
-  @param theBOOL YES if we want to load the content of the message
-                 and initialize the receiver with it. NO if we
-		 want to free the resources taken by the decoded content.
-*/
-- (void) setInitialized: (BOOL) theBOOL;
-
-/*!
-  @method flags
-  @discussion This method is used to obtain the flags associated to
-              the receiver.
-  @result The CWFlags instance of the receiver.
-*/
-- (CWFlags *) flags;
-
-/*!
-  @method setFlags:
-  @discussion This method is used to set the flags of the receiver,
-              replacing any previous values set. Subclasses of
-	      CWMessage sometimes overwrite this method.
-  @param theFlags The new flags for the receiver.
-*/
-- (void) setFlags: (CWFlags *) theFlags;
-
-/*!
   @method MIMEVersion
   @discussion This method is used to obtain the value of the
               "MIME-Version" header.
@@ -376,44 +369,6 @@ extern NSString* PantomimeMessageExpunged;
 */
 - (void) addHeader: (NSString *) theName
          withValue: (NSString *) theValue;
-
-/*!
-  @method folder
-  @discussion This method is used to get the associated
-              receiver's folder.
-  @result The CWFolder instance in which the message is
-          stored, nil if no folder holds the receiver.
-*/
-- (CWFolder *) folder;
-
-/*!
-  @method setFolder:
-  @discussion This method is used to set the associated folder
-              to the message.
-  @param theFolder The folder which holds the receiver.
-*/
-- (void) setFolder: (CWFolder *) theFolder;
-
-/*!
-  @method rawSource
-  @discussion This method is used to obtain the raw
-              representation of the receiver. Subclasses
-	      will overwrite this method so it's not
-	      blocking (see the documentation of this
-	      method for CWIMAPMessage, for example).
-  @result The raw representation, or nil if it has not
-          been loaded.
-*/
-- (NSData *) rawSource;
-
-/*!
-  @method setRawSource:
-  @discussion This method is used to set the raw representation
-              of the receiver. No specific actions are taken
-	      when invoking this method.
-  @param theRawSource The raw source of the message.
-*/
-- (void) setRawSource: (NSData *) theRawSource;
 
 /*!
   @method organization
@@ -514,25 +469,6 @@ extern NSString* PantomimeMessageExpunged;
   @param theResentSubject The new value of the header.
 */
 - (void) setResentSubject: (NSString *) theResentSubject;
-
-/*!
-  @method allReferences
-  @discussion This method is used to obtain the value of the
-              "References" header. The values are particularly
-	      useful for message threading.
-  @result The value of the "References" header. This corresponds
-          to a NSArray of NSString instances. Each instance is normally
-	  a Message-ID.
-*/
-- (NSArray *) allReferences;
-
-/*!
-  @method setReferences:
-  @discussion This method is used to the value of the "References"
-              header, replacing any previously defined value.
-  @param theReferences The array of references.
-*/
-- (void) setReferences: (NSArray *) theReferences;
 
 /*!
   @method addHeadersFromData:record:

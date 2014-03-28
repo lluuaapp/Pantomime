@@ -40,17 +40,13 @@
 
 static NSInteger currentMessageVersion = 2;
 
-// regexes used in _computeBaseSubjet
-static CWRegEx *atLeastOneSpaceRegex;
-static CWRegEx *suffixSubjTrailerRegex;
-static CWRegEx *prefixSubjLeaderRegex;
-static CWRegEx *prefixSubjBlobRegex;
-static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
-
 //
 // Private methods
 //
-@interface CWMessage (Private)
+@interface CWMessage ()
+
+@property NSMutableDictionary *properties;
+@property NSMutableArray *mutableRecipients;
 
 - (NSString *) _computeBaseSubject;
 - (void) _extractText:(NSMutableData *) theMutableData
@@ -67,50 +63,28 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 @implementation CWMessage
 
 //
-// We setup regexes used in _computeBaseSubject
-//
-+ (void) initialize
-{
-  NSString *blobChar = @"[^][]";
-  NSString *subjTrailer = @"(\\(fwd\\))| ";
-  NSString *subjFwdHdr = @"\\[fwd:";
-  NSString *subjFwdTrl = @"\\]";
-  NSString *subjBlob = [NSString stringWithFormat:@"\\[(%@)*\\] *", blobChar];
-  NSString *subjReFwd = [NSString stringWithFormat:@"((re)|(fwd?)) *(%@)?:", subjBlob];
-  NSString *subjLeader = [NSString stringWithFormat:@"((%@)*%@)| ", subjBlob, subjReFwd];
-	
-  atLeastOneSpaceRegex = [[CWRegEx alloc] initWithPattern:@"[[:space:]]+" flags:REG_EXTENDED|REG_ICASE];
-  suffixSubjTrailerRegex = [[CWRegEx alloc] initWithPattern:[NSString stringWithFormat:@"(%@)*$", subjTrailer] flags:REG_EXTENDED|REG_ICASE];
-  prefixSubjLeaderRegex = [[CWRegEx alloc] initWithPattern:[NSString stringWithFormat:@"^(%@)", subjLeader] flags:REG_EXTENDED|REG_ICASE];
-  prefixSubjBlobRegex = [[CWRegEx alloc] initWithPattern:[NSString stringWithFormat:@"^(%@)", subjBlob] flags:REG_EXTENDED|REG_ICASE];
-  prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex = [[CWRegEx alloc] initWithPattern:[NSString stringWithFormat:@"^(%@)(.*)(%@)$", subjFwdHdr, subjFwdTrl] flags:REG_EXTENDED|REG_ICASE];
-}
-
-
-//
 //
 //
 - (id) init
 {
-  self = [super init];
-
-  [CWMessage setVersion:currentMessageVersion];
-  
-  _recipients = [[NSMutableArray alloc] init];
-  _flags = [[CWFlags alloc] init];
-  _initialized = NO;
-  _references = nil;
-  _folder = nil;
-
-  // By default, we want the subclass's rawSource method to be called so we set our
-  // rawSource ivar to nil. If it's not nil (ONLY set in initWithData) it'll be returned,
-  // for performances improvements.
-  _rawSource = nil;
-
-  // We initialize our dictionary holding all extra properties a message might have
-  _properties = [[NSMutableDictionary alloc] init];
-  
-  return self;
+    self = [super init];
+    {
+        [CWMessage setVersion:currentMessageVersion];
+        
+        _mutableRecipients = [[NSMutableArray alloc] init];
+        _flags = [[CWFlags alloc] init];
+        _references = nil;
+        _folder = nil;
+        
+        // By default, we want the subclass's rawSource method to be called so we set our
+        // rawSource ivar to nil. If it's not nil (ONLY set in initWithData) it'll be returned,
+        // for performances improvements.
+        _rawSource = nil;
+        
+        // We initialize our dictionary holding all extra properties a message might have
+        _properties = [[NSMutableDictionary alloc] init];
+    }
+    return self;
 }
 
 
@@ -185,14 +159,14 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 
   [theCoder encodeObject: [self receivedDate]];                       // Date
   [theCoder encodeObject: [self from]];                               // From
-  [theCoder encodeObject: _recipients];                               // To and Cc (Bcc, at worst)
+  [theCoder encodeObject: _mutableRecipients];                               // To and Cc (Bcc, at worst)
   [theCoder encodeObject: [self subject]];                            // Subject
   [theCoder encodeObject: [self messageID]];                          // Message-ID
   [theCoder encodeObject: [self MIMEVersion]];                        // MIME-Version
   [theCoder encodeObject: _references];                               // References
   [theCoder encodeObject: [self inReplyTo]];                          // In-Reply-To
   
-  [theCoder encodeObject: [NSNumber numberWithInteger:_message_number]]; // Message number
+  [theCoder encodeObject: [NSNumber numberWithInteger:_messageNumber]]; // Message number
   [theCoder encodeObject: _flags];                                    // Message flags
 }
 
@@ -206,7 +180,7 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
   self = [super initWithCoder: theCoder];
 
   _properties = [[NSMutableDictionary alloc] init];
-  _recipients = [[NSMutableArray alloc] init];
+  _mutableRecipients = [[NSMutableArray alloc] init];
   
   [self setReceivedDate: [theCoder decodeObject]];              // Date
   [self setFrom: [theCoder decodeObject]];                      // From
@@ -267,25 +241,6 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
     }
 }
 
-
-//
-//
-//
-- (NSUInteger) messageNumber
-{
-  return _message_number;
-}
-
-
-//
-//
-//
-- (void) setMessageNumber: (NSUInteger) theMessageNumber
-{
-  _message_number = theMessageNumber;
-}
-
-
 //
 //
 //
@@ -343,7 +298,7 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (NSCalendarDate *) receivedDate
 {
-  return [_headers objectForKey: @"Date"];
+    return [_headers objectForKey: @"Date"];
 }
 
 
@@ -352,9 +307,9 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (void) setReceivedDate: (NSCalendarDate*) theDate
 {
-  if (theDate)
+    if (theDate)
     {
-      [_headers setObject: theDate  forKey: @"Date"];
+        [_headers setObject: theDate  forKey: @"Date"];
     }
 }
 
@@ -364,9 +319,9 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (void) addRecipient: (CWInternetAddress *) theAddress
 {
-  if (theAddress)
+    if (theAddress)
     {
-      [_recipients addObject: theAddress];
+        [_mutableRecipients addObject: theAddress];
     }
 }
 
@@ -376,9 +331,9 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (void) removeRecipient: (CWInternetAddress *) theAddress
 {
-  if (theAddress)
+    if (theAddress)
     {
-      [_recipients removeObject: theAddress];
+        [_mutableRecipients removeObject: theAddress];
     }
 }
 
@@ -388,7 +343,7 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (NSArray *) recipients
 {
-  return _recipients;
+    return _mutableRecipients;
 }
 
 
@@ -397,11 +352,11 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (void) setRecipients: (NSArray *) theRecipients
 {
-  [_recipients removeAllObjects];
-
-  if (theRecipients)
+    [_mutableRecipients removeAllObjects];
+    
+    if (theRecipients)
     {
-      [_recipients addObjectsFromArray: theRecipients];
+        [_mutableRecipients addObjectsFromArray: theRecipients];
     }
 }
 
@@ -411,7 +366,7 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (NSUInteger) recipientsCount
 {
-  return [_recipients count];
+    return [_mutableRecipients count];
 }
 
 
@@ -420,7 +375,7 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (void) removeAllRecipients
 {
-  [_recipients removeAllObjects];
+    [_mutableRecipients removeAllObjects];
 }
 
 
@@ -429,7 +384,7 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (CWInternetAddress *) replyTo
 {
-  return [_headers objectForKey: @"Reply-To"];
+    return [_headers objectForKey: @"Reply-To"];
 }
 
 
@@ -438,13 +393,13 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (void) setReplyTo: (CWInternetAddress *) theInternetAddress
 {
-  if (theInternetAddress)
+    if (theInternetAddress)
     {
-      [_headers setObject: theInternetAddress  forKey: @"Reply-To"];
+        [_headers setObject: theInternetAddress  forKey: @"Reply-To"];
     }
-  else
+    else
     {
-      [_headers removeObjectForKey: @"Reply-To"];
+        [_headers removeObjectForKey: @"Reply-To"];
     }
 }
 
@@ -463,12 +418,12 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (void) setSubject: (NSString *) theSubject
 {
-  if (theSubject)
+    if (theSubject)
     {
-      [_headers setObject: theSubject  forKey: @"Subject"];
-      
-      // We invalidate our previous base subject.
-      [self setBaseSubject: nil];
+        [_headers setObject: theSubject  forKey: @"Subject"];
+        
+        // We invalidate our previous base subject.
+        [self setBaseSubject: nil];
     }
 }
 
@@ -499,25 +454,6 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 {
   [self setProperty: theBaseSubject  forKey: @"baseSubject"];
 }
-
-
-//
-//
-//
-- (BOOL) isInitialized
-{
-  return _initialized;
-}
-
-
-//
-//
-//
-- (void) setInitialized: (BOOL) theBOOL
-{
-  _initialized = theBOOL;
-}
-
 
 //
 //
@@ -562,49 +498,12 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
     }
 }
 
-
-//
-//
-//
-- (NSArray *) allReferences
-{
-  return _references;
-}
-
-
-//
-//
-//
-- (void) setReferences: (NSArray *) theReferences
-{
-  ASSIGN(_references, theReferences);
-}
-
-
-//
-//
-//
-- (CWFlags *) flags
-{
-  return _flags;
-}
-
-
-//
-//
-//
-- (void) setFlags: (CWFlags *) theFlags
-{
-  ASSIGN(_flags, theFlags);
-}
-
-
 //
 //
 //
 - (NSString *) MIMEVersion
 {
-  return [_headers objectForKey: @"MIME-Version"];
+    return [_headers objectForKey: @"MIME-Version"];
 }
 
 
@@ -613,9 +512,9 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (void) setMIMEVersion: (NSString *) theMIMEVersion
 {
-  if (theMIMEVersion)
+    if (theMIMEVersion)
     {
-      [_headers setObject: theMIMEVersion  forKey: @"MIME-Version"];
+        [_headers setObject: theMIMEVersion  forKey: @"MIME-Version"];
     }
 }
 
@@ -625,126 +524,126 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (CWMessage *) reply: (PantomimeReplyMode) theMode
 {
-  CWInternetAddress *anInternetAddress;
-  NSMutableData *aMutableData; 
-  CWMessage *theMessage;
-  BOOL needsToQuote;
-  
-  theMessage = [[CWMessage alloc] init];
-  [theMessage setContentType: @"text/plain"];
-  [theMessage setCharset: @"utf-8"];
-
-  // We set the subject of our message 
-  if (![self subject])
+    CWInternetAddress *anInternetAddress;
+    NSMutableData *aMutableData;
+    CWMessage *theMessage;
+    BOOL needsToQuote;
+    
+    theMessage = [[CWMessage alloc] init];
+    [theMessage setContentType: @"text/plain"];
+    [theMessage setCharset: @"utf-8"];
+    
+    // We set the subject of our message
+    if (![self subject])
     {
-      [theMessage setSubject: _(@"Re: your mail")];
+        [theMessage setSubject:NSLocalizedString(@"Re: your mail", nil)];
     }
-  else if ([[[self subject] stringByTrimmingWhiteSpaces] hasREPrefix])
+    else if ([[[self subject] stringByTrimmingWhiteSpaces] hasREPrefix])
     {
-      [theMessage setSubject: [self subject]];
+        [theMessage setSubject: [self subject]];
     }
-  else 
+    else
     {
-      [theMessage setSubject: [NSString stringWithFormat: _(@"Re: %@"), [[self subject] stringByTrimmingWhiteSpaces]]];
+        [theMessage setSubject: [NSString stringWithFormat:NSLocalizedString(@"Re: %@", nil), [[self subject] stringByTrimmingWhiteSpaces]]];
     }
-
-  // If Reply-To is defined, we use it. Otherwise, we use From:
-  if ([self replyTo] == nil)
+    
+    // If Reply-To is defined, we use it. Otherwise, we use From:
+    if ([self replyTo] == nil)
     {
-      anInternetAddress = [self from];
+        anInternetAddress = [self from];
     }
-  else 
+    else
     {
-      anInternetAddress = [self replyTo];
+        anInternetAddress = [self replyTo];
     }
-
-  [anInternetAddress setType: PantomimeToRecipient];
-  [theMessage addRecipient: anInternetAddress];
-
-  // We add our In-Reply-To header
-  if ([self messageID])
+    
+    [anInternetAddress setType: PantomimeToRecipient];
+    [theMessage addRecipient: anInternetAddress];
+    
+    // We add our In-Reply-To header
+    if ([self messageID])
     {
-      [theMessage setInReplyTo: [self messageID]];
+        [theMessage setInReplyTo: [self messageID]];
     }
-  
-  // If we reply to all, we add the other recipients
-  if ((theMode&PantomimeReplyAllMode) == PantomimeReplyAllMode)
+    
+    // If we reply to all, we add the other recipients
+    if ((theMode&PantomimeReplyAllMode) == PantomimeReplyAllMode)
     {
-      NSEnumerator *anEnumerator;
-
-      anEnumerator = [_recipients objectEnumerator];
-      
-      while ((anInternetAddress = [anEnumerator nextObject]))
-	{
-	  [anInternetAddress setType: PantomimeCcRecipient];
-	  [theMessage addRecipient: anInternetAddress];
-	}
+        NSEnumerator *anEnumerator;
+        
+        anEnumerator = [_mutableRecipients objectEnumerator];
+        
+        while ((anInternetAddress = [anEnumerator nextObject]))
+        {
+            [anInternetAddress setType: PantomimeCcRecipient];
+            [theMessage addRecipient: anInternetAddress];
+        }
     }
-
-  // If it's a "simple" reply, we don't compute a content.
-  if ((theMode&PantomimeSimpleReplyMode) == PantomimeSimpleReplyMode)
+    
+    // If it's a "simple" reply, we don't compute a content.
+    if ((theMode&PantomimeSimpleReplyMode) == PantomimeSimpleReplyMode)
     {
-      [theMessage setContent: [NSData data]];
-      return theMessage;
+        [theMessage setContent: [NSData data]];
+        return theMessage;
     }
-  
-
-  // We finally work on the content of the message
-  aMutableData = [[NSMutableData alloc] init];
-  needsToQuote = NO;
-
-  [self _extractText: aMutableData  part: self  quote: &needsToQuote];
-  
-  //
-  // It was impossible for use to find a text/plain part. Let's
-  // inform our user that we can't do anything with this message.
-  //
-  if (![aMutableData length])
+    
+    
+    // We finally work on the content of the message
+    aMutableData = [[NSMutableData alloc] init];
+    needsToQuote = NO;
+    
+    [self _extractText: aMutableData  part: self  quote: &needsToQuote];
+    
+    //
+    // It was impossible for use to find a text/plain part. Let's
+    // inform our user that we can't do anything with this message.
+    //
+    if (![aMutableData length])
     {
-      [aMutableData appendData: [@"\t[NON-Text Body part not included]" dataUsingEncoding: NSUTF8StringEncoding]];
-      needsToQuote = NO;
+        [aMutableData appendData: [@"\t[NON-Text Body part not included]" dataUsingEncoding: NSUTF8StringEncoding]];
+        needsToQuote = NO;
     }
-  else
+    else
     {
-      // We remove the signature
-      NSRange aRange;
-      
-      aRange = [aMutableData rangeOfCString: "\n-- "  options: NSBackwardsSearch];
-      
-      if (aRange.length)
-	{
-	  [aMutableData replaceBytesInRange: NSMakeRange(aRange.location, [aMutableData length]-aRange.location)
-			withBytes: NULL
-			length: 0];
-	}
+        // We remove the signature
+        NSRange aRange;
+        
+        aRange = [aMutableData rangeOfCString: "\n-- "  options: NSBackwardsSearch];
+        
+        if (aRange.length)
+        {
+            [aMutableData replaceBytesInRange: NSMakeRange(aRange.location, [aMutableData length]-aRange.location)
+                                    withBytes: NULL
+                                       length: 0];
+        }
     }
-
-  
-  // We now have our content as string, let's 'quote' it
-  if (needsToQuote)
+    
+    
+    // We now have our content as string, let's 'quote' it
+    if (needsToQuote)
     {
-      NSData *aData;
-      
-      aData = [aMutableData unwrapWithLimit: 78];
-      [aMutableData setData: [aData quoteWithLevel: 1  wrappingLimit: 80]]; 
+        NSData *aData;
+        
+        aData = [aMutableData unwrapWithLimit: 78];
+        [aMutableData setData: [aData quoteWithLevel: 1  wrappingLimit: 80]];
     }
-
-  [aMutableData insertCString: [[NSString stringWithFormat: @"%@ wrote:\n\n", [[self from] stringValue]] cStringUsingEncoding: NSUTF8StringEncoding]
-		atIndex: 0];
-  
-  
-  // We verify if we have a Date value. We might receive messages w/o this field
-  // (Yes, I know, it's borken but it's happening).
-  if ([self receivedDate])
+    
+    [aMutableData insertCString: [[NSString stringWithFormat: @"%@ wrote:\n\n", [[self from] stringValue]] cStringUsingEncoding: NSUTF8StringEncoding]
+                        atIndex: 0];
+    
+    
+    // We verify if we have a Date value. We might receive messages w/o this field
+    // (Yes, I know, it's borken but it's happening).
+    if ([self receivedDate])
     {
-      [aMutableData insertCString: [[NSString stringWithFormat: @"On %@ ", [[self receivedDate] description]] 
-				     cStringUsingEncoding: NSUTF8StringEncoding]
-		    atIndex: 0];
+        [aMutableData insertCString: [[NSString stringWithFormat: @"On %@ ", [[self receivedDate] description]] 
+                                      cStringUsingEncoding: NSUTF8StringEncoding]
+                            atIndex: 0];
     }
-
-  [theMessage setContent: aMutableData];
-  
-  return theMessage;
+    
+    [theMessage setContent: aMutableData];
+    
+    return theMessage;
 }
 
 
@@ -1172,19 +1071,6 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 }
 
 //
-//
-//
-- (CWFolder *) folder
-{
-  return _folder;
-}
-
-- (void) setFolder: (CWFolder *) theFolder
-{
-  _folder = theFolder;
-}
-
-//
 // This method is used to optain tha raw source of a message.
 // It's returned as a NSData object. The returned data should
 // be the message like it's achived in a mbox format and it could
@@ -1202,16 +1088,6 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
   
   return _rawSource;
 }
-
-
-//
-//
-//
-- (void) setRawSource: (NSData *) theRawSource
-{
-  ASSIGN(_rawSource, theRawSource);
-}
-
 
 //
 //
@@ -1454,47 +1330,39 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
   [self addHeadersFromData: theHeaders  record: theRecord];
 }
 
-@end
-
-
-//
-// Message's sorting category
-//
-@implementation CWMessage (Comparing)
-
 - (NSInteger) compareAccordingToNumber: (CWMessage *) aMessage
 {
-  NSInteger num;
-  num = [aMessage messageNumber];
-  if (_message_number < num)
+    NSInteger num;
+    num = [aMessage messageNumber];
+    if (_messageNumber < num)
     {
-      return NSOrderedAscending;
+        return NSOrderedAscending;
     }
-  else if (_message_number > num)
+    else if (_messageNumber > num)
     {
-      return NSOrderedDescending;
+        return NSOrderedDescending;
     }
-  else
+    else
     {
-      return NSOrderedSame;
+        return NSOrderedSame;
     }
 }
 
 - (NSInteger) reverseCompareAccordingToNumber: (CWMessage *) aMessage
 {
-  NSInteger num;
-  num = [aMessage messageNumber];
-  if (num < _message_number)
+    NSInteger num;
+    num = [aMessage messageNumber];
+    if (num < _messageNumber)
     {
-      return NSOrderedAscending;
+        return NSOrderedAscending;
     }
-  else if (num > _message_number)
+    else if (num > _messageNumber)
     {
-      return NSOrderedDescending;
+        return NSOrderedDescending;
     }
-  else
+    else
     {
-      return NSOrderedSame;
+        return NSOrderedSame;
     }
 }
 
@@ -1694,49 +1562,41 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 
 - (NSInteger) compareAccordingToSize: (CWMessage *) aMessage
 {
-  NSInteger size1 = [self size];
-  NSInteger size2 = [aMessage size];
-
-  if (size1 < size2)
+    NSInteger size1 = [self size];
+    NSInteger size2 = [aMessage size];
+    
+    if (size1 < size2)
     {
-      return NSOrderedAscending;
+        return NSOrderedAscending;
     }
-  else if (size1 > size2)
+    else if (size1 > size2)
     {
-      return NSOrderedDescending;
+        return NSOrderedDescending;
     }
-  else
+    else
     {
-      return [self compareAccordingToNumber: aMessage];
+        return [self compareAccordingToNumber: aMessage];
     }
 }
 
 - (NSInteger) reverseCompareAccordingToSize: (CWMessage *) aMessage
 {
-  NSInteger size1 = [aMessage size];
-  NSInteger size2 = [self size];
-
-  if (size1 < size2)
+    NSInteger size1 = [aMessage size];
+    NSInteger size2 = [self size];
+    
+    if (size1 < size2)
     {
-      return NSOrderedAscending;
+        return NSOrderedAscending;
     }
-  else if (size1 > size2)
+    else if (size1 > size2)
     {
-      return NSOrderedDescending;
+        return NSOrderedDescending;
     }
-  else
+    else
     {
-      return [self reverseCompareAccordingToNumber: aMessage];      
+        return [self reverseCompareAccordingToNumber: aMessage];
     }
 }
-
-@end
-
-
-//
-// Private methods
-//
-@implementation CWMessage (Private)
 
 //
 // Intended to be compatible for use with the draft specification for
@@ -1749,117 +1609,141 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (NSString *) _computeBaseSubject
 {
-  NSMutableString *baseSubject;
-  NSArray *theMatches;
-  NSString *aSubject;
-  NSRange aRange;
+    // regexes used in _computeBaseSubjet
+    static CWRegEx *atLeastOneSpaceRegex;
+    static CWRegEx *suffixSubjTrailerRegex;
+    static CWRegEx *prefixSubjLeaderRegex;
+    static CWRegEx *prefixSubjBlobRegex;
+    static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 
-  BOOL b1, b2;
-  NSInteger i;
-  
-  aSubject = [self subject];
-  
-  if (!aSubject)
-    {
-      return nil;
-    }
-  
-  baseSubject = [NSMutableString stringWithString: aSubject];
-  
-  //
-  // (1) Convert any RFC 2047 encoded-words in the subject to
-  // UTF-8 as described in "internationalization
-  // considerations."  Convert all tabs and continuations to
-  // space.  Convert all multiple spaces to a single space.
-  // 
-  theMatches = [atLeastOneSpaceRegex matchString: baseSubject];
-
-  for (i = [theMatches count]-1; i >= 0; i--)
-    {
-      aRange = [[theMatches objectAtIndex:i] rangeValue];
-      
-      if (CHECK_RANGE(aRange, [baseSubject length]))
-	{
-	  [baseSubject replaceCharactersInRange: aRange  withString:@" "];
-	}
-    }
-  do
-    {
-      b1 = NO;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSString *blobChar = @"[^][]";
+        NSString *subjTrailer = @"(\\(fwd\\))| ";
+        NSString *subjFwdHdr = @"\\[fwd:";
+        NSString *subjFwdTrl = @"\\]";
+        NSString *subjBlob = [NSString stringWithFormat:@"\\[(%@)*\\] *", blobChar];
+        NSString *subjReFwd = [NSString stringWithFormat:@"((re)|(fwd?)) *(%@)?:", subjBlob];
+        NSString *subjLeader = [NSString stringWithFormat:@"((%@)*%@)| ", subjBlob, subjReFwd];
+        
+        atLeastOneSpaceRegex = [[CWRegEx alloc] initWithPattern:@"[[:space:]]+" flags:REG_EXTENDED|REG_ICASE];
+        suffixSubjTrailerRegex = [[CWRegEx alloc] initWithPattern:[NSString stringWithFormat:@"(%@)*$", subjTrailer] flags:REG_EXTENDED|REG_ICASE];
+        prefixSubjLeaderRegex = [[CWRegEx alloc] initWithPattern:[NSString stringWithFormat:@"^(%@)", subjLeader] flags:REG_EXTENDED|REG_ICASE];
+        prefixSubjBlobRegex = [[CWRegEx alloc] initWithPattern:[NSString stringWithFormat:@"^(%@)", subjBlob] flags:REG_EXTENDED|REG_ICASE];
+        prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex = [[CWRegEx alloc] initWithPattern:[NSString stringWithFormat:@"^(%@)(.*)(%@)$", subjFwdHdr, subjFwdTrl] flags:REG_EXTENDED|REG_ICASE];
+    });
     
-      //
-      // (2) Remove all trailing text of the subject that matches
-      // the subj-trailer ABNF, repeat until no more matches are
-      // possible.
-      //
-      theMatches = [suffixSubjTrailerRegex matchString: baseSubject];
-
-      if ([theMatches count] > 0)
+    NSMutableString *baseSubject;
+    NSArray *theMatches;
+    NSString *aSubject;
+    NSRange aRange;
+    
+    BOOL b1, b2;
+    NSInteger i;
+    
+    aSubject = [self subject];
+    
+    if (!aSubject)
+    {
+        return nil;
+    }
+    
+    baseSubject = [NSMutableString stringWithString: aSubject];
+    
+    //
+    // (1) Convert any RFC 2047 encoded-words in the subject to
+    // UTF-8 as described in "internationalization
+    // considerations."  Convert all tabs and continuations to
+    // space.  Convert all multiple spaces to a single space.
+    //
+    theMatches = [atLeastOneSpaceRegex matchString: baseSubject];
+    
+    for (i = [theMatches count]-1; i >= 0; i--)
+    {
+        aRange = [[theMatches objectAtIndex:i] rangeValue];
+        
+        if (CHECK_RANGE(aRange, [baseSubject length]))
         {
-	  aRange = [[theMatches objectAtIndex:0] rangeValue];
-	  
-	  if (CHECK_RANGE(aRange,[baseSubject length]))
-	    {
-	      [baseSubject deleteCharactersInRange: [[theMatches objectAtIndex:0] rangeValue]];
-	    }
-	}
-      do
+            [baseSubject replaceCharactersInRange: aRange  withString:@" "];
+        }
+    }
+    do
+    {
+        b1 = NO;
+        
+        //
+        // (2) Remove all trailing text of the subject that matches
+        // the subj-trailer ABNF, repeat until no more matches are
+        // possible.
+        //
+        theMatches = [suffixSubjTrailerRegex matchString: baseSubject];
+        
+        if ([theMatches count] > 0)
         {
-	  b2 = NO;
-	  //
-	  // (3) Remove all prefix text of the subject that matches the
-	  // subj-leader ABNF.
-          //
-	  theMatches = [prefixSubjLeaderRegex matchString: baseSubject];
-	  
-	  if ([theMatches count] > 0)
+            aRange = [[theMatches objectAtIndex:0] rangeValue];
+            
+            if (CHECK_RANGE(aRange,[baseSubject length]))
             {
-	      aRange = [[theMatches objectAtIndex:0] rangeValue];
-	      
-	      if (CHECK_RANGE(aRange, [baseSubject length]))
+                [baseSubject deleteCharactersInRange: [[theMatches objectAtIndex:0] rangeValue]];
+            }
+        }
+        do
+        {
+            b2 = NO;
+            //
+            // (3) Remove all prefix text of the subject that matches the
+            // subj-leader ABNF.
+            //
+            theMatches = [prefixSubjLeaderRegex matchString: baseSubject];
+            
+            if ([theMatches count] > 0)
+            {
+                aRange = [[theMatches objectAtIndex:0] rangeValue];
+                
+                if (CHECK_RANGE(aRange, [baseSubject length]))
                 {
-		  [baseSubject deleteCharactersInRange: [[theMatches objectAtIndex:0] rangeValue]];
-		  b2 = YES;
+                    [baseSubject deleteCharactersInRange: [[theMatches objectAtIndex:0] rangeValue]];
+                    b2 = YES;
                 }
             }
-	  //
-          // (4) If there is prefix text of the subject that matches the
-          // subj-blob ABNF, and removing that prefix leaves a non-empty
-          // subj-base, then remove the prefix text.
-          //
-	  theMatches = [prefixSubjBlobRegex matchString: baseSubject];
-
-	  if ([theMatches count] > 0)
-	    {
-	      aRange = [[theMatches objectAtIndex:0] rangeValue];
-	      if (CHECK_RANGE(aRange, [baseSubject length]))
+            //
+            // (4) If there is prefix text of the subject that matches the
+            // subj-blob ABNF, and removing that prefix leaves a non-empty
+            // subj-base, then remove the prefix text.
+            //
+            theMatches = [prefixSubjBlobRegex matchString: baseSubject];
+            
+            if ([theMatches count] > 0)
+            {
+                aRange = [[theMatches objectAtIndex:0] rangeValue];
+                if (CHECK_RANGE(aRange, [baseSubject length]))
                 {
-		  [baseSubject deleteCharactersInRange:[[theMatches objectAtIndex:0] rangeValue]];
-		  b2 = YES;
+                    [baseSubject deleteCharactersInRange:[[theMatches objectAtIndex:0] rangeValue]];
+                    b2 = YES;
                 }
             }
             //
             // (5) Repeat (3) and (4) until no matches remain.
             //
         } while (b2);
-      //
-      // (6) If the resulting text begins with the subj-fwd-hdr ABNF
-      // and ends with the subj-fwd-trl ABNF, remove the
-      // subj-fwd-hdr and subj-fwd-trl and repeat from step (2).
-      //
-      theMatches = [prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex matchString:baseSubject];
-
-      if ([theMatches count] > 0)
+        //
+        // (6) If the resulting text begins with the subj-fwd-hdr ABNF
+        // and ends with the subj-fwd-trl ABNF, remove the
+        // subj-fwd-hdr and subj-fwd-trl and repeat from step (2).
+        //
+        theMatches = [prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex matchString:baseSubject];
+        
+        if ([theMatches count] > 0)
         {
-	  [baseSubject deleteCharactersInRange:NSMakeRange(0,5)];
-	  [baseSubject deleteCharactersInRange:NSMakeRange([baseSubject length] - 1,1)];
-	  b1 = YES;
+            [baseSubject deleteCharactersInRange:NSMakeRange(0,5)];
+            [baseSubject deleteCharactersInRange:NSMakeRange([baseSubject length] - 1,1)];
+            b1 = YES;
         }
     } while (b1);
-  //
-  // (7) The resulting text is the "base subject" used in the SORT.
-  //
-  return baseSubject;
+    //
+    // (7) The resulting text is the "base subject" used in the SORT.
+    //
+    return baseSubject;
 }
 
 
@@ -1991,31 +1875,31 @@ static CWRegEx *prefixSubjFwdHdrAndSuffixSubjFwdTrlRegex;
 //
 - (NSData *) _formatRecipientsWithType: (NSInteger) theType
 {
-  NSMutableData *aMutableData;
-  NSInteger i;
-
-  aMutableData = [[NSMutableData alloc] init];
-
-  for (i = 0; i < [_recipients count]; i++)
+    NSMutableData *aMutableData;
+    NSInteger i;
+    
+    aMutableData = [[NSMutableData alloc] init];
+    
+    for (i = 0; i < [_mutableRecipients count]; i++)
     {
-      CWInternetAddress *anInternetAddress;
-
-      anInternetAddress = [_recipients objectAtIndex: i];
-
-      if ([anInternetAddress type] == theType)
-	{
-	  [aMutableData appendData: [anInternetAddress dataValue]];
-	  [aMutableData appendCString: ", "];
-	}
+        CWInternetAddress *anInternetAddress;
+        
+        anInternetAddress = [_mutableRecipients objectAtIndex: i];
+        
+        if ([anInternetAddress type] == theType)
+        {
+            [aMutableData appendData: [anInternetAddress dataValue]];
+            [aMutableData appendCString: ", "];
+        }
     }
-  
-  if ([aMutableData length] > 0)
+    
+    if ([aMutableData length] > 0)
     {
-      [aMutableData setLength: [aMutableData length]-2];
-      return aMutableData;
+        [aMutableData setLength: [aMutableData length]-2];
+        return aMutableData;
     }
-  
-  return nil;
+    
+    return nil;
 }
 
 @end
