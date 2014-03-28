@@ -117,7 +117,7 @@
 - (void) appendMessageFromRawSource: (NSData *) theData
                               flags: (CWFlags *) theFlags
 {
-  [self subclassResponsibility: _cmd];
+    NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
 }
 
 
@@ -253,8 +253,8 @@
 //
 - (void) close
 {
-  [self subclassResponsibility: _cmd];
-  return;
+    NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
+    return;
 }
 
 
@@ -263,7 +263,7 @@
 //
 - (void) expunge
 {
-  [self subclassResponsibility: _cmd];
+    NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
 }
 
 
@@ -785,7 +785,7 @@
 	   mask: (PantomimeSearchMask) theMask
 	options: (PantomimeSearchOption) theOptions
 {
-  [self subclassResponsibility: _cmd];
+    NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
 }
 
 //

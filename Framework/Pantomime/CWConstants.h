@@ -37,11 +37,6 @@
 #endif
 
 //
-// We must define NSObject: -subclassResponsibility: on OS X.
-//
-#import "CWMacOSXGlue.h"
-
-//
 // Some macros, to minimize the code.
 //
 #define PERFORM_SELECTOR_1(del, sel, name) ({ \

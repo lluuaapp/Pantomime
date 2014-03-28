@@ -145,7 +145,7 @@ static NSMutableDictionary *charset_instance_cache = nil;
 // 
 - (NSString *) name
 {
-    [self subclassResponsibility: _cmd];
+    NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
     return nil;
 }
 

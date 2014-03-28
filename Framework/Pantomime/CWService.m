@@ -198,7 +198,7 @@
              password: (NSString *) thePassword
             mechanism: (NSString *) theMechanism
 {
-  [self subclassResponsibility: _cmd];
+    NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
 }
 
 
@@ -308,7 +308,7 @@
 //
 - (void) noop
 {
-  [self subclassResponsibility: _cmd];
+    NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
 }
 
 
@@ -433,8 +433,8 @@
 //
 - (NSInteger) reconnect
 {
-  [self subclassResponsibility: _cmd];
-  return 0;
+    NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
+    return 0;
 }
 
 //
@@ -486,7 +486,7 @@
 
 - (void) startTLS
 {
-  [self subclassResponsibility: _cmd];
+    NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
 }
 
 - (NSUInteger) lastCommand

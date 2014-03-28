@@ -29,7 +29,6 @@
 #import "NSData+CWExtensions.h"
 #import "CWPart.h"
 #import "CWMD5.h"
-#import "CWUUFile.h"
 
 //
 // C functions

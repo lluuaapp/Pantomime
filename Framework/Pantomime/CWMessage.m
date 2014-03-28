@@ -1080,13 +1080,13 @@ static NSInteger currentMessageVersion = 2;
 //
 - (NSData *) rawSource
 {
-  if (!_rawSource)
+    if (!_rawSource)
     {
-      [self subclassResponsibility: _cmd];
-      return nil;
+        NSAssert2(0, @"Subclass %@ should override %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd));
+        return nil;
     }
-  
-  return _rawSource;
+    
+    return _rawSource;
 }
 
 //
