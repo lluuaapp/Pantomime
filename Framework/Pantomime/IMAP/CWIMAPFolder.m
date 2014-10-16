@@ -117,12 +117,21 @@
     
     if (theDate)
     {
+        static NSDateFormatter *dateFormatter = nil;
+        static dispatch_once_t onceToken;
+        
+        dispatch_once(&onceToken, ^{
+            dateFormatter = [[NSDateFormatter alloc] init];
+            [dateFormatter setDateFormat:@"DD-MMM-YYYY HH:MM:SS ±HHMM"];
+            // replaces -[NSCalendarDate descriptionWithCalendarFormat:@"%d-%b-%Y %H:%M:%S %z"]
+        });
+        
         [_store sendCommand: IMAP_APPEND
                        info: aDictionary
                   arguments: @"APPEND \"%@\" (%@) \"%@\" {%d}",                    // IMAP command
          self.name,                                      // folder name
          flagsAsString,                                                   // flags
-         [theDate descriptionWithCalendarFormat:@"%d-%b-%Y %H:%M:%S %z"], // internal date
+         [dateFormatter stringFromDate:theDate], // internal date
          [aData length]];                                                 // length of the data to write
     }
     else
