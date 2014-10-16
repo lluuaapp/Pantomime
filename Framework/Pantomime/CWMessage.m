@@ -296,7 +296,7 @@ static NSInteger currentMessageVersion = 2;
 //
 //
 //
-- (NSCalendarDate *) receivedDate
+- (NSDate *) receivedDate
 {
     return [_headers objectForKey: @"Date"];
 }
@@ -305,7 +305,7 @@ static NSInteger currentMessageVersion = 2;
 //
 //
 //
-- (void) setReceivedDate: (NSCalendarDate*) theDate
+- (void) setReceivedDate: (NSDate*) theDate
 {
     if (theDate)
     {
@@ -913,7 +913,6 @@ static NSInteger currentMessageVersion = 2;
   NSEnumerator *allHeaderKeyEnumerator;
   NSString *aKey;
 
-  NSCalendarDate *aCalendarDate;
   NSData *aData;
 
 
@@ -935,24 +934,7 @@ static NSInteger currentMessageVersion = 2;
   aMutableData = [[NSMutableData alloc] init];
   // NSData *aBoundary = [CWMIMEUtility globallyUniqueBoundary];
   
-#ifndef MACOSX
-  if ([[NSUserDefaults standardUserDefaults] objectForKey: @"Local Time Zone"])
-    {
-      aCalendarDate = [[NSDate date] dateWithCalendarFormat: @"%a, %d %b %Y %H:%M:%S %z"
-				     timeZone: [NSTimeZone systemTimeZone]];
-    }
-  else
-    {
-      tzset();
-      aCalendarDate = [[NSDate date] dateWithCalendarFormat: @"%a, %d %b %Y %H:%M:%S %z"
-				     timeZone: [NSTimeZone timeZoneWithAbbreviation: 
-							     [NSString stringWithCString: tzname[1]]]];
-    }
-#else
-  aCalendarDate = [[NSDate date] dateWithCalendarFormat: @"%a, %d %b %Y %H:%M:%S %z"
-				 timeZone: [NSTimeZone systemTimeZone]];
-#endif
-  [aMutableData appendCFormat: @"Date: %@%s", [aCalendarDate descriptionWithLocale: aLocale], LF];
+  [aMutableData appendCFormat: @"Date: %@%s", [[NSDate date] descriptionWithLocale:aLocale], LF];
   
   // We set the subject, if we have one!
   if ([[[self subject] stringByTrimmingWhiteSpaces] length] > 0)
@@ -1092,7 +1074,7 @@ static NSInteger currentMessageVersion = 2;
 //
 //
 //
-- (NSCalendarDate *) resentDate
+- (NSDate *) resentDate
 {
   return [_headers objectForKey: @"Resent-Date"];
 }
@@ -1101,7 +1083,7 @@ static NSInteger currentMessageVersion = 2;
 //
 //
 //
-- (void) setResentDate: (NSCalendarDate *) theResentDate
+- (void) setResentDate: (NSDate *) theResentDate
 {
   [_headers setObject: theResentDate  forKey: @"Resent-Date"];
 }

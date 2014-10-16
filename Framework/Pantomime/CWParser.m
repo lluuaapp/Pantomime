@@ -359,167 +359,172 @@ NSInteger next_word(unsigned char *buf, NSUInteger start, NSUInteger len, unsign
 + (void) parseDate: (NSData *) theLine
 	 inMessage: (CWMessage *) theMessage
 {
-  if ([theLine length] > 6)
+    if ([theLine length] > 6)
     {
-      NSData *aData;
-
-      NSInteger month, day, year, hours, mins, secs, tz, i = 0, j, len = 0, tot, s;
-      unsigned char *bytes, *word;
-
-      aData = [theLine subdataFromIndex: 6];
-      word = malloc(256);
-      
-      //NSLog(@"Have to parse |%@|", [aData asciiString]);
-
-      bytes = (unsigned char*)[aData bytes];
-      tot = [aData length];
-
-      // date-time       =       [ day-of-week "," ] date FWS time [CFWS]
-      // day-of-week     =       ([FWS] day-name) / obs-day-of-week
-      // day-name        =       "Mon" / "Tue" / "Wed" / "Thu" /
-      //                         "Fri" / "Sat" / "Sun"
-      // date            =       day month year
-      // year            =       4*DIGIT / obs-year
-      // month           =       (FWS month-name FWS) / obs-month
-      // month-name      =       "Jan" / "Feb" / "Mar" / "Apr" /
-      //                         "May" / "Jun" / "Jul" / "Aug" /
-      //                         "Sep" / "Oct" / "Nov" / "Dec"
-      //
-      // day             =       ([FWS] 1*2DIGIT) / obs-day
-      // time            =       time-of-day FWS zone
-      // time-of-day     =       hour ":" minute [ ":" second ]
-      // hour            =       2DIGIT / obs-hour
-      // minute          =       2DIGIT / obs-minute
-      // second          =       2DIGIT / obs-second
-      // zone            =       (( "+" / "-" ) 4DIGIT) / obs-zone
-      //
-      // We need to handle RFC2822 and UNIX time:
-      //
-      // Date: Wed, 02 Jan 2002 09:07:19 -0700
-      // Date: 02 Jan 2002 19:57:49 +0000
-      //
-      // And broken dates such as:
-      //
-      // Date: Thu, 03 Jan 2002 16:40:30 GMT
-      // Date: Wed, 2 Jan 2002 08:56:18 -0700 (MST)
-      // Date: Wed, 9 Jan 2002 10:04:23 -0500 (Eastern Standard Time)
-      // Date: 11-Jan-02
-      // Date: Tue, 15 Jan 2002 15:45:53 -0801
-      // Date: Thu, 17 Jan 2002 11:54:11 -0900<br>
-      //
-      //while (i < tot && isspace(*bytes))
-      //	{
-      //	  i++; bytes++;
-      //	}
-      
-      len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
-
-      if (isalpha(*word))
-	{
-	  //NSLog(@"UNIX DATE");
-	  
-	  // We skip the first word, no need for it.
-	  i += len+1; len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
-	}
-
-      
-      month = -1;
-      
-      // We got a RFC 822 date. The syntax is:
-      // day month year hh:mm:ss zone
-      // For example: 03 Apr 2003 17:27:06 +0200
-      //NSLog(@"RFC-822 time");
-      day = atoi((const char*)word);
-      
-      //printf("len = %d |%s| day = %d\n", len, word, day);
-      
-      // We get the month name and we convert it.
-      i += len+1; len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
-      
-      for (j = 0; j < 12; j++)
-	{
-	  if (strncasecmp((const char*)word, month_name[j], 3) == 0)
-	    {
-	      month = j+1;
-	    }
-	}
-      
-      if (month < 0) { free(word); return; }
-      
-      //printf("len = %d |%s| month = %d\n", len, word, month);
-      
-      // We get the year.
-      i += len+1; len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
-      year = atoi((const char*)word);
-      
-      if (year < 70) year += 2000;
-      if (year < 100) year += 1900;
-      
-      //printf("len = %d |%s| year = %d\n", len, word, year);
-      
-      // We parse the time using the hh:mm:ss format.
-      i += len+1; len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
-
+        NSData *aData;
+        
+        NSInteger month, day, year, hours, mins, secs, tz, i = 0, j, len = 0, tot, s;
+        unsigned char *bytes, *word;
+        
+        aData = [theLine subdataFromIndex: 6];
+        word = malloc(256);
+        
+        //NSLog(@"Have to parse |%@|", [aData asciiString]);
+        
+        bytes = (unsigned char*)[aData bytes];
+        tot = [aData length];
+        
+        // date-time       =       [ day-of-week "," ] date FWS time [CFWS]
+        // day-of-week     =       ([FWS] day-name) / obs-day-of-week
+        // day-name        =       "Mon" / "Tue" / "Wed" / "Thu" /
+        //                         "Fri" / "Sat" / "Sun"
+        // date            =       day month year
+        // year            =       4*DIGIT / obs-year
+        // month           =       (FWS month-name FWS) / obs-month
+        // month-name      =       "Jan" / "Feb" / "Mar" / "Apr" /
+        //                         "May" / "Jun" / "Jul" / "Aug" /
+        //                         "Sep" / "Oct" / "Nov" / "Dec"
+        //
+        // day             =       ([FWS] 1*2DIGIT) / obs-day
+        // time            =       time-of-day FWS zone
+        // time-of-day     =       hour ":" minute [ ":" second ]
+        // hour            =       2DIGIT / obs-hour
+        // minute          =       2DIGIT / obs-minute
+        // second          =       2DIGIT / obs-second
+        // zone            =       (( "+" / "-" ) 4DIGIT) / obs-zone
+        //
+        // We need to handle RFC2822 and UNIX time:
+        //
+        // Date: Wed, 02 Jan 2002 09:07:19 -0700
+        // Date: 02 Jan 2002 19:57:49 +0000
+        //
+        // And broken dates such as:
+        //
+        // Date: Thu, 03 Jan 2002 16:40:30 GMT
+        // Date: Wed, 2 Jan 2002 08:56:18 -0700 (MST)
+        // Date: Wed, 9 Jan 2002 10:04:23 -0500 (Eastern Standard Time)
+        // Date: 11-Jan-02
+        // Date: Tue, 15 Jan 2002 15:45:53 -0801
+        // Date: Thu, 17 Jan 2002 11:54:11 -0900<br>
+        //
+        //while (i < tot && isspace(*bytes))
+        //	{
+        //	  i++; bytes++;
+        //	}
+        
+        len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
+        
+        if (isalpha(*word))
+        {
+            //NSLog(@"UNIX DATE");
+            
+            // We skip the first word, no need for it.
+            i += len+1; len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
+        }
+        
+        
+        month = -1;
+        
+        // We got a RFC 822 date. The syntax is:
+        // day month year hh:mm:ss zone
+        // For example: 03 Apr 2003 17:27:06 +0200
+        //NSLog(@"RFC-822 time");
+        day = atoi((const char*)word);
+        
+        //printf("len = %d |%s| day = %d\n", len, word, day);
+        
+        // We get the month name and we convert it.
+        i += len+1; len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
+        
+        for (j = 0; j < 12; j++)
+        {
+            if (strncasecmp((const char*)word, month_name[j], 3) == 0)
+            {
+                month = j+1;
+            }
+        }
+        
+        if (month < 0) { free(word); return; }
+        
+        //printf("len = %d |%s| month = %d\n", len, word, month);
+        
+        // We get the year.
+        i += len+1; len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
+        year = atoi((const char*)word);
+        
+        if (year < 70) year += 2000;
+        if (year < 100) year += 1900;
+        
+        //printf("len = %d |%s| year = %d\n", len, word, year);
+        
+        // We parse the time using the hh:mm:ss format.
+        i += len+1; len = next_word(bytes, i, tot, word); if (len <= 0) { free(word); return; }
+        
 #if __LP64__
-		sscanf((const char*)word, "%ld:%ld:%ld", &hours, &mins, &secs);
+        sscanf((const char*)word, "%ld:%ld:%ld", &hours, &mins, &secs);
 #else
-		sscanf((const char*)word, "%d:%d:%d", &hours, &mins, &secs);
+        sscanf((const char*)word, "%d:%d:%d", &hours, &mins, &secs);
 #endif
-      //printf("len = %d |%s| %d:%d:%d\n", len, word, hours, mins, secs);
-      
-      // We parse the timezone.
-      i += len+1; len = next_word(bytes, i, tot, word); 
-      
-      if (len <= 0)
-	{
-	  tz = 0;
-	}
-      else
-	{
-	  unsigned char *p;
-	  
-	  p = word;
-	  
-	  if (*p == '-' || *p == '+')
-	    {
-	      s = (*p == '-' ? -1 : 1);
-	      p++;
-	    }
-	  
-	  len = strlen((const char*)p);
-	  
-	  if (isdigit(*p))
-	    {
-	      if (len == 2)
-		{
-		  tz = (*(p)-48)*36000+*((p+1)-48)*3600;
-		}
-	      else
-		{
-		  tz = (*(p)-48)*36000+(*(p+1)-48)*3600+(*(p+2)-48)*10+(*(p+3)-48);
-		}
-	    }
-	  else
-	    {
-	      for (j = 0; j < sizeof(timezone_info)/sizeof(timezone_info[0]); j++)
-		{
-		  if (strncasecmp((const char*)p, timezone_info[j].name, len) == 0)
-		    {
-		      tz = timezone_info[j].offset;
-		    }
-		}
-	    }
-	  tz = s*tz;
-	}
-      
-      [theMessage setReceivedDate: [NSCalendarDate dateWithYear: year
-						   month: month
-						   day: day
-						   hour: hours
-						   minute: mins
-						   second: secs
-						   timeZone: [NSTimeZone timeZoneForSecondsFromGMT: tz]]];
-      free(word);
+        //printf("len = %d |%s| %d:%d:%d\n", len, word, hours, mins, secs);
+        
+        // We parse the timezone.
+        i += len+1; len = next_word(bytes, i, tot, word);
+        
+        if (len <= 0)
+        {
+            tz = 0;
+        }
+        else
+        {
+            unsigned char *p;
+            
+            p = word;
+            
+            if (*p == '-' || *p == '+')
+            {
+                s = (*p == '-' ? -1 : 1);
+                p++;
+            }
+            
+            len = strlen((const char*)p);
+            
+            if (isdigit(*p))
+            {
+                if (len == 2)
+                {
+                    tz = (*(p)-48)*36000+*((p+1)-48)*3600;
+                }
+                else
+                {
+                    tz = (*(p)-48)*36000+(*(p+1)-48)*3600+(*(p+2)-48)*10+(*(p+3)-48);
+                }
+            }
+            else
+            {
+                for (j = 0; j < sizeof(timezone_info)/sizeof(timezone_info[0]); j++)
+                {
+                    if (strncasecmp((const char*)p, timezone_info[j].name, len) == 0)
+                    {
+                        tz = timezone_info[j].offset;
+                    }
+                }
+            }
+            tz = s*tz;
+        }
+        
+        NSCalendar          *calendar = [NSCalendar currentCalendar];
+        NSDateComponents    *components = [[NSDateComponents alloc] init];
+        
+        [components setYear:year];
+        [components setMonth:month];
+        [components setDay:day];
+        [components setHour:hours];
+        [components setMinute:mins];
+        [components setSecond:secs];
+        [components setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:tz]];
+        
+        [theMessage setReceivedDate: [calendar dateFromComponents:components]];
+        free(word);
     }
 }
 

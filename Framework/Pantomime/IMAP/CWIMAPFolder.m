@@ -87,7 +87,7 @@
 //
 - (void) appendMessageFromRawSource:(NSData*)theData
                               flags:(CWFlags*)theFlags
-                       internalDate:(NSCalendarDate*)theDate
+                       internalDate:(NSDate*)theDate
 {
     NSDictionary *aDictionary;
     NSString *flagsAsString;

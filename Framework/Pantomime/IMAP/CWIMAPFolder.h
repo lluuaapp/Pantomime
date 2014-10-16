@@ -111,7 +111,7 @@ extern NSString* PantomimeMessageStoreFailed;
 */
 - (void) appendMessageFromRawSource:(NSData*)theData
                               flags:(CWFlags*)theFlags
-                       internalDate:(NSCalendarDate*)theDate;
+                       internalDate:(NSDate*)theDate;
 
 /*!
   @method copyMessages: toFolder:

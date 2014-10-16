@@ -209,17 +209,17 @@ extern NSString* PantomimeMessageExpunged;
   @method receivedDate
   @discussion This method is used to obtain the value of
               the "Date" header.
-  @result The value of the "Date" header, as a NSCalendarDate instance.
+  @result The value of the "Date" header, as a NSDate instance.
 */
-- (NSCalendarDate *) receivedDate;
+- (NSDate *) receivedDate;
 
 /*!
   @method setReceivedDate:
   @discussion This method is used to set the value of
               the "Date" header.
-  @param theDate The NSCalendarDate instance.
+  @param theDate The NSDate instance.
 */
-- (void) setReceivedDate: (NSCalendarDate *) theDate;
+- (void) setReceivedDate: (NSDate *) theDate;
 
 /*!
   @method addRecipient:
@@ -412,7 +412,7 @@ extern NSString* PantomimeMessageExpunged;
               "Resent-Date" header.
   @result The value of the "Resent-Date" header.
 */
-- (NSCalendarDate *) resentDate;
+- (NSDate *) resentDate;
 
 /*!
   @method setResentDate:
@@ -420,7 +420,7 @@ extern NSString* PantomimeMessageExpunged;
               "Resent-Date" header.
   @param theResentDate The new value of the header.
 */
-- (void) setResentDate: (NSCalendarDate *) theResentDate;
+- (void) setResentDate: (NSDate *) theResentDate;
 
 /*!
   @method resentFrom
